@@ -10,22 +10,24 @@ import {
   McpPrimitivesAnkiGuiModule,
   GUI_MCP_TOOLS,
 } from "./mcp/primitives/gui";
-import { AnkiConfigService } from "./anki-config.service";
+import { AppConfigService } from "./app-config.service";
+import { configSchema, transformEnvToConfig, ConfigInput } from "@/config";
 
 @Module({})
 export class AppModule {
   /**
    * Creates AppModule configured for STDIO transport
+   * @param configInput - Raw config input (merged env + CLI overrides)
    */
-  static forStdio(): DynamicModule {
+  static forStdio(configInput: ConfigInput): DynamicModule {
     return {
       module: AppModule,
       imports: [
-        // Configuration Module
+        // Configuration Module with Zod validation
         ConfigModule.forRoot({
           isGlobal: true,
           cache: true,
-          envFilePath: [".env.local", ".env"],
+          load: [() => configSchema.parse(transformEnvToConfig(configInput))],
         }),
 
         // MCP Module with STDIO transport
@@ -39,7 +41,7 @@ export class AppModule {
         McpPrimitivesAnkiEssentialModule.forRoot({
           ankiConfigProvider: {
             provide: ANKI_CONFIG,
-            useClass: AnkiConfigService,
+            useClass: AppConfigService,
           },
         }),
 
@@ -47,27 +49,28 @@ export class AppModule {
         McpPrimitivesAnkiGuiModule.forRoot({
           ankiConfigProvider: {
             provide: ANKI_CONFIG,
-            useClass: AnkiConfigService,
+            useClass: AppConfigService,
           },
         }),
       ],
       // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured.
-      providers: [AnkiConfigService, ...ESSENTIAL_MCP_TOOLS, ...GUI_MCP_TOOLS],
+      providers: [AppConfigService, ...ESSENTIAL_MCP_TOOLS, ...GUI_MCP_TOOLS],
     };
   }
 
   /**
    * Creates AppModule configured for HTTP (Streamable HTTP) transport
+   * @param configInput - Raw config input (merged env + CLI overrides)
    */
-  static forHttp(): DynamicModule {
+  static forHttp(configInput: ConfigInput): DynamicModule {
     return {
       module: AppModule,
       imports: [
-        // Configuration Module
+        // Configuration Module with Zod validation
         ConfigModule.forRoot({
           isGlobal: true,
           cache: true,
-          envFilePath: [".env.local", ".env"],
+          load: [() => configSchema.parse(transformEnvToConfig(configInput))],
         }),
 
         // MCP Module with Streamable HTTP transport
@@ -82,7 +85,7 @@ export class AppModule {
         McpPrimitivesAnkiEssentialModule.forRoot({
           ankiConfigProvider: {
             provide: ANKI_CONFIG,
-            useClass: AnkiConfigService,
+            useClass: AppConfigService,
           },
         }),
 
@@ -90,12 +93,12 @@ export class AppModule {
         McpPrimitivesAnkiGuiModule.forRoot({
           ankiConfigProvider: {
             provide: ANKI_CONFIG,
-            useClass: AnkiConfigService,
+            useClass: AppConfigService,
           },
         }),
       ],
       // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured.
-      providers: [AnkiConfigService, ...ESSENTIAL_MCP_TOOLS, ...GUI_MCP_TOOLS],
+      providers: [AppConfigService, ...ESSENTIAL_MCP_TOOLS, ...GUI_MCP_TOOLS],
     };
   }
 }

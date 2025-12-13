@@ -2,6 +2,8 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import { CredentialsService, TunnelCredentials } from "@/tunnel";
 import { DeviceFlowService, DeviceFlowError } from "@/tunnel";
+import { AppConfigService } from "@/app-config.service";
+import { ConfigService } from "@nestjs/config";
 
 const execAsync = promisify(exec);
 
@@ -95,7 +97,9 @@ function startSpinner(message: string): () => void {
  */
 export async function handleLogin(): Promise<void> {
   const credentialsService = new CredentialsService();
-  const deviceFlowService = new DeviceFlowService();
+  const configService = new ConfigService();
+  const appConfigService = new AppConfigService(configService);
+  const deviceFlowService = new DeviceFlowService(appConfigService);
 
   console.log(); // Blank line for spacing
 
