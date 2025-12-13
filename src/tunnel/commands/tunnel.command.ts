@@ -7,6 +7,7 @@ import { TUNNEL_DEFAULTS } from "@/tunnel";
 import { AppConfigService } from "@/app-config.service";
 import { ConfigService } from "@nestjs/config";
 import { buildConfigInput } from "@/config";
+import { cli } from "@/cli/cli-output";
 
 /**
  * Display a simple text spinner for polling
@@ -31,14 +32,7 @@ function startSpinner(message: string): () => void {
  * Display a URL in a nice box
  */
 function displayBox(title: string, url: string): void {
-  const width = Math.max(title.length, url.length) + 4;
-  const border = "─".repeat(width);
-
-  console.log(`┌${border}┐`);
-  console.log(`│ ${title}${" ".repeat(width - title.length - 1)}│`);
-  console.log(`├${border}┤`);
-  console.log(`│ ${url}${" ".repeat(width - url.length - 1)}│`);
-  console.log(`└${border}┘`);
+  cli.box(title, url);
 }
 
 /**
@@ -51,7 +45,7 @@ function formatConnectionError(error: unknown, tunnelUrl?: string): string {
   if (error instanceof TunnelClientError && error.originalError) {
     const origError = error.originalError as { code?: string };
     if (origError.code === "ECONNREFUSED") {
-      return `✗ Cannot connect to tunnel server at ${url}
+      return `Cannot connect to tunnel server at ${url}
    Make sure the tunnel server is running.`;
     }
   }
@@ -62,7 +56,7 @@ function formatConnectionError(error: unknown, tunnelUrl?: string): string {
       error.message.includes("ECONNREFUSED") ||
       error.message.includes("connect ECONNREFUSED")
     ) {
-      return `✗ Cannot connect to tunnel server at ${url}
+      return `Cannot connect to tunnel server at ${url}
    Make sure the tunnel server is running.`;
     }
 
@@ -71,7 +65,7 @@ function formatConnectionError(error: unknown, tunnelUrl?: string): string {
       error.message.includes("timeout") ||
       error.message.includes("Connection timeout")
     ) {
-      return `✗ Connection timeout to ${url}
+      return `Connection timeout to ${url}
    The tunnel server may be unavailable or slow to respond.`;
     }
 
@@ -80,14 +74,14 @@ function formatConnectionError(error: unknown, tunnelUrl?: string): string {
       error.message.includes("Unauthorized") ||
       error.message.includes("401")
     ) {
-      return `✗ Authentication failed
+      return `Authentication failed
    Your credentials may be invalid. Try: ankimcp --logout && ankimcp --login`;
     }
   }
 
   // Generic error
   const message = error instanceof Error ? error.message : String(error);
-  return `✗ Failed to connect: ${message}`;
+  return `Failed to connect: ${message}`;
 }
 
 /**
@@ -112,14 +106,14 @@ export async function handleTunnel(tunnelUrl?: string): Promise<void> {
   const appConfigService = new AppConfigService(configService);
   const deviceFlowService = new DeviceFlowService(appConfigService);
 
-  console.log(); // Blank line for spacing
+  cli.blank();
 
   try {
     // Step 1: Load credentials
     const credentials = await credentialsService.loadCredentials();
     if (!credentials) {
-      console.error("✗ Not logged in. Run: ankimcp --login");
-      console.log(); // Blank line
+      cli.error("Not logged in. Run: ankimcp --login");
+      cli.blank();
       process.exit(1);
     }
 
@@ -139,17 +133,17 @@ export async function handleTunnel(tunnelUrl?: string): Promise<void> {
       const address = app.getHttpServer().address();
       localPort = typeof address === "object" ? address.port : 0;
       stopSpinner();
-      console.log(`✓ Local MCP server started on port ${localPort}`);
+      cli.success(`Local MCP server started on port ${localPort}`);
     } catch (error) {
       stopSpinner();
-      console.error(
-        `✗ Failed to start local server: ${error instanceof Error ? error.message : String(error)}`,
+      cli.error(
+        `Failed to start local server: ${error instanceof Error ? error.message : String(error)}`,
       );
-      console.log(); // Blank line
+      cli.blank();
       process.exit(1);
     }
 
-    console.log(); // Blank line
+    cli.blank();
 
     // Step 3: Create McpRequestHandler that proxies to local server
     const mcpHandler: McpRequestHandler = {
@@ -189,7 +183,7 @@ export async function handleTunnel(tunnelUrl?: string): Promise<void> {
     tunnelClient.on("error", (error: Error) => {
       // During connect(), errors are caught by try/catch, so we only log post-connect errors
       if (tunnelClient.isConnected()) {
-        console.error(`✗ Tunnel error: ${error.message}`);
+        cli.error(`Tunnel error: ${error.message}`);
       }
       // Pre-connect errors are handled by the catch block below
     });
@@ -200,24 +194,24 @@ export async function handleTunnel(tunnelUrl?: string): Promise<void> {
     try {
       publicUrl = await tunnelClient.connect(tunnelUrl);
       connectSpinner();
-      console.log("✓ Tunnel established");
-      console.log(); // Blank line
+      cli.success("Tunnel established");
+      cli.blank();
     } catch (error) {
       connectSpinner();
 
       // Format user-friendly error message
       const errorMessage = formatConnectionError(error, tunnelUrl);
-      console.error(errorMessage);
-      console.log(); // Blank line
+      cli.error(errorMessage);
+      cli.blank();
       await app.close();
       process.exit(1);
     }
 
     // Step 5: Display tunnel URL in a nice box
     displayBox("🚇 Tunnel URL", publicUrl);
-    console.log(); // Blank line
-    console.log("Tunnel is active. Press Ctrl+C to disconnect.");
-    console.log(); // Blank line
+    cli.blank();
+    cli.info("Tunnel is active. Press Ctrl+C to disconnect.");
+    cli.blank();
 
     // Step 6: Listen for events (error listener already set up above)
     tunnelClient.on("request", (requestId: string, request) => {
@@ -228,29 +222,29 @@ export async function handleTunnel(tunnelUrl?: string): Promise<void> {
     });
 
     tunnelClient.on("url_changed", (oldUrl: string, newUrl: string) => {
-      console.log(); // Blank line
-      console.log(`🔄 Tunnel URL changed:`);
-      console.log(`   Old: ${oldUrl}`);
-      console.log(`   New: ${newUrl}`);
-      console.log(); // Blank line
+      cli.blank();
+      cli.info(`🔄 Tunnel URL changed:`);
+      cli.info(`   Old: ${oldUrl}`);
+      cli.info(`   New: ${newUrl}`);
+      cli.blank();
     });
 
     tunnelClient.on("disconnected", (code: number, reason: string) => {
-      console.log(); // Blank line
-      console.log(`✗ Tunnel disconnected (code ${code}): ${reason}`);
-      console.log(); // Blank line
+      cli.blank();
+      cli.error(`Tunnel disconnected (code ${code}): ${reason}`);
+      cli.blank();
     });
 
     // Step 7: Handle graceful shutdown
     const shutdown = async () => {
-      console.log(); // Blank line
-      console.log("Shutting down...");
+      cli.blank();
+      cli.info("Shutting down...");
 
       tunnelClient.disconnect();
       await app.close();
 
-      console.log("✓ Tunnel closed");
-      console.log(); // Blank line
+      cli.success("Tunnel closed");
+      cli.blank();
       process.exit(0);
     };
 
@@ -261,10 +255,10 @@ export async function handleTunnel(tunnelUrl?: string): Promise<void> {
     await new Promise(() => {});
   } catch (error) {
     // Handle unexpected errors
-    console.error(
-      `✗ Tunnel failed: ${error instanceof Error ? error.message : String(error)}`,
+    cli.error(
+      `Tunnel failed: ${error instanceof Error ? error.message : String(error)}`,
     );
-    console.log(); // Blank line
+    cli.blank();
     process.exit(1);
   }
 }

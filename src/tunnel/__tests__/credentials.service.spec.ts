@@ -2,6 +2,25 @@ import * as fs from "fs/promises";
 import * as os from "os";
 import { constants } from "fs";
 
+// Mock Logger BEFORE importing CredentialsService
+const mockLoggerWarn = jest.fn();
+const mockLoggerLog = jest.fn();
+const mockLoggerError = jest.fn();
+const mockLoggerDebug = jest.fn();
+
+jest.mock("@nestjs/common", () => {
+  const actual = jest.requireActual("@nestjs/common");
+  return {
+    ...actual,
+    Logger: jest.fn().mockImplementation(() => ({
+      log: mockLoggerLog,
+      warn: mockLoggerWarn,
+      error: mockLoggerError,
+      debug: mockLoggerDebug,
+    })),
+  };
+});
+
 // Mock fs/promises and os modules BEFORE importing CredentialsService
 jest.mock("fs/promises");
 jest.mock("os", () => ({
@@ -33,6 +52,12 @@ describe("CredentialsService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Clear logger mocks
+    mockLoggerWarn.mockClear();
+    mockLoggerLog.mockClear();
+    mockLoggerError.mockClear();
+    mockLoggerDebug.mockClear();
 
     // Setup expected paths (homedir is mocked to "/home/testuser")
     mockHomedir = "/home/testuser";
@@ -279,10 +304,6 @@ describe("CredentialsService", () => {
     });
 
     it("should return null when JSON is corrupted and log warning", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       (fs.access as jest.Mock).mockResolvedValue(undefined);
       (fs.readFile as jest.Mock).mockResolvedValue(
         "{ invalid json syntax ][",
@@ -291,21 +312,15 @@ describe("CredentialsService", () => {
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Failed to load credentials"),
       );
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining(mockCredentialsPath),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should return null when credentials structure is invalid - missing access_token", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       const invalidCredentials = {
         // missing access_token
         refresh_token: "test-refresh-token",
@@ -325,18 +340,12 @@ describe("CredentialsService", () => {
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Corrupted credentials file"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should return null when credentials structure is invalid - missing refresh_token", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       const invalidCredentials = {
         access_token: "test-access-token",
         // missing refresh_token
@@ -356,18 +365,12 @@ describe("CredentialsService", () => {
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Corrupted credentials file"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should return null when credentials structure is invalid - missing expires_at", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       const invalidCredentials = {
         access_token: "test-access-token",
         refresh_token: "test-refresh-token",
@@ -387,18 +390,12 @@ describe("CredentialsService", () => {
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Corrupted credentials file"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should return null when credentials structure is invalid - missing user object", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       const invalidCredentials = {
         access_token: "test-access-token",
         refresh_token: "test-refresh-token",
@@ -414,18 +411,12 @@ describe("CredentialsService", () => {
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Corrupted credentials file"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should return null when credentials structure is invalid - missing user.id", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       const invalidCredentials = {
         access_token: "test-access-token",
         refresh_token: "test-refresh-token",
@@ -445,18 +436,12 @@ describe("CredentialsService", () => {
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Corrupted credentials file"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should return null when credentials structure is invalid - missing user.email", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       const invalidCredentials = {
         access_token: "test-access-token",
         refresh_token: "test-refresh-token",
@@ -476,18 +461,12 @@ describe("CredentialsService", () => {
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Corrupted credentials file"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should return null when credentials structure is invalid - invalid user.tier", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       const invalidCredentials = {
         access_token: "test-access-token",
         refresh_token: "test-refresh-token",
@@ -507,18 +486,12 @@ describe("CredentialsService", () => {
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Corrupted credentials file"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should return null when credentials structure is invalid - null user", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       const invalidCredentials = {
         access_token: "test-access-token",
         refresh_token: "test-refresh-token",
@@ -534,11 +507,9 @@ describe("CredentialsService", () => {
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Corrupted credentials file"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should accept valid credentials with tier 'paid'", async () => {
@@ -562,10 +533,6 @@ describe("CredentialsService", () => {
     });
 
     it("should return null when file is not readable", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       const accessError: NodeJS.ErrnoException = new Error("EACCES");
       accessError.code = "EACCES";
       (fs.access as jest.Mock).mockRejectedValue(accessError);
@@ -573,50 +540,36 @@ describe("CredentialsService", () => {
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Failed to load credentials"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should return null and log warning when readFile fails", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       (fs.access as jest.Mock).mockResolvedValue(undefined);
       (fs.readFile as jest.Mock).mockRejectedValue(new Error("Read error"));
 
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Failed to load credentials"),
       );
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Read error"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should handle non-Error exceptions gracefully", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       (fs.access as jest.Mock).mockResolvedValue(undefined);
       (fs.readFile as jest.Mock).mockRejectedValue("string error");
 
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Failed to load credentials"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should preserve extra fields in credentials object", async () => {
@@ -637,39 +590,27 @@ describe("CredentialsService", () => {
     });
 
     it("should return null when credentials is not an object", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       (fs.access as jest.Mock).mockResolvedValue(undefined);
       (fs.readFile as jest.Mock).mockResolvedValue(JSON.stringify("string"));
 
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Corrupted credentials file"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should return null when credentials is null", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       (fs.access as jest.Mock).mockResolvedValue(undefined);
       (fs.readFile as jest.Mock).mockResolvedValue(JSON.stringify(null));
 
       const result = await service.loadCredentials();
 
       expect(result).toBeNull();
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Corrupted credentials file"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
   });
 
@@ -1000,10 +941,6 @@ describe("CredentialsService", () => {
     });
 
     it("should reject credentials with empty string values", async () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       const invalidCredentials = {
         access_token: "", // empty string should still validate (string type)
         refresh_token: "test",
@@ -1024,8 +961,6 @@ describe("CredentialsService", () => {
 
       // Empty string is still a valid string type, so this should pass validation
       expect(result).toEqual(invalidCredentials);
-
-      consoleWarnSpy.mockRestore();
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext } from "@nestjs/common";
+import { Injectable, CanActivate, ExecutionContext, Logger } from "@nestjs/common";
 import { Request } from "express";
 
 /**
@@ -16,6 +16,7 @@ import { Request } from "express";
  */
 @Injectable()
 export class OriginValidationGuard implements CanActivate {
+  private readonly logger = new Logger(OriginValidationGuard.name);
   private readonly allowedOrigins: string[];
 
   constructor() {
@@ -40,8 +41,8 @@ export class OriginValidationGuard implements CanActivate {
     );
 
     if (!isAllowed) {
-      console.warn(
-        `[OriginValidationGuard] Rejected request from unauthorized origin: ${origin}`,
+      this.logger.warn(
+        `Rejected request from unauthorized origin: ${origin}`,
       );
     }
 

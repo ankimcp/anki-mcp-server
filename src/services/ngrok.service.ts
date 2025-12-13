@@ -1,5 +1,6 @@
 import { spawn, ChildProcess } from "child_process";
 import http from "http";
+import { Logger } from "@nestjs/common";
 
 export interface NgrokTunnelInfo {
   publicUrl: string;
@@ -7,6 +8,7 @@ export interface NgrokTunnelInfo {
 }
 
 export class NgrokService {
+  private readonly logger = new Logger(NgrokService.name);
   private process: ChildProcess | null = null;
   private cleanupHandlersRegistered = false;
 
@@ -45,7 +47,7 @@ export class NgrokService {
 
     this.process.on("exit", (code, _signal) => {
       if (code !== 0 && code !== null) {
-        console.error(`ngrok exited with code ${code}`);
+        this.logger.error(`ngrok exited with code ${code}`);
       }
     });
 
@@ -138,7 +140,7 @@ export class NgrokService {
   private registerCleanupHandlers(): void {
     // Handle Ctrl+C
     process.on("SIGINT", () => {
-      console.log("\n\n🛑 Shutting down ngrok tunnel...");
+      this.logger.log("\n\n🛑 Shutting down ngrok tunnel...");
       this.cleanup();
       process.exit(0);
     });
@@ -156,7 +158,7 @@ export class NgrokService {
 
     // Handle uncaught exceptions
     process.on("uncaughtException", (err) => {
-      console.error("Uncaught exception:", err);
+      this.logger.error("Uncaught exception:", err);
       this.cleanup();
       process.exit(1);
     });
