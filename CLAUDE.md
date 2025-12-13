@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is an MCP (Model Context Protocol) server that enables AI assistants to interact with Anki via the AnkiConnect plugin. Built with NestJS and the `@rekog/mcp-nest` library, it exposes Anki functionality as MCP tools, prompts, and resources.
 
-**Version**: 0.8.5 (Beta) - This project is in active development. Breaking changes may occur in 0.x versions.
+**Version**: See `package.json` (Beta) - This project is in active development. Breaking changes may occur in 0.x versions.
 
 **License**: AGPL-3.0-or-later - Changed from MIT to enable future integration of Anki source code. See README.md for details.
 
@@ -17,7 +17,7 @@ This is an MCP (Model Context Protocol) server that enables AI assistants to int
 - `architecture-tunnel.md` - Ngrok tunnel integration architecture
 - `gui-tools-implementation-plan.md` - GUI tools design and planning
 - `MODEL_ACTIONS_IMPLEMENTATION_PLAN.md` - Model creation/modification tools
-- `ACTIONS_IMPLEMENTATION.md` - AnkiConnect API implementation status tracking (31/127 actions completed)
+- `ACTIONS_IMPLEMENTATION.md` - AnkiConnect API implementation status tracking
 
 **NPM Package**: Published as `@ankimcp/anki-mcp-server` on npm registry for global installation. The old `anki-mcp-http` package continues to be published for backward compatibility but is deprecated.
 
