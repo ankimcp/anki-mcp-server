@@ -13,6 +13,7 @@ export interface CliOptions {
   login: boolean;
   logout: boolean;
   tunnel: string | boolean;
+  debug: boolean;
 }
 
 function getPackageJson() {
@@ -65,6 +66,7 @@ export function parseCliArgs(): CliOptions {
       "--tunnel [url]",
       "Connect to tunnel server (default: ws://localhost:3004/tunnel)",
     )
+    .option("-d, --debug", "Enable debug logging (shows stack traces)")
     .addHelpText(
       "after",
       `
@@ -127,6 +129,7 @@ Tunnel Mode:
     login: options.login || false,
     logout: options.logout || false,
     tunnel: options.tunnel ?? false,
+    debug: options.debug || false,
   };
 }
 
