@@ -7,7 +7,12 @@ import {
 } from "./mcp/primitives/essential";
 import { McpPrimitivesAnkiGuiModule } from "./mcp/primitives/gui";
 import { AppConfigService } from "./app-config.service";
-import { configSchema, transformEnvToConfig, ConfigInput } from "@/config";
+import {
+  configSchema,
+  transformEnvToConfig,
+  ConfigInput,
+  APP_CONFIG,
+} from "@/config";
 
 @Module({})
 export class AppModule {
@@ -16,14 +21,19 @@ export class AppModule {
    * @param configInput - Raw config input (merged env + CLI overrides)
    */
   static forStdio(configInput: ConfigInput): DynamicModule {
+    // Parse config once, use everywhere (single source of truth)
+    const validatedConfig = configSchema.parse(
+      transformEnvToConfig(configInput),
+    );
+
     return {
       module: AppModule,
       imports: [
-        // Configuration Module with Zod validation
+        // Configuration Module (uses same validated config)
         ConfigModule.forRoot({
           isGlobal: true,
           cache: true,
-          load: [() => configSchema.parse(transformEnvToConfig(configInput))],
+          load: [() => validatedConfig],
         }),
 
         // MCP Module with STDIO transport
@@ -39,6 +49,10 @@ export class AppModule {
             provide: ANKI_CONFIG,
             useClass: AppConfigService,
           },
+          appConfigProvider: {
+            provide: APP_CONFIG,
+            useValue: validatedConfig,
+          },
         }),
 
         // Import GUI primitives with config
@@ -47,9 +61,21 @@ export class AppModule {
             provide: ANKI_CONFIG,
             useClass: AppConfigService,
           },
+          appConfigProvider: {
+            provide: APP_CONFIG,
+            useValue: validatedConfig,
+          },
         }),
       ],
-      providers: [AppConfigService],
+      providers: [
+        // Provide validated config for type-safe injection
+        {
+          provide: APP_CONFIG,
+          useValue: validatedConfig,
+        },
+        AppConfigService,
+      ],
+      exports: [APP_CONFIG, AppConfigService],
     };
   }
 
@@ -58,14 +84,19 @@ export class AppModule {
    * @param configInput - Raw config input (merged env + CLI overrides)
    */
   static forHttp(configInput: ConfigInput): DynamicModule {
+    // Parse config once, use everywhere (single source of truth)
+    const validatedConfig = configSchema.parse(
+      transformEnvToConfig(configInput),
+    );
+
     return {
       module: AppModule,
       imports: [
-        // Configuration Module with Zod validation
+        // Configuration Module (uses same validated config)
         ConfigModule.forRoot({
           isGlobal: true,
           cache: true,
-          load: [() => configSchema.parse(transformEnvToConfig(configInput))],
+          load: [() => validatedConfig],
         }),
 
         // MCP Module with Streamable HTTP transport
@@ -82,6 +113,10 @@ export class AppModule {
             provide: ANKI_CONFIG,
             useClass: AppConfigService,
           },
+          appConfigProvider: {
+            provide: APP_CONFIG,
+            useValue: validatedConfig,
+          },
         }),
 
         // Import GUI primitives with config
@@ -90,9 +125,21 @@ export class AppModule {
             provide: ANKI_CONFIG,
             useClass: AppConfigService,
           },
+          appConfigProvider: {
+            provide: APP_CONFIG,
+            useValue: validatedConfig,
+          },
         }),
       ],
-      providers: [AppConfigService],
+      providers: [
+        // Provide validated config for type-safe injection
+        {
+          provide: APP_CONFIG,
+          useValue: validatedConfig,
+        },
+        AppConfigService,
+      ],
+      exports: [APP_CONFIG, AppConfigService],
     };
   }
 }

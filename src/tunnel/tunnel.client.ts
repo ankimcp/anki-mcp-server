@@ -381,7 +381,9 @@ export class TunnelClient extends EventEmitter {
    * Handle URL changed notification (slug update)
    */
   private handleUrlChanged(message: TunnelUrlChangedMessage): void {
-    this.logger.log(`Tunnel URL changed: ${message.oldUrl} → ${message.newUrl}`);
+    this.logger.log(
+      `Tunnel URL changed: ${message.oldUrl} → ${message.newUrl}`,
+    );
     this.currentTunnelUrl = message.newUrl;
     this.emit("url_changed", message.oldUrl, message.newUrl);
   }

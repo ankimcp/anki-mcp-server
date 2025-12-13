@@ -67,14 +67,26 @@ const MCP_PRIMITIVES = [
 
 export interface McpPrimitivesAnkiGuiModuleOptions {
   ankiConfigProvider: Provider;
+  /** Required when ankiConfigProvider uses AppConfigService (provides APP_CONFIG dependency) */
+  appConfigProvider?: Provider;
 }
 
 @Module({})
 export class McpPrimitivesAnkiGuiModule {
   static forRoot(options: McpPrimitivesAnkiGuiModuleOptions): DynamicModule {
+    const providers: Provider[] = [
+      options.ankiConfigProvider,
+      ...MCP_PRIMITIVES,
+    ];
+
+    // Add appConfigProvider if provided (needed for AppConfigService injection)
+    if (options.appConfigProvider) {
+      providers.push(options.appConfigProvider);
+    }
+
     return {
       module: McpPrimitivesAnkiGuiModule,
-      providers: [options.ankiConfigProvider, ...MCP_PRIMITIVES],
+      providers,
       exports: MCP_PRIMITIVES,
     };
   }

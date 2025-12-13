@@ -5,8 +5,7 @@ import { DeviceFlowService } from "@/tunnel";
 import { TunnelClient, McpRequestHandler, TunnelClientError } from "@/tunnel";
 import { TUNNEL_DEFAULTS } from "@/tunnel";
 import { AppConfigService } from "@/app-config.service";
-import { ConfigService } from "@nestjs/config";
-import { buildConfigInput } from "@/config";
+import { buildConfigInput, loadValidatedConfig } from "@/config";
 import { cli, setDebugMode } from "@/cli/cli-output";
 
 /**
@@ -101,13 +100,16 @@ function formatConnectionError(error: unknown, tunnelUrl?: string): string {
  * @param debug - Optional debug mode flag
  * @throws {Error} If not logged in or connection fails
  */
-export async function handleTunnel(tunnelUrl?: string, debug?: boolean): Promise<void> {
+export async function handleTunnel(
+  tunnelUrl?: string,
+  debug?: boolean,
+): Promise<void> {
   // Set debug mode early so all error handlers can show stack traces
   setDebugMode(debug || false);
 
   const credentialsService = new CredentialsService();
-  const configService = new ConfigService();
-  const appConfigService = new AppConfigService(configService);
+  const validatedConfig = loadValidatedConfig({ debug });
+  const appConfigService = new AppConfigService(validatedConfig);
   const deviceFlowService = new DeviceFlowService(appConfigService);
 
   cli.blank();

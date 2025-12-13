@@ -1,31 +1,29 @@
-import { Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Inject, Injectable } from "@nestjs/common";
 import { IAnkiConfig } from "./mcp/config/anki-config.interface";
+import { APP_CONFIG } from "@/config";
+import type { AppConfig } from "@/config";
 import { sanitizeMcpbConfigValue } from "./mcp/utils/mcpb-workarounds";
 
 /**
  * Application configuration service that provides type-safe access to all config values
- * Extends the original AnkiConfigService to support server, auth, tunnel, and logging config
+ * Injects validated AppConfig for compile-time type safety (no string keys!)
  */
 @Injectable()
 export class AppConfigService implements IAnkiConfig {
-  constructor(private configService: ConfigService) {}
+  constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {}
 
   // ===== Server Configuration =====
 
   get port(): number {
-    return this.configService.get<number>("PORT", 3000);
+    return this.config.port;
   }
 
   get host(): string {
-    return this.configService.get<string>("HOST", "127.0.0.1");
+    return this.config.host;
   }
 
   get nodeEnv(): "development" | "production" | "test" {
-    return this.configService.get<"development" | "production" | "test">(
-      "NODE_ENV",
-      "development",
-    );
+    return this.config.nodeEnv;
   }
 
   get isDevelopment(): boolean {
@@ -43,68 +41,44 @@ export class AppConfigService implements IAnkiConfig {
   // ===== AnkiConnect Configuration (IAnkiConfig implementation) =====
 
   get ankiConnectUrl(): string {
-    return this.configService.get<string>(
-      "ANKI_CONNECT_URL",
-      "http://localhost:8765",
-    );
+    return this.config.ankiConnect.url;
   }
 
   get ankiConnectApiVersion(): number {
-    const version = this.configService.get<string>(
-      "ANKI_CONNECT_API_VERSION",
-      "6",
-    );
-    return parseInt(version, 10);
+    return this.config.ankiConnect.apiVersion;
   }
 
   get ankiConnectApiKey(): string | undefined {
-    const apiKey = this.configService.get<string>("ANKI_CONNECT_API_KEY");
-    return sanitizeMcpbConfigValue(apiKey);
+    return sanitizeMcpbConfigValue(this.config.ankiConnect.apiKey);
   }
 
   get ankiConnectTimeout(): number {
-    const timeout = this.configService.get<string>(
-      "ANKI_CONNECT_TIMEOUT",
-      "5000",
-    );
-    return parseInt(timeout, 10);
+    return this.config.ankiConnect.timeout;
   }
 
   // ===== Auth Configuration =====
 
   get authUrl(): string {
-    return this.configService.get<string>(
-      "TUNNEL_AUTH_URL",
-      "https://keycloak.anatoly.dev",
-    );
+    return this.config.auth.url;
   }
 
   get authRealm(): string {
-    return this.configService.get<string>("TUNNEL_AUTH_REALM", "ankimcp-dev");
+    return this.config.auth.realm;
   }
 
   get authClientId(): string {
-    return this.configService.get<string>(
-      "TUNNEL_AUTH_CLIENT_ID",
-      "ankimcp-cli",
-    );
+    return this.config.auth.clientId;
   }
 
   // ===== Tunnel Configuration =====
 
   get tunnelServerUrl(): string {
-    return this.configService.get<string>(
-      "TUNNEL_SERVER_URL",
-      "wss://tunnel.ankimcp.ai",
-    );
+    return this.config.tunnel.serverUrl;
   }
 
   // ===== Logging Configuration =====
 
   get logLevel(): "debug" | "info" | "warn" | "error" {
-    return this.configService.get<"debug" | "info" | "warn" | "error">(
-      "LOG_LEVEL",
-      "info",
-    );
+    return this.config.logLevel;
   }
 }

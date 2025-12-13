@@ -1,5 +1,4 @@
 import * as fs from "fs/promises";
-import * as os from "os";
 import { constants } from "fs";
 
 // Mock Logger BEFORE importing CredentialsService
@@ -276,9 +275,7 @@ describe("CredentialsService", () => {
       const credentials = createTestCredentials();
 
       (fs.access as jest.Mock).mockResolvedValue(undefined);
-      (fs.readFile as jest.Mock).mockResolvedValue(
-        JSON.stringify(credentials),
-      );
+      (fs.readFile as jest.Mock).mockResolvedValue(JSON.stringify(credentials));
 
       const result = await service.loadCredentials();
 
@@ -305,9 +302,7 @@ describe("CredentialsService", () => {
 
     it("should return null when JSON is corrupted and log warning", async () => {
       (fs.access as jest.Mock).mockResolvedValue(undefined);
-      (fs.readFile as jest.Mock).mockResolvedValue(
-        "{ invalid json syntax ][",
-      );
+      (fs.readFile as jest.Mock).mockResolvedValue("{ invalid json syntax ][");
 
       const result = await service.loadCredentials();
 
@@ -522,9 +517,7 @@ describe("CredentialsService", () => {
       });
 
       (fs.access as jest.Mock).mockResolvedValue(undefined);
-      (fs.readFile as jest.Mock).mockResolvedValue(
-        JSON.stringify(credentials),
-      );
+      (fs.readFile as jest.Mock).mockResolvedValue(JSON.stringify(credentials));
 
       const result = await service.loadCredentials();
 
@@ -913,9 +906,7 @@ describe("CredentialsService", () => {
       const service1 = new CredentialsService();
       const service2 = new CredentialsService();
 
-      expect(service1.getCredentialsPath()).toBe(
-        service2.getCredentialsPath(),
-      );
+      expect(service1.getCredentialsPath()).toBe(service2.getCredentialsPath());
     });
 
     it("should handle credentials with minimal valid structure", async () => {

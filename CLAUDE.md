@@ -87,8 +87,11 @@ The application follows a modular NestJS architecture with MCP primitives organi
 - **`src/cli.ts`** - CLI argument parsing with commander (--port, --host, --anki-connect flags)
 - **`src/bootstrap.ts`** - Shared utilities for logger creation
 - **`src/app.module.ts`** - Root module with forStdio() and forHttp() factory methods
-- **`src/app-config.service.ts`** - Centralized configuration service (implements `IAnkiConfig`)
-- **`src/config/config.schema.ts`** - Zod schema for config validation
+- **`src/config/`** - Configuration system:
+  - `config.schema.ts` - Zod schema + `transformEnvToConfig()` (single source of truth for env var names)
+  - `config.factory.ts` - `buildConfigInput()` for CLI overrides, `loadValidatedConfig()` helper
+  - `index.ts` - Exports `APP_CONFIG` injection token for type-safe config access
+- **`src/app-config.service.ts`** - Type-safe config service (injects `AppConfig` via `APP_CONFIG` token)
 - **`src/http/guards/origin-validation.guard.ts`** - Origin validation for HTTP mode security
 - **`bin/ankimcp.js`** - CLI wrapper for npm global install (routes to main-http.js or main-stdio.js based on --stdio flag)
   - Exposed as both `ankimcp` and `anki-mcp-server` commands when installed globally (see package.json bin field)
@@ -170,8 +173,10 @@ MCP primitives (tools, prompts, resources) are organized in feature modules:
 
 The project uses NestJS dynamic modules with dependency injection:
 
-1. `AppModule` imports `McpModule.forRoot()` with transport mode
-2. `McpPrimitivesAnkiEssentialModule.forRoot()` and `McpPrimitivesAnkiGuiModule.forRoot()` receive `ankiConfigProvider`
+1. `AppModule` parses config once via `configSchema.parse()` and provides it via `APP_CONFIG` token
+2. `McpPrimitivesAnkiEssentialModule.forRoot()` and `McpPrimitivesAnkiGuiModule.forRoot()` receive:
+   - `ankiConfigProvider` - provides `ANKI_CONFIG` using `AppConfigService`
+   - `appConfigProvider` - provides `APP_CONFIG` (needed for `AppConfigService` dependency)
 3. All tools/prompts/resources are registered as providers and auto-discovered by `@rekog/mcp-nest`
 
 ### Testing Structure
@@ -221,38 +226,36 @@ Example: `src/mcp/primitives/essential/tools/mediaActions/mediaActions.tool.ts`
 
 ### Environment Configuration
 
-**IMPORTANT: All `process.env.*` reads must go through `buildConfigInput()` in `src/config/config.factory.ts`.**
+**Single source of truth**: `transformEnvToConfig()` in `src/config/config.schema.ts` is the ONLY place that defines env var names.
 
-This is the SINGLE SOURCE OF TRUTH for reading environment variables. The pattern:
-
-```typescript
-// Entry point (main-http.ts, main-stdio.ts)
-import { buildConfigInput } from './config';
-
-const cliArgs = parseCliArgs();
-const configInput = buildConfigInput({
-  port: cliArgs.port,
-  host: cliArgs.host,
-  ankiConnect: cliArgs.ankiConnect,
-});
-
-const app = await NestFactory.create(AppModule.forHttp(configInput));
+**How config flows:**
+```
+process.env → buildConfigInput() → transformEnvToConfig() → configSchema.parse() → AppConfig
+                  ↑ CLI overrides
 ```
 
-**Key principles:**
-1. `buildConfigInput()` is the ONLY place that reads `process.env.*`
-2. CLI args override env vars **in memory** (no `process.env` mutation)
-3. `AppModule.forHttp(configInput)` receives merged config
-4. Services inject `AppConfigService` for type-safe access
+**Type-safe injection:**
+```typescript
+// AppConfigService injects typed AppConfig directly
+@Injectable()
+export class AppConfigService {
+  constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {}
+
+  get ankiConnectUrl(): string {
+    return this.config.ankiConnect.url;  // ← TypeScript catches typos!
+  }
+}
+```
 
 **To add a new env var:**
-1. Add to `buildConfigInput()` in `src/config/config.factory.ts`
-2. Add to Zod schema in `src/config/config.schema.ts`
+1. Add to `transformEnvToConfig()` in `src/config/config.schema.ts` (single place!)
+2. Add to Zod schema in same file
 3. Add getter to `src/app-config.service.ts`
 
 **Never:**
 - Read `process.env.*` directly in services or modules
 - Write to `process.env.*` anywhere (no mutations)
+- Use string keys for config access (use typed `AppConfig` instead)
 
 **Supported Environment Variables:**
 

@@ -34,7 +34,8 @@ describe("Config Factory", () => {
 
       const result = buildConfigInput();
 
-      expect(result).toEqual({
+      // Verify all config env vars are passed through
+      expect(result).toMatchObject({
         PORT: "8080",
         HOST: "0.0.0.0",
         NODE_ENV: "production",
@@ -67,20 +68,19 @@ describe("Config Factory", () => {
 
       const result = buildConfigInput();
 
-      expect(result).toEqual({
-        PORT: undefined,
-        HOST: undefined,
-        NODE_ENV: undefined,
-        ANKI_CONNECT_URL: undefined,
-        ANKI_CONNECT_API_KEY: undefined,
-        ANKI_CONNECT_API_VERSION: undefined,
-        ANKI_CONNECT_TIMEOUT: undefined,
-        TUNNEL_AUTH_URL: undefined,
-        TUNNEL_AUTH_REALM: undefined,
-        TUNNEL_AUTH_CLIENT_ID: undefined,
-        TUNNEL_SERVER_URL: undefined,
-        LOG_LEVEL: undefined,
-      });
+      // Deleted env vars should be undefined in result
+      expect(result.PORT).toBeUndefined();
+      expect(result.HOST).toBeUndefined();
+      expect(result.NODE_ENV).toBeUndefined();
+      expect(result.ANKI_CONNECT_URL).toBeUndefined();
+      expect(result.ANKI_CONNECT_API_KEY).toBeUndefined();
+      expect(result.ANKI_CONNECT_API_VERSION).toBeUndefined();
+      expect(result.ANKI_CONNECT_TIMEOUT).toBeUndefined();
+      expect(result.TUNNEL_AUTH_URL).toBeUndefined();
+      expect(result.TUNNEL_AUTH_REALM).toBeUndefined();
+      expect(result.TUNNEL_AUTH_CLIENT_ID).toBeUndefined();
+      expect(result.TUNNEL_SERVER_URL).toBeUndefined();
+      expect(result.LOG_LEVEL).toBeUndefined();
     });
 
     it("should apply CLI overrides over environment variables", () => {

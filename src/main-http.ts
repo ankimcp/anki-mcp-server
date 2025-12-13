@@ -1,6 +1,10 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import { createPinoLogger, createLoggerService, LOG_DESTINATION } from "./bootstrap";
+import {
+  createPinoLogger,
+  createLoggerService,
+  LOG_DESTINATION,
+} from "./bootstrap";
 import { OriginValidationGuard } from "./http/guards/origin-validation.guard";
 import { parseCliArgs, displayStartupBanner, checkForUpdates } from "./cli";
 import { cli, setDebugMode } from "./cli/cli-output";
@@ -48,7 +52,10 @@ async function bootstrap() {
 
   // Create logger that writes to stdout for HTTP mode
   // Log level comes from configInput (set by --debug flag or LOG_LEVEL env)
-  const pinoLogger = createPinoLogger(LOG_DESTINATION.STDOUT, configInput.LOG_LEVEL || "info");
+  const pinoLogger = createPinoLogger(
+    LOG_DESTINATION.STDOUT,
+    configInput.LOG_LEVEL || "info",
+  );
   const loggerService = createLoggerService(pinoLogger);
 
   // HTTP mode - create NestJS HTTP application
