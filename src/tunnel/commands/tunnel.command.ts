@@ -1,13 +1,12 @@
 import { NestFactory } from "@nestjs/core";
-import { AppModule } from "../../app.module";
-import { CredentialsService } from "../credentials.service";
-import { DeviceFlowService } from "../device-flow.service";
-import {
-  TunnelClient,
-  McpRequestHandler,
-  TunnelClientError,
-} from "../tunnel.client";
-import { TUNNEL_DEFAULTS } from "../tunnel.protocol";
+import { AppModule } from "@/app.module";
+import { CredentialsService } from "@/tunnel";
+import { DeviceFlowService } from "@/tunnel";
+import { TunnelClient, McpRequestHandler, TunnelClientError } from "@/tunnel";
+import { TUNNEL_DEFAULTS } from "@/tunnel";
+import { AppConfigService } from "@/app-config.service";
+import { ConfigService } from "@nestjs/config";
+import { buildConfigInput } from "@/config";
 
 /**
  * Display a simple text spinner for polling
@@ -109,7 +108,9 @@ function formatConnectionError(error: unknown, tunnelUrl?: string): string {
  */
 export async function handleTunnel(tunnelUrl?: string): Promise<void> {
   const credentialsService = new CredentialsService();
-  const deviceFlowService = new DeviceFlowService();
+  const configService = new ConfigService();
+  const appConfigService = new AppConfigService(configService);
+  const deviceFlowService = new DeviceFlowService(appConfigService);
 
   console.log(); // Blank line for spacing
 
@@ -128,7 +129,12 @@ export async function handleTunnel(tunnelUrl?: string): Promise<void> {
     let localPort: number;
 
     try {
-      app = await NestFactory.create(AppModule.forHttp(), { logger: false });
+      // Build config input from env (no CLI overrides in tunnel mode)
+      const configInput = buildConfigInput();
+
+      app = await NestFactory.create(AppModule.forHttp(configInput), {
+        logger: false,
+      });
       await app.listen(0, "127.0.0.1");
       const address = app.getHttpServer().address();
       localPort = typeof address === "object" ? address.port : 0;

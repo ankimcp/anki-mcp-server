@@ -3,6 +3,7 @@ import { INestApplication } from "@nestjs/common";
 import { AppModule } from "../app.module";
 import { OriginValidationGuard } from "../http/guards/origin-validation.guard";
 import request from "supertest";
+import { buildConfigInput } from "../config";
 
 /**
  * Integration tests for HTTP mode server
@@ -21,7 +22,7 @@ describe("HTTP Server (main-http integration)", () => {
     beforeEach(async () => {
       // Create test module with HTTP mode
       const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp()],
+        imports: [AppModule.forHttp(buildConfigInput())],
       }).compile();
 
       app = moduleFixture.createNestApplication();
@@ -51,7 +52,7 @@ describe("HTTP Server (main-http integration)", () => {
   describe("server startup", () => {
     it("should start on default port 3000", async () => {
       const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp()],
+        imports: [AppModule.forHttp(buildConfigInput())],
       }).compile();
 
       app = moduleFixture.createNestApplication();
@@ -67,7 +68,7 @@ describe("HTTP Server (main-http integration)", () => {
 
     it("should start on custom port", async () => {
       const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp()],
+        imports: [AppModule.forHttp(buildConfigInput())],
       }).compile();
 
       app = moduleFixture.createNestApplication();
@@ -82,7 +83,7 @@ describe("HTTP Server (main-http integration)", () => {
 
     it("should bind to specified host", async () => {
       const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp()],
+        imports: [AppModule.forHttp(buildConfigInput())],
       }).compile();
 
       app = moduleFixture.createNestApplication();
@@ -129,7 +130,7 @@ describe("HTTP Server (main-http integration)", () => {
   describe("HTTP endpoints", () => {
     beforeEach(async () => {
       const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp()],
+        imports: [AppModule.forHttp(buildConfigInput())],
       }).compile();
 
       app = moduleFixture.createNestApplication();
@@ -179,7 +180,7 @@ describe("HTTP Server (main-http integration)", () => {
   describe("error handling", () => {
     beforeEach(async () => {
       const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp()],
+        imports: [AppModule.forHttp(buildConfigInput())],
       }).compile();
 
       app = moduleFixture.createNestApplication();
@@ -220,7 +221,7 @@ describe("HTTP Server (main-http integration)", () => {
       // HTTP mode uses stdout (fd 1) for logging
 
       const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp()],
+        imports: [AppModule.forHttp(buildConfigInput())],
       }).compile();
 
       app = moduleFixture.createNestApplication();
@@ -235,7 +236,7 @@ describe("HTTP Server (main-http integration)", () => {
   describe("graceful shutdown", () => {
     it("should close cleanly", async () => {
       const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp()],
+        imports: [AppModule.forHttp(buildConfigInput())],
       }).compile();
 
       app = moduleFixture.createNestApplication();
@@ -247,7 +248,7 @@ describe("HTTP Server (main-http integration)", () => {
 
     it("should close after listening", async () => {
       const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp()],
+        imports: [AppModule.forHttp(buildConfigInput())],
       }).compile();
 
       app = moduleFixture.createNestApplication();
@@ -263,7 +264,7 @@ describe("HTTP Server (main-http integration)", () => {
     it("should not break STDIO mode", async () => {
       // Ensure HTTP mode additions don't break STDIO mode
       const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forStdio()],
+        imports: [AppModule.forStdio(buildConfigInput())],
       }).compile();
 
       const stdioApp = moduleFixture.createNestApplication();

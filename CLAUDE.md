@@ -87,7 +87,8 @@ The application follows a modular NestJS architecture with MCP primitives organi
 - **`src/cli.ts`** - CLI argument parsing with commander (--port, --host, --anki-connect flags)
 - **`src/bootstrap.ts`** - Shared utilities for logger creation
 - **`src/app.module.ts`** - Root module with forStdio() and forHttp() factory methods
-- **`src/anki-config.service.ts`** - Configuration service implementing `IAnkiConfig`
+- **`src/app-config.service.ts`** - Centralized configuration service (implements `IAnkiConfig`)
+- **`src/config/config.schema.ts`** - Zod schema for config validation
 - **`src/http/guards/origin-validation.guard.ts`** - Origin validation for HTTP mode security
 - **`bin/ankimcp.js`** - CLI wrapper for npm global install (routes to main-http.js or main-stdio.js based on --stdio flag)
   - Exposed as both `ankimcp` and `anki-mcp-server` commands when installed globally (see package.json bin field)
@@ -220,7 +221,55 @@ Example: `src/mcp/primitives/essential/tools/mediaActions/mediaActions.tool.ts`
 
 ### Environment Configuration
 
-Default AnkiConnect URL is `http://localhost:8765` (see `src/anki-config.service.ts:16`). Override with `ANKI_CONNECT_URL` environment variable.
+**IMPORTANT: All `process.env.*` reads must go through `buildConfigInput()` in `src/config/config.factory.ts`.**
+
+This is the SINGLE SOURCE OF TRUTH for reading environment variables. The pattern:
+
+```typescript
+// Entry point (main-http.ts, main-stdio.ts)
+import { buildConfigInput } from './config';
+
+const cliArgs = parseCliArgs();
+const configInput = buildConfigInput({
+  port: cliArgs.port,
+  host: cliArgs.host,
+  ankiConnect: cliArgs.ankiConnect,
+});
+
+const app = await NestFactory.create(AppModule.forHttp(configInput));
+```
+
+**Key principles:**
+1. `buildConfigInput()` is the ONLY place that reads `process.env.*`
+2. CLI args override env vars **in memory** (no `process.env` mutation)
+3. `AppModule.forHttp(configInput)` receives merged config
+4. Services inject `AppConfigService` for type-safe access
+
+**To add a new env var:**
+1. Add to `buildConfigInput()` in `src/config/config.factory.ts`
+2. Add to Zod schema in `src/config/config.schema.ts`
+3. Add getter to `src/app-config.service.ts`
+
+**Never:**
+- Read `process.env.*` directly in services or modules
+- Write to `process.env.*` anywhere (no mutations)
+
+**Supported Environment Variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | 3000 | HTTP server port |
+| `HOST` | 127.0.0.1 | HTTP server host |
+| `NODE_ENV` | development | Environment mode |
+| `ANKI_CONNECT_URL` | http://localhost:8765 | AnkiConnect URL |
+| `ANKI_CONNECT_API_KEY` | - | AnkiConnect API key (optional) |
+| `ANKI_CONNECT_API_VERSION` | 6 | AnkiConnect API version |
+| `ANKI_CONNECT_TIMEOUT` | 5000 | AnkiConnect timeout (ms) |
+| `TUNNEL_AUTH_URL` | https://keycloak.anatoly.dev | OAuth server URL |
+| `TUNNEL_AUTH_REALM` | ankimcp-dev | OAuth realm |
+| `TUNNEL_AUTH_CLIENT_ID` | ankimcp-cli | OAuth client ID |
+| `TUNNEL_SERVER_URL` | wss://tunnel.ankimcp.ai | Tunnel server URL |
+| `LOG_LEVEL` | info | Logging level (debug/info/warn/error) |
 
 ### Path Aliases
 

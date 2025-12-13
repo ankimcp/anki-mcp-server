@@ -8,6 +8,7 @@ import {
   DeviceFlowErrorResponse,
 } from "../device-flow.service";
 import ky, { HTTPError, TimeoutError } from "ky";
+import { AppConfigService } from "../../app-config.service";
 
 // Mock ky module
 jest.mock("ky", () => {
@@ -66,6 +67,7 @@ describe("DeviceFlowService", () => {
   let loggerSpy: jest.SpyInstance;
   let loggerDebugSpy: jest.SpyInstance;
   let loggerErrorSpy: jest.SpyInstance;
+  let mockConfigService: jest.Mocked<AppConfigService>;
 
   // Helper to create mock Response
   const createMockResponse = (
@@ -123,9 +125,22 @@ describe("DeviceFlowService", () => {
     // Get reference to the mock ky instance
     mockKyInstance = (ky as any).create();
 
+    // Create mock config service
+    mockConfigService = {
+      authUrl: "https://keycloak.anatoly.dev",
+      authRealm: "ankimcp-dev",
+      authClientId: "ankimcp-cli",
+    } as jest.Mocked<AppConfigService>;
+
     // Create testing module
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DeviceFlowService],
+      providers: [
+        DeviceFlowService,
+        {
+          provide: AppConfigService,
+          useValue: mockConfigService,
+        },
+      ],
     }).compile();
 
     service = module.get<DeviceFlowService>(DeviceFlowService);
@@ -133,9 +148,7 @@ describe("DeviceFlowService", () => {
     // Setup logger spies
     loggerSpy = jest.spyOn(Logger.prototype, "log").mockImplementation();
     loggerDebugSpy = jest.spyOn(Logger.prototype, "debug").mockImplementation();
-    loggerErrorSpy = jest
-      .spyOn(Logger.prototype, "error")
-      .mockImplementation();
+    loggerErrorSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
   });
 
   afterEach(() => {
@@ -176,7 +189,8 @@ describe("DeviceFlowService", () => {
         device_code: "test-device-code-12345",
         user_code: "ABCD-1234",
         verification_uri: "https://auth.ankimcp.ai/device",
-        verification_uri_complete: "https://auth.ankimcp.ai/device?code=ABCD-1234",
+        verification_uri_complete:
+          "https://auth.ankimcp.ai/device?code=ABCD-1234",
         expires_in: 600,
         interval: 5,
       };
@@ -197,7 +211,9 @@ describe("DeviceFlowService", () => {
       expect(loggerSpy).toHaveBeenCalledWith(
         "Requesting device code from Keycloak",
       );
-      expect(loggerSpy).toHaveBeenCalledWith("Device code received successfully");
+      expect(loggerSpy).toHaveBeenCalledWith(
+        "Device code received successfully",
+      );
     });
 
     it("should log user code in debug mode", async () => {
@@ -225,7 +241,9 @@ describe("DeviceFlowService", () => {
         json: jest.fn().mockRejectedValue(networkError),
       });
 
-      await expect(service.requestDeviceCode()).rejects.toThrow(DeviceFlowError);
+      await expect(service.requestDeviceCode()).rejects.toThrow(
+        DeviceFlowError,
+      );
       await expect(service.requestDeviceCode()).rejects.toThrow(
         "Cannot connect to authentication server",
       );
@@ -249,7 +267,9 @@ describe("DeviceFlowService", () => {
         json: jest.fn().mockRejectedValue(mockHttpError),
       });
 
-      await expect(service.requestDeviceCode()).rejects.toThrow(DeviceFlowError);
+      await expect(service.requestDeviceCode()).rejects.toThrow(
+        DeviceFlowError,
+      );
       await expect(service.requestDeviceCode()).rejects.toThrow(
         "Authentication failed. Invalid client configuration.",
       );
@@ -371,22 +391,26 @@ describe("DeviceFlowService", () => {
       // First two polls return authorization_pending, third succeeds
       mockKyInstance.post
         .mockReturnValueOnce({
-          json: jest.fn().mockRejectedValue(
-            new HTTPError(
-              createMockResponse(400, "Bad Request", mockErrorResponse),
-              createMockRequest(),
-              createMockOptions(),
+          json: jest
+            .fn()
+            .mockRejectedValue(
+              new HTTPError(
+                createMockResponse(400, "Bad Request", mockErrorResponse),
+                createMockRequest(),
+                createMockOptions(),
+              ),
             ),
-          ),
         })
         .mockReturnValueOnce({
-          json: jest.fn().mockRejectedValue(
-            new HTTPError(
-              createMockResponse(400, "Bad Request", mockErrorResponse),
-              createMockRequest(),
-              createMockOptions(),
+          json: jest
+            .fn()
+            .mockRejectedValue(
+              new HTTPError(
+                createMockResponse(400, "Bad Request", mockErrorResponse),
+                createMockRequest(),
+                createMockOptions(),
+              ),
             ),
-          ),
         })
         .mockReturnValueOnce({
           json: jest.fn().mockResolvedValue(mockTokenResponse),
@@ -424,13 +448,15 @@ describe("DeviceFlowService", () => {
       // First poll returns slow_down, second succeeds
       mockKyInstance.post
         .mockReturnValueOnce({
-          json: jest.fn().mockRejectedValue(
-            new HTTPError(
-              createMockResponse(400, "Bad Request", mockSlowDownResponse),
-              createMockRequest(),
-              createMockOptions(),
+          json: jest
+            .fn()
+            .mockRejectedValue(
+              new HTTPError(
+                createMockResponse(400, "Bad Request", mockSlowDownResponse),
+                createMockRequest(),
+                createMockOptions(),
+              ),
             ),
-          ),
         })
         .mockReturnValueOnce({
           json: jest.fn().mockResolvedValue(mockTokenResponse),
@@ -459,13 +485,15 @@ describe("DeviceFlowService", () => {
       };
 
       mockKyInstance.post.mockReturnValueOnce({
-        json: jest.fn().mockRejectedValue(
-          new HTTPError(
-            createMockResponse(400, "Bad Request", mockErrorResponse),
-            createMockRequest(),
-            createMockOptions(),
+        json: jest
+          .fn()
+          .mockRejectedValue(
+            new HTTPError(
+              createMockResponse(400, "Bad Request", mockErrorResponse),
+              createMockRequest(),
+              createMockOptions(),
+            ),
           ),
-        ),
       });
 
       const pollPromise = service.pollForToken("test-device-code", 5, 600);
@@ -491,13 +519,15 @@ describe("DeviceFlowService", () => {
       };
 
       mockKyInstance.post.mockReturnValueOnce({
-        json: jest.fn().mockRejectedValue(
-          new HTTPError(
-            createMockResponse(400, "Bad Request", mockErrorResponse),
-            createMockRequest(),
-            createMockOptions(),
+        json: jest
+          .fn()
+          .mockRejectedValue(
+            new HTTPError(
+              createMockResponse(400, "Bad Request", mockErrorResponse),
+              createMockRequest(),
+              createMockOptions(),
+            ),
           ),
-        ),
       });
 
       const pollPromise = service.pollForToken("test-device-code", 5, 600);
@@ -522,13 +552,15 @@ describe("DeviceFlowService", () => {
       };
 
       mockKyInstance.post.mockReturnValue({
-        json: jest.fn().mockRejectedValue(
-          new HTTPError(
-            createMockResponse(400, "Bad Request", mockErrorResponse),
-            createMockRequest(),
-            createMockOptions(),
+        json: jest
+          .fn()
+          .mockRejectedValue(
+            new HTTPError(
+              createMockResponse(400, "Bad Request", mockErrorResponse),
+              createMockRequest(),
+              createMockOptions(),
+            ),
           ),
-        ),
       });
 
       const pollPromise = service.pollForToken(
@@ -553,13 +585,15 @@ describe("DeviceFlowService", () => {
       };
 
       mockKyInstance.post.mockReturnValueOnce({
-        json: jest.fn().mockRejectedValue(
-          new HTTPError(
-            createMockResponse(400, "Bad Request", mockErrorResponse),
-            createMockRequest(),
-            createMockOptions(),
+        json: jest
+          .fn()
+          .mockRejectedValue(
+            new HTTPError(
+              createMockResponse(400, "Bad Request", mockErrorResponse),
+              createMockRequest(),
+              createMockOptions(),
+            ),
           ),
-        ),
       });
 
       const pollPromise = service.pollForToken("test-device-code", 5, 600);
@@ -653,11 +687,7 @@ describe("DeviceFlowService", () => {
         json: jest.fn().mockResolvedValue(mockTokenResponse),
       });
 
-      const pollPromise = service.pollForToken(
-        "device-code-12345",
-        5,
-        600,
-      );
+      const pollPromise = service.pollForToken("device-code-12345", 5, 600);
 
       await jest.advanceTimersByTimeAsync(5000);
       await pollPromise;

@@ -5,6 +5,7 @@ import { OriginValidationGuard } from "./http/guards/origin-validation.guard";
 import { parseCliArgs, displayStartupBanner, checkForUpdates } from "./cli";
 import { NgrokService } from "./services/ngrok.service";
 import { handleLogin, handleLogout, handleTunnel } from "./tunnel";
+import { buildConfigInput } from "./config";
 
 async function bootstrap() {
   // Check for updates (non-blocking, cached)
@@ -31,17 +32,21 @@ async function bootstrap() {
     process.exit(0);
   }
 
-  // Set environment variables from CLI options
-  process.env.PORT = options.port.toString();
-  process.env.HOST = options.host;
-  process.env.ANKI_CONNECT_URL = options.ankiConnect;
+  // Build config input from env + CLI overrides (no process.env mutation)
+  const configInput = buildConfigInput({
+    port: options.port,
+    host: options.host,
+    ankiConnect: options.ankiConnect,
+    tunnel: options.tunnel,
+    ngrok: options.ngrok,
+  });
 
   // Create logger that writes to stdout (fd 1) for HTTP mode
   const pinoLogger = createPinoLogger(1);
   const loggerService = createLoggerService(pinoLogger);
 
   // HTTP mode - create NestJS HTTP application
-  const app = await NestFactory.create(AppModule.forHttp(), {
+  const app = await NestFactory.create(AppModule.forHttp(configInput), {
     logger: loggerService,
     bufferLogs: true,
   });
