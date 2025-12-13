@@ -28,6 +28,9 @@ describe("CLI Module", () => {
         ankiConnect: "http://localhost:8765",
         ngrok: false,
         readOnly: false,
+        login: false,
+        logout: false,
+        tunnel: false,
       });
     });
 
@@ -110,6 +113,9 @@ describe("CLI Module", () => {
         ankiConnect: "http://custom-host:9999",
         ngrok: false,
         readOnly: false,
+        login: false,
+        logout: false,
+        tunnel: false,
       });
     });
 
@@ -140,6 +146,16 @@ describe("CLI Module", () => {
       expect(options.host).toBe("127.0.0.1"); // defaults
     });
 
+    it("should parse --tunnel flag alone as true", () => {
+      process.argv = ["node", "ankimcp", "--tunnel"];
+
+      const options = parseCliArgs();
+
+      expect(options.tunnel).toBe(true);
+      expect(options.port).toBe(3000); // defaults
+      expect(options.host).toBe("127.0.0.1"); // defaults
+    });
+
     it("should parse --read-only with other options", () => {
       process.argv = [
         "node",
@@ -155,6 +171,63 @@ describe("CLI Module", () => {
       expect(options.readOnly).toBe(true);
       expect(options.ngrok).toBe(true);
       expect(options.port).toBe(8080);
+    });
+
+    it("should parse --tunnel with custom URL as string", () => {
+      process.argv = ["node", "ankimcp", "--tunnel", "ws://localhost:3004"];
+
+      const options = parseCliArgs();
+
+      expect(options.tunnel).toBe("ws://localhost:3004");
+    });
+
+    it("should parse --tunnel with custom WebSocket URL", () => {
+      process.argv = [
+        "node",
+        "ankimcp",
+        "--tunnel",
+        "wss://custom-tunnel.example.com",
+      ];
+
+      const options = parseCliArgs();
+
+      expect(options.tunnel).toBe("wss://custom-tunnel.example.com");
+    });
+
+    it("should parse --tunnel with URL argument", () => {
+      process.argv = ["node", "ankimcp", "--tunnel", "ws://example.com:8080"];
+
+      const options = parseCliArgs();
+
+      expect(options.tunnel).toBe("ws://example.com:8080");
+    });
+
+    it("should parse all options including tunnel", () => {
+      process.argv = [
+        "node",
+        "ankimcp",
+        "--port",
+        "4000",
+        "--host",
+        "0.0.0.0",
+        "--anki-connect",
+        "http://custom-host:9999",
+        "--tunnel",
+        "wss://tunnel.example.com",
+      ];
+
+      const options = parseCliArgs();
+
+      expect(options).toEqual({
+        port: 4000,
+        host: "0.0.0.0",
+        ankiConnect: "http://custom-host:9999",
+        ngrok: false,
+        readOnly: false,
+        login: false,
+        logout: false,
+        tunnel: "wss://tunnel.example.com",
+      });
     });
   });
 
@@ -209,6 +282,9 @@ describe("CLI Module", () => {
         ankiConnect: "http://localhost:8765",
         ngrok: false,
         readOnly: false,
+        login: false,
+        logout: false,
+        tunnel: false,
       };
 
       displayStartupBanner(options);
@@ -235,6 +311,9 @@ describe("CLI Module", () => {
         ankiConnect: "http://192.168.1.100:8765",
         ngrok: false,
         readOnly: false,
+        login: false,
+        logout: false,
+        tunnel: false,
       };
 
       displayStartupBanner(options);
@@ -258,6 +337,9 @@ describe("CLI Module", () => {
         ankiConnect: "http://localhost:8765",
         ngrok: false,
         readOnly: false,
+        login: false,
+        logout: false,
+        tunnel: false,
       };
 
       displayStartupBanner(options);
@@ -279,6 +361,9 @@ describe("CLI Module", () => {
         ankiConnect: "http://localhost:8765",
         ngrok: false,
         readOnly: false,
+        login: false,
+        logout: false,
+        tunnel: false,
       };
 
       displayStartupBanner(options);
@@ -299,6 +384,9 @@ describe("CLI Module", () => {
         ankiConnect: "http://localhost:8765",
         ngrok: false,
         readOnly: false,
+        login: false,
+        logout: false,
+        tunnel: false,
       };
 
       displayStartupBanner(options);
@@ -319,6 +407,9 @@ describe("CLI Module", () => {
         ankiConnect: "http://localhost:8765",
         ngrok: false,
         readOnly: true,
+        login: false,
+        logout: false,
+        tunnel: false,
       };
 
       displayStartupBanner(options);
@@ -340,6 +431,9 @@ describe("CLI Module", () => {
         ankiConnect: "http://localhost:8765",
         ngrok: false,
         readOnly: false,
+        login: false,
+        logout: false,
+        tunnel: false,
       };
 
       displayStartupBanner(options);

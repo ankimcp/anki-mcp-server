@@ -9,6 +9,9 @@ export interface CliOptions {
   ankiConnect: string;
   ngrok: boolean;
   readOnly: boolean;
+  login: boolean;
+  logout: boolean;
+  tunnel: string | boolean;
 }
 
 function getPackageJson() {
@@ -55,6 +58,12 @@ export function parseCliArgs(): CliOptions {
       "--read-only",
       "Run in read-only mode (blocks all write operations)",
     )
+    .option("--login", "Authenticate with tunnel service")
+    .option("--logout", "Clear tunnel credentials")
+    .option(
+      "--tunnel [url]",
+      "Connect to tunnel server (default: ws://localhost:3004/tunnel)",
+    )
     .addHelpText(
       "after",
       `
@@ -95,6 +104,12 @@ Ngrok Setup (one-time):
   2. Get auth token from: https://dashboard.ngrok.com/get-started/your-authtoken
   3. Setup: ngrok config add-authtoken <your-token>
   4. Run: ankimcp --ngrok
+
+Tunnel Mode:
+  $ ankimcp --login                           # Login to tunnel service
+  $ ankimcp --logout                          # Clear saved credentials
+  $ ankimcp --tunnel                          # Connect to localhost:3004
+  $ ankimcp --tunnel wss://tunnel.ankimcp.ai/tunnel  # Production tunnel
 `,
     );
 
@@ -108,6 +123,9 @@ Ngrok Setup (one-time):
     ankiConnect: options.ankiConnect,
     ngrok: options.ngrok || false,
     readOnly: options.readOnly || false,
+    login: options.login || false,
+    logout: options.logout || false,
+    tunnel: options.tunnel ?? false,
   };
 }
 
