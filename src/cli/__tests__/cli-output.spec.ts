@@ -1,4 +1,4 @@
-import { success, error, warn, info, blank, box, dim, cli } from '../cli-output';
+import { success, error, warn, info, blank, box, dim, cli, setDebugMode, isDebugMode } from '../cli-output';
 
 describe('CLI Output Utility', () => {
   let consoleLogSpy: jest.SpyInstance;
@@ -15,6 +15,8 @@ describe('CLI Output Utility', () => {
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();
     consoleWarnSpy.mockRestore();
+    // Reset debug mode after each test
+    setDebugMode(false);
   });
 
   describe('success()', () => {
@@ -48,6 +50,38 @@ describe('CLI Output Utility', () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('\x1b[31m'),
       );
+    });
+
+    it('should not show stack trace when debug mode is off', () => {
+      const testError = new Error('Test error with stack');
+      error('Test error', testError);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // Only the message, no stack
+    });
+
+    it('should show stack trace when debug mode is on', () => {
+      setDebugMode(true);
+      const testError = new Error('Test error with stack');
+      error('Test error', testError);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(2); // Message + stack
+      // Second call should contain the stack trace
+      expect(consoleErrorSpy).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('Error: Test error with stack'),
+      );
+    });
+
+    it('should not show stack trace when error object is not provided', () => {
+      setDebugMode(true);
+      error('Test error');
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // Only the message
+    });
+
+    it('should not show stack trace when error object has no stack', () => {
+      setDebugMode(true);
+      const testError = new Error('Test error');
+      delete testError.stack;
+      error('Test error', testError);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // Only the message
     });
   });
 
@@ -162,6 +196,8 @@ describe('CLI Output Utility', () => {
       expect(cli.blank).toBe(blank);
       expect(cli.box).toBe(box);
       expect(cli.dim).toBe(dim);
+      expect(cli.setDebugMode).toBe(setDebugMode);
+      expect(cli.isDebugMode).toBe(isDebugMode);
     });
 
     it('should allow calling via namespace', () => {
@@ -172,6 +208,23 @@ describe('CLI Output Utility', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining('Namespace test'),
       );
+    });
+  });
+
+  describe('debug mode', () => {
+    it('should start with debug mode off', () => {
+      expect(isDebugMode()).toBe(false);
+    });
+
+    it('should allow enabling debug mode', () => {
+      setDebugMode(true);
+      expect(isDebugMode()).toBe(true);
+    });
+
+    it('should allow disabling debug mode', () => {
+      setDebugMode(true);
+      setDebugMode(false);
+      expect(isDebugMode()).toBe(false);
     });
   });
 });

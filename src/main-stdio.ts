@@ -1,6 +1,6 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import { createPinoLogger, createLoggerService } from "./bootstrap";
+import { createPinoLogger, createLoggerService, LOG_DESTINATION } from "./bootstrap";
 import { cli } from "./cli/cli-output";
 import { buildConfigInput } from "./config";
 
@@ -35,8 +35,9 @@ async function bootstrap() {
     readOnly: cliOptions.readOnly,
   });
 
-  // Create logger that writes to stderr (fd 2) for STDIO mode
-  const pinoLogger = createPinoLogger(2);
+  // Create logger that writes to stderr for STDIO mode (keeps stdout clear for MCP protocol)
+  // Log level comes from configInput (LOG_LEVEL env variable)
+  const pinoLogger = createPinoLogger(LOG_DESTINATION.STDERR, configInput.LOG_LEVEL || "info");
   const loggerService = createLoggerService(pinoLogger);
 
   // STDIO mode - create application context (no HTTP server)
@@ -56,6 +57,9 @@ async function bootstrap() {
 }
 
 bootstrap().catch((err) => {
-  cli.error(`Failed to start MCP STDIO server: ${err instanceof Error ? err.message : String(err)}`);
+  cli.error(
+    `Failed to start MCP STDIO server: ${err instanceof Error ? err.message : String(err)}`,
+    err instanceof Error ? err : undefined,
+  );
   process.exit(1);
 });

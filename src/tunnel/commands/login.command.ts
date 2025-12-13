@@ -208,6 +208,7 @@ export async function handleLogin(): Promise<void> {
     cli.blank();
     cli.error(
       `Login failed: ${error instanceof Error ? error.message : String(error)}`,
+      error instanceof Error ? error : undefined,
     );
     cli.blank();
     process.exit(1);

@@ -31,6 +31,7 @@ describe("CLI Module", () => {
         login: false,
         logout: false,
         tunnel: false,
+        debug: false,
       });
     });
 
@@ -116,6 +117,7 @@ describe("CLI Module", () => {
         login: false,
         logout: false,
         tunnel: false,
+        debug: false,
       });
     });
 
@@ -227,7 +229,33 @@ describe("CLI Module", () => {
         login: false,
         logout: false,
         tunnel: "wss://tunnel.example.com",
+        debug: false,
       });
+    });
+
+    it("should parse --debug flag", () => {
+      process.argv = ["node", "ankimcp", "--debug"];
+
+      const options = parseCliArgs();
+
+      expect(options.debug).toBe(true);
+    });
+
+    it("should parse -d short form debug flag", () => {
+      process.argv = ["node", "ankimcp", "-d"];
+
+      const options = parseCliArgs();
+
+      expect(options.debug).toBe(true);
+    });
+
+    it("should parse --debug with other options", () => {
+      process.argv = ["node", "ankimcp", "--port", "8080", "--debug"];
+
+      const options = parseCliArgs();
+
+      expect(options.port).toBe(8080);
+      expect(options.debug).toBe(true);
     });
   });
 
@@ -285,6 +313,7 @@ describe("CLI Module", () => {
         login: false,
         logout: false,
         tunnel: false,
+        debug: false,
       };
 
       displayStartupBanner(options);
@@ -314,6 +343,7 @@ describe("CLI Module", () => {
         login: false,
         logout: false,
         tunnel: false,
+        debug: false,
       };
 
       displayStartupBanner(options);
@@ -340,6 +370,7 @@ describe("CLI Module", () => {
         login: false,
         logout: false,
         tunnel: false,
+        debug: false,
       };
 
       displayStartupBanner(options);
@@ -364,6 +395,7 @@ describe("CLI Module", () => {
         login: false,
         logout: false,
         tunnel: false,
+        debug: false,
       };
 
       displayStartupBanner(options);
@@ -387,6 +419,7 @@ describe("CLI Module", () => {
         login: false,
         logout: false,
         tunnel: false,
+        debug: false,
       };
 
       displayStartupBanner(options);
@@ -410,6 +443,7 @@ describe("CLI Module", () => {
         login: false,
         logout: false,
         tunnel: false,
+        debug: false,
       };
 
       displayStartupBanner(options);
@@ -434,6 +468,7 @@ describe("CLI Module", () => {
         login: false,
         logout: false,
         tunnel: false,
+        debug: false,
       };
 
       displayStartupBanner(options);
