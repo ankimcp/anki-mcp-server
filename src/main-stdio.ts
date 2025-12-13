@@ -1,6 +1,7 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { createPinoLogger, createLoggerService } from "./bootstrap";
+import { buildConfigInput } from "./config";
 
 /**
  * Parse minimal CLI args for STDIO mode.
@@ -27,20 +28,18 @@ async function bootstrap() {
   // Parse CLI args for STDIO mode
   const cliOptions = parseStdioArgs();
 
-  // Set environment variables from CLI options (if provided)
-  if (cliOptions.readOnly) {
-    process.env.READ_ONLY = "true";
-  }
-  if (cliOptions.ankiConnect) {
-    process.env.ANKI_CONNECT_URL = cliOptions.ankiConnect;
-  }
+  // Build config input from env + CLI overrides (no process.env mutation)
+  const configInput = buildConfigInput({
+    ankiConnect: cliOptions.ankiConnect,
+    readOnly: cliOptions.readOnly,
+  });
 
   // Create logger that writes to stderr (fd 2) for STDIO mode
   const pinoLogger = createPinoLogger(2);
   const loggerService = createLoggerService(pinoLogger);
 
   // STDIO mode - create application context (no HTTP server)
-  await NestFactory.createApplicationContext(AppModule.forStdio(), {
+  await NestFactory.createApplicationContext(AppModule.forStdio(configInput), {
     logger: loggerService,
     bufferLogs: true,
   });

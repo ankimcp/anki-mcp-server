@@ -1,14 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import ky, { HTTPError, KyInstance, TimeoutError } from "ky";
-
-/**
- * Keycloak configuration
- * Override with environment variables for custom Keycloak instances
- */
-const KEYCLOAK_URL =
-  process.env.TUNNEL_AUTH_URL || "https://keycloak.anatoly.dev";
-const KEYCLOAK_REALM = process.env.TUNNEL_AUTH_REALM || "ankimcp-dev";
-const CLIENT_ID = "ankimcp-cli";
+import { AppConfigService } from "@/app-config.service";
 
 /**
  * Device code response from Keycloak
@@ -72,8 +64,9 @@ export class DeviceFlowService {
   private readonly deviceEndpoint: string;
   private readonly tokenEndpoint: string;
 
-  constructor() {
-    const baseUrl = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect`;
+  constructor(private readonly config: AppConfigService) {
+    const { authUrl, authRealm } = this.config;
+    const baseUrl = `${authUrl}/realms/${authRealm}/protocol/openid-connect`;
     this.deviceEndpoint = `${baseUrl}/auth/device`;
     this.tokenEndpoint = `${baseUrl}/token`;
 
@@ -116,7 +109,7 @@ export class DeviceFlowService {
       const response = await this.client
         .post(this.deviceEndpoint, {
           body: new URLSearchParams({
-            client_id: CLIENT_ID,
+            client_id: this.config.authClientId,
           }).toString(),
         })
         .json<DeviceCodeResponse>();
@@ -173,7 +166,7 @@ export class DeviceFlowService {
             body: new URLSearchParams({
               grant_type: "urn:ietf:params:oauth:grant-type:device_code",
               device_code: deviceCode,
-              client_id: CLIENT_ID,
+              client_id: this.config.authClientId,
             }).toString(),
           })
           .json<TokenResponse>();
@@ -263,7 +256,7 @@ export class DeviceFlowService {
           body: new URLSearchParams({
             grant_type: "refresh_token",
             refresh_token: refreshToken,
-            client_id: CLIENT_ID,
+            client_id: this.config.authClientId,
           }).toString(),
         })
         .json<TokenResponse>();
@@ -348,7 +341,7 @@ export class DeviceFlowService {
         error.message.includes("network")
       ) {
         return new DeviceFlowError(
-          `Cannot connect to authentication server (${KEYCLOAK_URL}). Please check your internet connection.`,
+          `Cannot connect to authentication server (${this.config.authUrl}). Please check your internet connection.`,
           "network_error",
         );
       }
@@ -375,9 +368,9 @@ export class DeviceFlowService {
     clientId: string;
   } {
     return {
-      keycloakUrl: KEYCLOAK_URL,
-      realm: KEYCLOAK_REALM,
-      clientId: CLIENT_ID,
+      keycloakUrl: this.config.authUrl,
+      realm: this.config.authRealm,
+      clientId: this.config.authClientId,
     };
   }
 }

@@ -87,8 +87,10 @@ All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`. 
 **Read-only mode**: `AnkiConnectClient` enforces read-only mode by checking actions against a `WRITE_ACTIONS` set before sending requests. Throws `ReadOnlyModeError`. Review/scheduling operations are always allowed.
 
 **Config system**: Two injection tokens:
-- `ANKI_CONFIG` — Symbol token for AnkiConnect-specific config (IAnkiConfig interface). Provided via `useClass: AnkiConfigService` in each module's `forRoot()`. Modules can swap the config provider for testing.
-- `ConfigModule` — NestJS config module reads environment variables. `AnkiConfigService` reads from it and sanitizes MCPB config values.
+- `APP_CONFIG` — validated `AppConfig` object (Zod schema in `src/config/config.schema.ts`). Provided as `useValue` after parsing env + CLI overrides.
+- `ANKI_CONFIG` — AnkiConnect-specific config interface. Provided via `useClass: AppConfigService` in each module's `forRoot()`. Modules can swap the config provider for testing.
+
+**Environment Configuration**: All `process.env.*` reads go through `buildConfigInput()` in `src/config/config.factory.ts`. CLI args override env vars in memory (no `process.env` mutation). Services inject `AppConfigService` for type-safe access.
 
 ### Upstream AnkiConnect Quirks
 
