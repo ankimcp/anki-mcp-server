@@ -1,8 +1,8 @@
 import { EventEmitter } from "events";
 import WebSocket from "ws";
-import { TunnelClient, McpRequestHandler, TunnelClientError } from "../tunnel.client";
+import { TunnelClient, McpRequestHandler } from "../tunnel.client";
 import { CredentialsService, TunnelCredentials } from "../credentials.service";
-import { DeviceFlowService, DeviceFlowError, TokenResponse } from "../device-flow.service";
+import { DeviceFlowService, TokenResponse } from "../device-flow.service";
 import { TunnelCloseCodes, TUNNEL_DEFAULTS } from "../tunnel.protocol";
 
 // Mock WebSocket
@@ -44,7 +44,9 @@ describe("TunnelClient", () => {
       clearCredentials: jest.fn().mockResolvedValue(undefined),
       isTokenExpired: jest.fn().mockReturnValue(false),
       hasCredentials: jest.fn().mockResolvedValue(true),
-      getCredentialsPath: jest.fn().mockReturnValue("~/.ankimcp/credentials.json"),
+      getCredentialsPath: jest
+        .fn()
+        .mockReturnValue("~/.ankimcp/credentials.json"),
     } as any;
 
     // Mock DeviceFlowService
@@ -93,11 +95,14 @@ describe("TunnelClient", () => {
 
       // Simulate tunnel_established message
       const tunnelUrl = "https://abc123.tunnel.ankimcp.ai";
-      mockWs.emit("message", JSON.stringify({
-        type: "tunnel_established",
-        url: tunnelUrl,
-        expiresAt: null,
-      }));
+      mockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "tunnel_established",
+          url: tunnelUrl,
+          expiresAt: null,
+        }),
+      );
 
       const result = await connectPromise;
 
@@ -129,18 +134,21 @@ describe("TunnelClient", () => {
       const connectPromise = client.connect();
 
       // Wait for refresh to complete
-      await new Promise(resolve => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
 
       // Simulate WebSocket open
       mockWs.readyState = WebSocket.OPEN;
       mockWs.emit("open");
 
       // Simulate tunnel_established message
-      mockWs.emit("message", JSON.stringify({
-        type: "tunnel_established",
-        url: "https://abc123.tunnel.ankimcp.ai",
-        expiresAt: null,
-      }));
+      mockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "tunnel_established",
+          url: "https://abc123.tunnel.ankimcp.ai",
+          expiresAt: null,
+        }),
+      );
 
       await connectPromise;
 
@@ -163,11 +171,14 @@ describe("TunnelClient", () => {
       mockWs.emit("open");
 
       const tunnelUrl = "https://abc123.tunnel.ankimcp.ai";
-      mockWs.emit("message", JSON.stringify({
-        type: "tunnel_established",
-        url: tunnelUrl,
-        expiresAt: null,
-      }));
+      mockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "tunnel_established",
+          url: tunnelUrl,
+          expiresAt: null,
+        }),
+      );
 
       await connectPromise;
 
@@ -202,11 +213,14 @@ describe("TunnelClient", () => {
       await Promise.resolve();
       mockWs.readyState = WebSocket.OPEN;
       mockWs.emit("open");
-      mockWs.emit("message", JSON.stringify({
-        type: "tunnel_established",
-        url: "https://test.tunnel.ankimcp.ai",
-        expiresAt: null,
-      }));
+      mockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "tunnel_established",
+          url: "https://test.tunnel.ankimcp.ai",
+          expiresAt: null,
+        }),
+      );
       await connectPromise;
     });
 
@@ -232,11 +246,14 @@ describe("TunnelClient", () => {
       await Promise.resolve();
       mockWs.readyState = WebSocket.OPEN;
       mockWs.emit("open");
-      mockWs.emit("message", JSON.stringify({
-        type: "tunnel_established",
-        url: "https://test.tunnel.ankimcp.ai",
-        expiresAt: null,
-      }));
+      mockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "tunnel_established",
+          url: "https://test.tunnel.ankimcp.ai",
+          expiresAt: null,
+        }),
+      );
       await connectPromise;
     });
 
@@ -305,10 +322,13 @@ describe("TunnelClient", () => {
 
     it("should respond to ping with pong", () => {
       const timestamp = Date.now();
-      mockWs.emit("message", JSON.stringify({
-        type: "ping",
-        timestamp,
-      }));
+      mockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "ping",
+          timestamp,
+        }),
+      );
 
       expect(mockWs.send).toHaveBeenCalledWith(
         JSON.stringify({
@@ -325,11 +345,14 @@ describe("TunnelClient", () => {
       const errorSpy = jest.fn();
       client.on("error", errorSpy);
 
-      mockWs.emit("message", JSON.stringify({
-        type: "error",
-        code: "rate_limit",
-        message: "Rate limit exceeded",
-      }));
+      mockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "error",
+          code: "rate_limit",
+          message: "Rate limit exceeded",
+        }),
+      );
 
       expect(errorSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -343,11 +366,14 @@ describe("TunnelClient", () => {
       const urlChangedSpy = jest.fn();
       client.on("url_changed", urlChangedSpy);
 
-      mockWs.emit("message", JSON.stringify({
-        type: "url_changed",
-        oldUrl: "https://old.tunnel.ankimcp.ai",
-        newUrl: "https://new.tunnel.ankimcp.ai",
-      }));
+      mockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "url_changed",
+          oldUrl: "https://old.tunnel.ankimcp.ai",
+          newUrl: "https://new.tunnel.ankimcp.ai",
+        }),
+      );
 
       expect(urlChangedSpy).toHaveBeenCalledWith(
         "https://old.tunnel.ankimcp.ai",
@@ -364,11 +390,14 @@ describe("TunnelClient", () => {
       await Promise.resolve();
       mockWs.readyState = WebSocket.OPEN;
       mockWs.emit("open");
-      mockWs.emit("message", JSON.stringify({
-        type: "tunnel_established",
-        url: "https://test.tunnel.ankimcp.ai",
-        expiresAt: null,
-      }));
+      mockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "tunnel_established",
+          url: "https://test.tunnel.ankimcp.ai",
+          expiresAt: null,
+        }),
+      );
       await connectPromise;
 
       expect(client.isConnected()).toBe(true);
@@ -383,11 +412,14 @@ describe("TunnelClient", () => {
       mockWs.emit("open");
 
       const tunnelUrl = "https://abc123.tunnel.ankimcp.ai";
-      mockWs.emit("message", JSON.stringify({
-        type: "tunnel_established",
-        url: tunnelUrl,
-        expiresAt: null,
-      }));
+      mockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "tunnel_established",
+          url: tunnelUrl,
+          expiresAt: null,
+        }),
+      );
       await connectPromise;
 
       expect(client.getTunnelUrl()).toBe(tunnelUrl);
@@ -400,11 +432,14 @@ describe("TunnelClient", () => {
       await Promise.resolve();
       mockWs.readyState = WebSocket.OPEN;
       mockWs.emit("open");
-      mockWs.emit("message", JSON.stringify({
-        type: "tunnel_established",
-        url: "https://test.tunnel.ankimcp.ai",
-        expiresAt: null,
-      }));
+      mockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "tunnel_established",
+          url: "https://test.tunnel.ankimcp.ai",
+          expiresAt: null,
+        }),
+      );
       await connectPromise;
       jest.clearAllMocks();
     });
@@ -413,7 +448,11 @@ describe("TunnelClient", () => {
       const errorSpy = jest.fn();
       client.on("error", errorSpy);
 
-      mockWs.emit("close", TunnelCloseCodes.ACCOUNT_SUSPENDED, Buffer.from("Account suspended"));
+      mockWs.emit(
+        "close",
+        TunnelCloseCodes.ACCOUNT_SUSPENDED,
+        Buffer.from("Account suspended"),
+      );
 
       // Check that no new WebSocket was created (no reconnection attempt)
       expect(WebSocket).not.toHaveBeenCalled();
