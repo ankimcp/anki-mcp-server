@@ -7,7 +7,7 @@ import { TUNNEL_DEFAULTS } from "@/tunnel";
 import { AppConfigService } from "@/app-config.service";
 import { ConfigService } from "@nestjs/config";
 import { buildConfigInput } from "@/config";
-import { cli } from "@/cli/cli-output";
+import { cli, setDebugMode } from "@/cli/cli-output";
 
 /**
  * Display a simple text spinner for polling
@@ -98,9 +98,13 @@ function formatConnectionError(error: unknown, tunnelUrl?: string): string {
  * 7. Handle graceful shutdown on SIGINT/SIGTERM
  *
  * @param tunnelUrl - Optional custom tunnel URL (defaults to production)
+ * @param debug - Optional debug mode flag
  * @throws {Error} If not logged in or connection fails
  */
-export async function handleTunnel(tunnelUrl?: string): Promise<void> {
+export async function handleTunnel(tunnelUrl?: string, debug?: boolean): Promise<void> {
+  // Set debug mode early so all error handlers can show stack traces
+  setDebugMode(debug || false);
+
   const credentialsService = new CredentialsService();
   const configService = new ConfigService();
   const appConfigService = new AppConfigService(configService);
@@ -123,8 +127,8 @@ export async function handleTunnel(tunnelUrl?: string): Promise<void> {
     let localPort: number;
 
     try {
-      // Build config input from env (no CLI overrides in tunnel mode)
-      const configInput = buildConfigInput();
+      // Build config input from env + debug override if provided
+      const configInput = buildConfigInput(debug ? { debug } : {});
 
       app = await NestFactory.create(AppModule.forHttp(configInput), {
         logger: false,
@@ -138,6 +142,7 @@ export async function handleTunnel(tunnelUrl?: string): Promise<void> {
       stopSpinner();
       cli.error(
         `Failed to start local server: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error : undefined,
       );
       cli.blank();
       process.exit(1);
@@ -183,7 +188,7 @@ export async function handleTunnel(tunnelUrl?: string): Promise<void> {
     tunnelClient.on("error", (error: Error) => {
       // During connect(), errors are caught by try/catch, so we only log post-connect errors
       if (tunnelClient.isConnected()) {
-        cli.error(`Tunnel error: ${error.message}`);
+        cli.error(`Tunnel error: ${error.message}`, error);
       }
       // Pre-connect errors are handled by the catch block below
     });
@@ -201,7 +206,7 @@ export async function handleTunnel(tunnelUrl?: string): Promise<void> {
 
       // Format user-friendly error message
       const errorMessage = formatConnectionError(error, tunnelUrl);
-      cli.error(errorMessage);
+      cli.error(errorMessage, error instanceof Error ? error : undefined);
       cli.blank();
       await app.close();
       process.exit(1);
@@ -257,6 +262,7 @@ export async function handleTunnel(tunnelUrl?: string): Promise<void> {
     // Handle unexpected errors
     cli.error(
       `Tunnel failed: ${error instanceof Error ? error.message : String(error)}`,
+      error instanceof Error ? error : undefined,
     );
     cli.blank();
     process.exit(1);

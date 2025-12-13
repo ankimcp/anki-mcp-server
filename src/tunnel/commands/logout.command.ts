@@ -43,6 +43,7 @@ export async function handleLogout(): Promise<void> {
     cli.blank();
     cli.error(
       `Failed to remove credentials: ${error instanceof Error ? error.message : String(error)}`,
+      error instanceof Error ? error : undefined,
     );
     process.exit(1);
   }

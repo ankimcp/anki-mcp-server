@@ -182,6 +182,54 @@ describe("Config Factory", () => {
       expect(result.PORT).toBe("3000");
       expect(result.HOST).toBe("127.0.0.1");
     });
+
+    it("should set LOG_LEVEL to debug when debug: true", () => {
+      process.env.LOG_LEVEL = "info";
+
+      const cliOverrides: CliOverrides = {
+        debug: true,
+      };
+
+      const result = buildConfigInput(cliOverrides);
+
+      expect(result.LOG_LEVEL).toBe("debug");
+    });
+
+    it("should not override LOG_LEVEL when debug: false", () => {
+      process.env.LOG_LEVEL = "info";
+
+      const cliOverrides: CliOverrides = {
+        debug: false,
+      };
+
+      const result = buildConfigInput(cliOverrides);
+
+      expect(result.LOG_LEVEL).toBe("info"); // unchanged
+    });
+
+    it("should override existing LOG_LEVEL env var when debug: true", () => {
+      process.env.LOG_LEVEL = "error";
+
+      const cliOverrides: CliOverrides = {
+        debug: true,
+      };
+
+      const result = buildConfigInput(cliOverrides);
+
+      expect(result.LOG_LEVEL).toBe("debug"); // overridden
+    });
+
+    it("should set LOG_LEVEL to debug when debug: true and no LOG_LEVEL env", () => {
+      delete process.env.LOG_LEVEL;
+
+      const cliOverrides: CliOverrides = {
+        debug: true,
+      };
+
+      const result = buildConfigInput(cliOverrides);
+
+      expect(result.LOG_LEVEL).toBe("debug");
+    });
   });
 
   describe("loadValidatedConfig", () => {

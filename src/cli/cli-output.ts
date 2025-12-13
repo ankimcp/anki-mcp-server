@@ -5,14 +5,32 @@
  * For logging (errors, debug, warnings), use Pino logger instead.
  */
 
+// Debug mode state (set via setDebugMode)
+let debugMode = false;
+
+/**
+ * Enable or disable debug mode for CLI output.
+ * When enabled, error() will show stack traces.
+ */
+export function setDebugMode(enabled: boolean): void {
+  debugMode = enabled;
+}
+
+/**
+ * Check if debug mode is currently enabled
+ */
+export function isDebugMode(): boolean {
+  return debugMode;
+}
+
 // ANSI color codes
 const colors = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-  dim: '\x1b[2m',
+  reset: "\x1b[0m",
+  green: "\x1b[32m",
+  red: "\x1b[31m",
+  yellow: "\x1b[33m",
+  cyan: "\x1b[36m",
+  dim: "\x1b[2m",
 };
 
 /**
@@ -24,9 +42,13 @@ export function success(message: string): void {
 
 /**
  * Print error message with red X
+ * In debug mode, also shows stack trace if error object is provided
  */
-export function error(message: string): void {
+export function error(message: string, err?: Error): void {
   console.error(`${colors.red}✗${colors.reset} ${message}`);
+  if (err && debugMode && err.stack) {
+    console.error(`${colors.dim}${err.stack}${colors.reset}`);
+  }
 }
 
 /**
@@ -55,7 +77,7 @@ export function blank(): void {
  */
 export function box(title: string, content: string): void {
   const width = Math.max(title.length, content.length) + 4;
-  const border = '─'.repeat(width);
+  const border = "─".repeat(width);
 
   console.log(`┌${border}┐`);
   console.log(`│ ${title.padEnd(width - 2)} │`);
@@ -80,4 +102,6 @@ export const cli = {
   blank,
   box,
   dim,
+  setDebugMode,
+  isDebugMode,
 };

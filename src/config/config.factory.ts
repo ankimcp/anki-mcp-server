@@ -14,6 +14,7 @@ export interface CliOverrides {
   ankiConnect?: string;
   tunnel?: string | boolean;
   ngrok?: boolean;
+  debug?: boolean;
 }
 
 /**
@@ -55,6 +56,10 @@ export function buildConfigInput(cliOverrides: CliOverrides = {}): ConfigInput {
   }
   if (typeof cliOverrides.tunnel === "string") {
     input.TUNNEL_SERVER_URL = cliOverrides.tunnel;
+  }
+  // CLI override for debug mode
+  if (cliOverrides.debug) {
+    input.LOG_LEVEL = 'debug';
   }
 
   return input;

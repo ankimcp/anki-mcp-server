@@ -1,9 +1,9 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import { createPinoLogger, createLoggerService } from "./bootstrap";
+import { createPinoLogger, createLoggerService, LOG_DESTINATION } from "./bootstrap";
 import { OriginValidationGuard } from "./http/guards/origin-validation.guard";
 import { parseCliArgs, displayStartupBanner, checkForUpdates } from "./cli";
-import { cli } from "./cli/cli-output";
+import { cli, setDebugMode } from "./cli/cli-output";
 import { NgrokService } from "./services/ngrok.service";
 import { handleLogin, handleLogout, handleTunnel } from "./tunnel";
 import { buildConfigInput } from "./config";
@@ -13,6 +13,9 @@ async function bootstrap() {
   checkForUpdates();
 
   const options = parseCliArgs();
+
+  // Set debug mode early so all error handlers can show stack traces
+  setDebugMode(options.debug);
 
   // Handle auth commands first (mutually exclusive with server modes)
   if (options.login) {
@@ -29,7 +32,7 @@ async function bootstrap() {
   if (options.tunnel) {
     const tunnelUrl =
       typeof options.tunnel === "string" ? options.tunnel : undefined;
-    await handleTunnel(tunnelUrl);
+    await handleTunnel(tunnelUrl, options.debug);
     process.exit(0);
   }
 
@@ -40,10 +43,12 @@ async function bootstrap() {
     ankiConnect: options.ankiConnect,
     tunnel: options.tunnel,
     ngrok: options.ngrok,
+    debug: options.debug,
   });
 
-  // Create logger that writes to stdout (fd 1) for HTTP mode
-  const pinoLogger = createPinoLogger(1);
+  // Create logger that writes to stdout for HTTP mode
+  // Log level comes from configInput (set by --debug flag or LOG_LEVEL env)
+  const pinoLogger = createPinoLogger(LOG_DESTINATION.STDOUT, configInput.LOG_LEVEL || "info");
   const loggerService = createLoggerService(pinoLogger);
 
   // HTTP mode - create NestJS HTTP application
@@ -66,8 +71,10 @@ async function bootstrap() {
       ngrokUrl = tunnelInfo.publicUrl;
     } catch (err) {
       cli.blank();
-      cli.error("Failed to start ngrok:");
-      cli.error(err instanceof Error ? err.message : String(err));
+      cli.error(
+        `Failed to start ngrok: ${err instanceof Error ? err.message : String(err)}`,
+        err instanceof Error ? err : undefined,
+      );
       cli.blank();
       cli.info("Server is still running locally without tunnel.");
       cli.blank();
@@ -79,6 +86,9 @@ async function bootstrap() {
 }
 
 bootstrap().catch((err) => {
-  cli.error(`Failed to start MCP HTTP server: ${err instanceof Error ? err.message : String(err)}`);
+  cli.error(
+    `Failed to start MCP HTTP server: ${err instanceof Error ? err.message : String(err)}`,
+    err instanceof Error ? err : undefined,
+  );
   process.exit(1);
 });
