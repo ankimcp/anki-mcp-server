@@ -15,6 +15,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start:dev:stdio": "nest start --watch --entryFile main-stdio",
     "start:dev:http": "nest start --watch --entryFile main-http",
+    "start:dev:tunnel": "nest start --watch --entryFile main-http -- --tunnel",
     "start:debug:stdio": "nest start --debug --watch --entryFile main-stdio",
     "start:debug:http": "nest start --debug --watch --entryFile main-http",
     "start:prod:stdio": "node dist/main-stdio",
@@ -72,6 +73,7 @@
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0",
     "update-notifier": "^7.3.1",
+    "ws": "^8.18.3",
     "zod": "^4.3.6",
     "zod-to-json-schema": "^3.25.2"
   },
@@ -90,6 +92,7 @@
     "@types/node": "^25.5.0",
     "@types/supertest": "^7.2.0",
     "@types/update-notifier": "^6.0.8",
+    "@types/ws": "^8.18.1",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
