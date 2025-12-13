@@ -1,4 +1,4 @@
-import { transformEnvToConfig, configSchema, AppConfig } from './config.schema';
+import { transformEnvToConfig, configSchema, AppConfig } from "./config.schema";
 
 /**
  * Raw config input type (all strings, before validation)
@@ -18,33 +18,19 @@ export interface CliOverrides {
 }
 
 /**
- * SINGLE SOURCE OF TRUTH for reading process.env
+ * Merge CLI overrides with process.env
  *
- * This is the ONLY place in the codebase that should read process.env.*
  * CLI arguments override environment variables in memory.
  * Does NOT mutate process.env - returns merged config input.
+ * Env var names are defined ONLY in transformEnvToConfig().
  *
  * @param cliOverrides - Optional CLI argument overrides
  * @returns Raw config input for ConfigModule
  */
 export function buildConfigInput(cliOverrides: CliOverrides = {}): ConfigInput {
-  // Read ALL environment variables HERE and only here
-  const input: ConfigInput = {
-    PORT: process.env.PORT,
-    HOST: process.env.HOST,
-    NODE_ENV: process.env.NODE_ENV,
-    ANKI_CONNECT_URL: process.env.ANKI_CONNECT_URL,
-    ANKI_CONNECT_API_KEY: process.env.ANKI_CONNECT_API_KEY,
-    ANKI_CONNECT_API_VERSION: process.env.ANKI_CONNECT_API_VERSION,
-    ANKI_CONNECT_TIMEOUT: process.env.ANKI_CONNECT_TIMEOUT,
-    TUNNEL_AUTH_URL: process.env.TUNNEL_AUTH_URL,
-    TUNNEL_AUTH_REALM: process.env.TUNNEL_AUTH_REALM,
-    TUNNEL_AUTH_CLIENT_ID: process.env.TUNNEL_AUTH_CLIENT_ID,
-    TUNNEL_SERVER_URL: process.env.TUNNEL_SERVER_URL,
-    LOG_LEVEL: process.env.LOG_LEVEL,
-  };
+  // Start with process.env, CLI overrides win
+  const input: ConfigInput = { ...process.env };
 
-  // CLI overrides win over environment variables (in memory, no mutation)
   if (cliOverrides.port !== undefined) {
     input.PORT = String(cliOverrides.port);
   }
@@ -57,9 +43,8 @@ export function buildConfigInput(cliOverrides: CliOverrides = {}): ConfigInput {
   if (typeof cliOverrides.tunnel === "string") {
     input.TUNNEL_SERVER_URL = cliOverrides.tunnel;
   }
-  // CLI override for debug mode
   if (cliOverrides.debug) {
-    input.LOG_LEVEL = 'debug';
+    input.LOG_LEVEL = "debug";
   }
 
   return input;

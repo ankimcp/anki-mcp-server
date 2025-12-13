@@ -13,3 +13,9 @@ export {
   type ConfigInput,
   type CliOverrides,
 } from "./config.factory";
+
+/**
+ * Injection token for validated application config
+ * Use with @Inject(APP_CONFIG) to get type-safe access to AppConfig
+ */
+export const APP_CONFIG = Symbol("APP_CONFIG");

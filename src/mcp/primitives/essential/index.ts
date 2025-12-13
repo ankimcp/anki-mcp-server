@@ -112,6 +112,8 @@ const ESSENTIAL_MCP_PRIMITIVES = [AnkiConnectClient, ...ESSENTIAL_MCP_TOOLS];
 
 export interface McpPrimitivesAnkiEssentialModuleOptions {
   ankiConfigProvider: Provider;
+  /** Required when ankiConfigProvider uses AppConfigService (provides APP_CONFIG dependency) */
+  appConfigProvider?: Provider;
 }
 
 @Module({})
@@ -119,9 +121,19 @@ export class McpPrimitivesAnkiEssentialModule {
   static forRoot(
     options: McpPrimitivesAnkiEssentialModuleOptions,
   ): DynamicModule {
+    const providers: Provider[] = [
+      options.ankiConfigProvider,
+      ...ESSENTIAL_MCP_PRIMITIVES,
+    ];
+
+    // Add appConfigProvider if provided (needed for AppConfigService injection)
+    if (options.appConfigProvider) {
+      providers.push(options.appConfigProvider);
+    }
+
     return {
       module: McpPrimitivesAnkiEssentialModule,
-      providers: [options.ankiConfigProvider, ...ESSENTIAL_MCP_PRIMITIVES],
+      providers,
       exports: ESSENTIAL_MCP_PRIMITIVES,
     };
   }

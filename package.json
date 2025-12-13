@@ -15,7 +15,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start:dev:stdio": "nest start --watch --entryFile main-stdio",
     "start:dev:http": "nest start --watch --entryFile main-http",
-    "start:dev:tunnel": "nest start --watch --entryFile main-http -- --tunnel",
+    "start:dev:tunnel": "nest start --watch --entryFile main-http -- --tunnel --debug",
     "start:debug:stdio": "nest start --debug --watch --entryFile main-stdio",
     "start:debug:http": "nest start --debug --watch --entryFile main-http",
     "start:prod:stdio": "node dist/main-stdio",

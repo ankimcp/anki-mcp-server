@@ -3,7 +3,7 @@ import { promisify } from "util";
 import { CredentialsService, TunnelCredentials } from "@/tunnel";
 import { DeviceFlowService, DeviceFlowError } from "@/tunnel";
 import { AppConfigService } from "@/app-config.service";
-import { ConfigService } from "@nestjs/config";
+import { loadValidatedConfig } from "@/config";
 import { cli } from "@/cli/cli-output";
 
 const execAsync = promisify(exec);
@@ -98,8 +98,8 @@ function startSpinner(message: string): () => void {
  */
 export async function handleLogin(): Promise<void> {
   const credentialsService = new CredentialsService();
-  const configService = new ConfigService();
-  const appConfigService = new AppConfigService(configService);
+  const validatedConfig = loadValidatedConfig();
+  const appConfigService = new AppConfigService(validatedConfig);
   const deviceFlowService = new DeviceFlowService(appConfigService);
 
   cli.blank();
@@ -110,9 +110,7 @@ export async function handleLogin(): Promise<void> {
 
     // Step 2: Display verification URL and code
     cli.info("Opening browser for authentication...");
-    cli.info(
-      `If browser doesn't open, visit: ${deviceCode.verification_uri}`,
-    );
+    cli.info(`If browser doesn't open, visit: ${deviceCode.verification_uri}`);
     cli.info(`Enter code: ${deviceCode.user_code}`);
     cli.blank();
 
@@ -166,9 +164,7 @@ export async function handleLogin(): Promise<void> {
 
     // Step 7: Display success message
     cli.info(`Logged in as: ${email}`);
-    cli.info(
-      `Credentials saved to ${credentialsService.getCredentialsPath()}`,
-    );
+    cli.info(`Credentials saved to ${credentialsService.getCredentialsPath()}`);
     cli.blank();
   } catch (error) {
     // Handle Device Flow errors with user-friendly messages

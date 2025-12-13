@@ -11,7 +11,8 @@ export const LOG_DESTINATION = {
   STDERR: 2,
 } as const;
 
-export type LogDestination = (typeof LOG_DESTINATION)[keyof typeof LOG_DESTINATION];
+export type LogDestination =
+  (typeof LOG_DESTINATION)[keyof typeof LOG_DESTINATION];
 
 /**
  * Creates a Pino logger configured for the specified transport mode
@@ -20,7 +21,10 @@ export type LogDestination = (typeof LOG_DESTINATION)[keyof typeof LOG_DESTINATI
  * @param logLevel - Log level (debug, info, warn, error). Defaults to 'info'
  * @returns Configured pino logger instance
  */
-export function createPinoLogger(destination: LogDestination, logLevel: string = "info") {
+export function createPinoLogger(
+  destination: LogDestination,
+  logLevel: string = "info",
+) {
   return pino({
     level: logLevel,
     transport: {
