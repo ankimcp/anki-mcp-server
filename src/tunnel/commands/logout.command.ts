@@ -1,4 +1,5 @@
 import { CredentialsService } from "../credentials.service";
+import { cli } from "@/cli/cli-output";
 
 /**
  * Handle logout command
@@ -24,7 +25,8 @@ export async function handleLogout(): Promise<void> {
   const hasCredentials = await credentialsService.hasCredentials();
 
   if (!hasCredentials) {
-    console.log("\nNot logged in. Nothing to do.");
+    cli.blank();
+    cli.info("Not logged in. Nothing to do.");
     return;
   }
 
@@ -32,13 +34,15 @@ export async function handleLogout(): Promise<void> {
   try {
     await credentialsService.clearCredentials();
 
-    console.log("\n✓ Logged out successfully.");
-    console.log(
+    cli.blank();
+    cli.success("Logged out successfully.");
+    cli.info(
       `Credentials removed from ${credentialsService.getCredentialsPath()}`,
     );
   } catch (error) {
-    console.error(
-      `\nFailed to remove credentials: ${error instanceof Error ? error.message : String(error)}`,
+    cli.blank();
+    cli.error(
+      `Failed to remove credentials: ${error instanceof Error ? error.message : String(error)}`,
     );
     process.exit(1);
   }

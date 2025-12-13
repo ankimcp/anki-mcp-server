@@ -1,4 +1,24 @@
 import { ExecutionContext } from "@nestjs/common";
+
+// Mock Logger BEFORE importing OriginValidationGuard
+const mockLoggerWarn = jest.fn();
+const mockLoggerLog = jest.fn();
+const mockLoggerError = jest.fn();
+const mockLoggerDebug = jest.fn();
+
+jest.mock("@nestjs/common", () => {
+  const actual = jest.requireActual("@nestjs/common");
+  return {
+    ...actual,
+    Logger: jest.fn().mockImplementation(() => ({
+      log: mockLoggerLog,
+      warn: mockLoggerWarn,
+      error: mockLoggerError,
+      debug: mockLoggerDebug,
+    })),
+  };
+});
+
 import { OriginValidationGuard } from "../origin-validation.guard";
 
 describe("OriginValidationGuard", () => {
@@ -6,6 +26,12 @@ describe("OriginValidationGuard", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
+    // Clear logger mocks
+    mockLoggerWarn.mockClear();
+    mockLoggerLog.mockClear();
+    mockLoggerError.mockClear();
+    mockLoggerDebug.mockClear();
+
     // Reset environment before each test
     process.env = { ...originalEnv };
     delete process.env.ALLOWED_ORIGINS;
@@ -98,17 +124,12 @@ describe("OriginValidationGuard", () => {
     });
 
     it("should block unauthorized origin", () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
       const context = createMockContext("https://evil.com");
 
       expect(guard.canActivate(context)).toBe(false);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Rejected request from unauthorized origin"),
       );
-
-      consoleWarnSpy.mockRestore();
     });
 
     it("should block HTTP request from external domain", () => {
@@ -275,18 +296,12 @@ describe("OriginValidationGuard", () => {
     });
 
     it("should log warning for blocked origins", () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       const context = createMockContext("https://malicious.com");
       guard.canActivate(context);
 
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        "[OriginValidationGuard] Rejected request from unauthorized origin: https://malicious.com",
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        "Rejected request from unauthorized origin: https://malicious.com",
       );
-
-      consoleWarnSpy.mockRestore();
     });
   });
 });

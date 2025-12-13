@@ -95,6 +95,41 @@ All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`. 
 
 ## Adding New Tools
 
+### Logging Guidelines
+
+**Two types of output - don't mix them:**
+
+1. **CLI Output** (user-facing, clean, no timestamps):
+   ```typescript
+   import { cli } from '@/cli';
+
+   cli.success('Connected to Anki');      // ✓ Connected to Anki
+   cli.error('Connection failed');         // ✗ Connection failed
+   cli.info('Starting server...');         // Starting server...
+   cli.box('Tunnel URL', 'https://...');   // Boxed message
+   cli.blank();                            // Empty line
+   ```
+
+2. **Logger** (internal logging, with timestamps and levels):
+   ```typescript
+   import { Logger } from '@nestjs/common';
+
+   private readonly logger = new Logger(MyService.name);
+
+   this.logger.log('Info message');
+   this.logger.warn('Warning message');
+   this.logger.error('Error message');
+   this.logger.debug('Debug message');
+   ```
+
+**When to use which:**
+- `cli.*` → User-facing output in CLI commands (tunnel, login, logout, startup banners)
+- `Logger` → Internal service logging, debugging, warnings
+
+**Never use raw `console.log/error/warn`** - use `cli.*` or `Logger` instead.
+
+## Adding New Tools
+
 ### Essential Tools (general Anki operations)
 
 1. Create `src/mcp/primitives/essential/tools/your-tool.tool.ts`

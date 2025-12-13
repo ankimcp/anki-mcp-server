@@ -2,6 +2,7 @@ import { readFile, writeFile, unlink, mkdir, access, chmod } from "fs/promises";
 import { join } from "path";
 import { homedir } from "os";
 import { constants } from "fs";
+import { Logger } from "@nestjs/common";
 
 /**
  * Tunnel credentials structure stored in ~/.ankimcp/credentials.json
@@ -31,6 +32,7 @@ export interface TunnelCredentials {
  * - Refresh tokens require server validation (can be revoked server-side)
  */
 export class CredentialsService {
+  private readonly logger = new Logger(CredentialsService.name);
   private static readonly CREDENTIALS_DIR = join(homedir(), ".ankimcp");
   private static readonly CREDENTIALS_FILE = join(
     CredentialsService.CREDENTIALS_DIR,
@@ -95,7 +97,7 @@ export class CredentialsService {
 
       // Validate structure
       if (!this.isValidCredentials(credentials)) {
-        console.warn(
+        this.logger.warn(
           `Corrupted credentials file at ${CredentialsService.CREDENTIALS_FILE}`,
         );
         return null;
@@ -109,7 +111,7 @@ export class CredentialsService {
       }
 
       // JSON parse error or other read errors
-      console.warn(
+      this.logger.warn(
         `Failed to load credentials from ${CredentialsService.CREDENTIALS_FILE}: ${error instanceof Error ? error.message : String(error)}`,
       );
       return null;
