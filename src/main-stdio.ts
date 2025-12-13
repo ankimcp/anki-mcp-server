@@ -1,6 +1,7 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { createPinoLogger, createLoggerService } from "./bootstrap";
+import { cli } from "./cli/cli-output";
 import { buildConfigInput } from "./config";
 
 async function bootstrap() {
@@ -24,6 +25,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch((err) => {
-  console.error("Failed to start MCP STDIO server:", err);
+  cli.error(`Failed to start MCP STDIO server: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });

@@ -3,6 +3,7 @@ import { AppModule } from "./app.module";
 import { createPinoLogger, createLoggerService } from "./bootstrap";
 import { OriginValidationGuard } from "./http/guards/origin-validation.guard";
 import { parseCliArgs, displayStartupBanner, checkForUpdates } from "./cli";
+import { cli } from "./cli/cli-output";
 import { NgrokService } from "./services/ngrok.service";
 import { handleLogin, handleLogout, handleTunnel } from "./tunnel";
 import { buildConfigInput } from "./config";
@@ -64,9 +65,12 @@ async function bootstrap() {
       const tunnelInfo = await ngrokService.start(options.port);
       ngrokUrl = tunnelInfo.publicUrl;
     } catch (err) {
-      console.error("\n❌ Failed to start ngrok:");
-      console.error(err instanceof Error ? err.message : String(err));
-      console.error("\nServer is still running locally without tunnel.\n");
+      cli.blank();
+      cli.error("Failed to start ngrok:");
+      cli.error(err instanceof Error ? err.message : String(err));
+      cli.blank();
+      cli.info("Server is still running locally without tunnel.");
+      cli.blank();
     }
   }
 
@@ -75,6 +79,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch((err) => {
-  console.error("Failed to start MCP HTTP server:", err);
+  cli.error(`Failed to start MCP HTTP server: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });

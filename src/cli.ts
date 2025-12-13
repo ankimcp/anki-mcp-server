@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { readFileSync } from "fs";
 import { join } from "path";
 import updateNotifier from "update-notifier";
+import { cli } from "./cli/cli-output";
 
 export interface CliOptions {
   port: number;
@@ -129,7 +130,7 @@ export function displayStartupBanner(
   const paddedTitle =
     " ".repeat(padding) + title + " ".repeat(64 - padding - title.length);
 
-  console.log(`
+  cli.info(`
 ╔════════════════════════════════════════════════════════════════╗
 ║${paddedTitle}║
 ╚════════════════════════════════════════════════════════════════╝

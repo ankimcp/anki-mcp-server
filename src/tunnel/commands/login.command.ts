@@ -4,6 +4,7 @@ import { CredentialsService, TunnelCredentials } from "@/tunnel";
 import { DeviceFlowService, DeviceFlowError } from "@/tunnel";
 import { AppConfigService } from "@/app-config.service";
 import { ConfigService } from "@nestjs/config";
+import { cli } from "@/cli/cli-output";
 
 const execAsync = promisify(exec);
 
@@ -101,19 +102,19 @@ export async function handleLogin(): Promise<void> {
   const appConfigService = new AppConfigService(configService);
   const deviceFlowService = new DeviceFlowService(appConfigService);
 
-  console.log(); // Blank line for spacing
+  cli.blank();
 
   try {
     // Step 1: Request device code
     const deviceCode = await deviceFlowService.requestDeviceCode();
 
     // Step 2: Display verification URL and code
-    console.log("Opening browser for authentication...");
-    console.log(
+    cli.info("Opening browser for authentication...");
+    cli.info(
       `If browser doesn't open, visit: ${deviceCode.verification_uri}`,
     );
-    console.log(`Enter code: ${deviceCode.user_code}`);
-    console.log(); // Blank line
+    cli.info(`Enter code: ${deviceCode.user_code}`);
+    cli.blank();
 
     // Step 3: Try to open browser (non-blocking, graceful degradation)
     // Use verification_uri_complete if available (pre-filled code)
@@ -135,8 +136,8 @@ export async function handleLogin(): Promise<void> {
       stopSpinner();
     }
 
-    console.log("✓ Authentication successful");
-    console.log(); // Blank line
+    cli.success("Authentication successful");
+    cli.blank();
 
     // Step 5: Decode JWT to extract user info
     // Safe to decode without verification - token came from our own OAuth flow
@@ -164,51 +165,51 @@ export async function handleLogin(): Promise<void> {
     await credentialsService.saveCredentials(credentials);
 
     // Step 7: Display success message
-    console.log(`Logged in as: ${email}`);
-    console.log(
+    cli.info(`Logged in as: ${email}`);
+    cli.info(
       `Credentials saved to ${credentialsService.getCredentialsPath()}`,
     );
-    console.log(); // Blank line
+    cli.blank();
   } catch (error) {
     // Handle Device Flow errors with user-friendly messages
     if (error instanceof DeviceFlowError) {
-      console.error(); // Blank line after spinner
+      cli.blank();
 
       switch (error.code) {
         case "expired_token":
-          console.error(
-            "✗ Authentication timed out. Please try again with 'ankimcp --login'",
+          cli.error(
+            "Authentication timed out. Please try again with 'ankimcp --login'",
           );
           break;
 
         case "access_denied":
-          console.error(
-            "✗ Authentication was denied. Please try again with 'ankimcp --login'",
+          cli.error(
+            "Authentication was denied. Please try again with 'ankimcp --login'",
           );
           break;
 
         case "network_error":
         case "timeout":
-          console.error(
-            "✗ Failed to connect to auth server. Check your internet connection.",
+          cli.error(
+            "Failed to connect to auth server. Check your internet connection.",
           );
           break;
 
         default:
-          console.error(`✗ Authentication failed: ${error.message}`);
+          cli.error(`Authentication failed: ${error.message}`);
           break;
       }
 
-      console.log(); // Blank line
+      cli.blank();
       process.exit(1);
     }
 
     // Handle other errors (filesystem, etc.)
-    console.error(); // Blank line after spinner
-    console.error(
-      `✗ Login failed: ${error instanceof Error ? error.message : String(error)}`,
+    cli.blank();
+    cli.error(
+      `Login failed: ${error instanceof Error ? error.message : String(error)}`,
     );
-    console.log(); // Blank line
+    cli.blank();
     process.exit(1);
   }
 }

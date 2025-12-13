@@ -391,14 +391,10 @@ export class TunnelClient extends EventEmitter {
    * Wraps in NestJS WebSocket format: { event, data }
    */
   private sendResponse(message: TunnelResponseMessage): void {
-    console.log(`[DEBUG] sendResponse called for requestId: ${message.requestId}`);
-    console.log(`[DEBUG] WebSocket readyState: ${this.ws?.readyState} (OPEN=${WebSocket.OPEN})`);
     if (this.ws?.readyState === WebSocket.OPEN) {
       const wrapped = { event: "response", data: message };
       const payload = JSON.stringify(wrapped);
-      console.log(`[DEBUG] Sending payload (${payload.length} bytes): ${payload.substring(0, 200)}...`);
       this.ws.send(payload);
-      console.log(`[DEBUG] Send completed`);
     } else {
       this.logger.error("Cannot send response: WebSocket not open");
     }
