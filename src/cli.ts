@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import updateNotifier from "update-notifier";
 import { cli } from "./cli/cli-output";
+import { getVersion } from "./version";
 
 export interface CliOptions {
   port: number;
@@ -23,10 +24,6 @@ function getPackageJson() {
   } catch {
     return { version: "0.0.0", name: "ankimcp" };
   }
-}
-
-function getVersion(): string {
-  return getPackageJson().version;
 }
 
 export function checkForUpdates(): void {

@@ -5,6 +5,7 @@ import { McpExecutorService, McpRegistryService } from "@rekog/mcp-nest";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { InMemoryTransport } from "./in-memory.transport";
 import type { ServerCapabilities } from "@modelcontextprotocol/sdk/types.js";
+import { getVersion } from "../version";
 
 /**
  * MCP service for tunnel mode using in-memory transport.
@@ -45,7 +46,7 @@ export class TunnelMcpService implements OnApplicationBootstrap {
 
     // Create MCP server with capabilities
     this.mcpServer = new McpServer(
-      { name: "anki-mcp-server", version: "0.8.5" },
+      { name: "anki-mcp-server", version: getVersion() },
       { capabilities },
     );
 
