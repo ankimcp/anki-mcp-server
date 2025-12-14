@@ -1,5 +1,6 @@
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { JSONRPCMessage, RequestId } from "@modelcontextprotocol/sdk/types.js";
+import { Logger } from "@nestjs/common";
 
 interface PendingRequest {
   resolve: (msg: JSONRPCMessage) => void;
@@ -8,6 +9,7 @@ interface PendingRequest {
 }
 
 export class InMemoryTransport implements Transport {
+  private readonly logger = new Logger(InMemoryTransport.name);
   private pendingRequests = new Map<RequestId, PendingRequest>();
   private closed = false;
 
@@ -43,6 +45,8 @@ export class InMemoryTransport implements Transport {
         clearTimeout(pending.timeout);
         pending.resolve(message);
         this.pendingRequests.delete(message.id);
+      } else {
+        this.logger.warn(`Received response for unknown request ID: ${message.id}`);
       }
     }
     // Server-initiated notifications/requests are ignored in tunnel context
@@ -69,16 +73,20 @@ export class InMemoryTransport implements Transport {
     }
 
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
+      // Register pending request FIRST, before timeout setup or onmessage call
+      // This ensures send() can find the pending request even if onmessage responds synchronously
+      const pending: PendingRequest = {
+        resolve,
+        reject,
+        timeout: null as any, // Will be set immediately below
+      };
+      this.pendingRequests.set(request.id as RequestId, pending);
+
+      // Setup timeout after registering the pending request
+      pending.timeout = setTimeout(() => {
         this.pendingRequests.delete(request.id as RequestId);
         reject(new Error("MCP request timeout"));
       }, 30000);
-
-      this.pendingRequests.set(request.id as RequestId, {
-        resolve,
-        reject,
-        timeout,
-      });
 
       // Feed request to Protocol - errors are caught by Protocol
       // and sent back via send() as JSON-RPC error responses
