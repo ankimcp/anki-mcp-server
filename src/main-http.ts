@@ -9,7 +9,6 @@ import { OriginValidationGuard } from "./http/guards/origin-validation.guard";
 import { parseCliArgs, displayStartupBanner, checkForUpdates } from "./cli";
 import { cli, setDebugMode } from "./cli/cli-output";
 import { NgrokService } from "./services/ngrok.service";
-import { handleLogin, handleLogout, handleTunnel } from "./tunnel";
 import { buildConfigInput } from "./config";
 
 async function bootstrap() {
@@ -20,25 +19,6 @@ async function bootstrap() {
 
   // Set debug mode early so all error handlers can show stack traces
   setDebugMode(options.debug);
-
-  // Handle auth commands first (mutually exclusive with server modes)
-  if (options.login) {
-    await handleLogin();
-    process.exit(0);
-  }
-
-  if (options.logout) {
-    await handleLogout();
-    process.exit(0);
-  }
-
-  // Handle tunnel mode
-  if (options.tunnel) {
-    const tunnelUrl =
-      typeof options.tunnel === "string" ? options.tunnel : undefined;
-    await handleTunnel(tunnelUrl, options.debug);
-    process.exit(0);
-  }
 
   // Build config input from env + CLI overrides (no process.env mutation)
   const configInput = buildConfigInput({

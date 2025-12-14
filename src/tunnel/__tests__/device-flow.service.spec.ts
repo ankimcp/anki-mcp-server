@@ -81,14 +81,14 @@ describe("DeviceFlowService", () => {
       headers: new Headers(),
       ok: status >= 200 && status < 300,
       redirected: false,
-      type: "basic" as ResponseType,
+      type: "basic" as const,
       url: "https://auth.ankimcp.ai/realms/ankimcp/protocol/openid-connect/token",
       clone: () => mockResponse as Response,
       body: null,
       bodyUsed: false,
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
-      blob: () => Promise.resolve(new Blob()),
-      formData: () => Promise.resolve(new FormData()),
+      blob: () => Promise.resolve(new Blob([])),
+      formData: () => Promise.resolve({} as FormData),
       json: () => Promise.resolve(jsonData || {}),
       text: () => Promise.resolve(JSON.stringify(jsonData || {})),
     } as Response;
@@ -610,11 +610,14 @@ describe("DeviceFlowService", () => {
     it("should handle unparseable error responses", async () => {
       // Create a proper 500 error that can't be parsed as DeviceFlowErrorResponse
       const mockResponse = createMockResponse(500, "Internal Server Error");
-      // Override json() to throw an error when parsing
-      mockResponse.json = () => Promise.reject(new Error("JSON parse error"));
+      // Create a new object with overridden json() method
+      const mockResponseWithError = {
+        ...mockResponse,
+        json: () => Promise.reject(new Error("JSON parse error")),
+      } as Response;
 
       const mockHttpError = new HTTPError(
-        mockResponse,
+        mockResponseWithError,
         createMockRequest(),
         createMockOptions(),
       );

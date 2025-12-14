@@ -45,6 +45,7 @@ Two entry points compiled in a single build:
 |------|-------|----------|---------|
 | STDIO | `dist/main-stdio.js` | Claude Desktop, MCP clients | stderr |
 | HTTP | `dist/main-http.js` | Web-based AI (ChatGPT, claude.ai) | stdout |
+| Tunnel | `dist/main-tunnel.js` | Remote access via WebSocket tunnel | stderr |
 
 ### Core Files
 
@@ -52,12 +53,18 @@ Two entry points compiled in a single build:
 src/
 ├── main-stdio.ts            # STDIO bootstrap: NestFactory.createApplicationContext()
 ├── main-http.ts             # HTTP bootstrap: NestFactory.create() + guards
-├── app.module.ts            # Root module with forStdio()/forHttp() factories
+├── main-tunnel.ts           # Tunnel bootstrap: auth commands + WebSocket tunnel
+├── app.module.ts            # Root module with forStdio()/forHttp()/forTunnel() factories
 ├── bootstrap.ts             # Shared logger setup (pino → NestJS LoggerService)
-├── cli.ts                   # Commander CLI (--port, --host, --anki-connect, --ngrok, --read-only)
-├── anki-config.service.ts   # IAnkiConfig implementation (reads env vars via ConfigService)
-├── http/guards/             # Origin validation guard (DNS rebinding protection)
-├── services/ngrok.service.ts # Ngrok tunnel management (spawns ngrok, polls for URL)
+├── cli.ts                   # Commander CLI (--port, --host, --anki-connect, --ngrok, --tunnel, --login, --logout, --debug)
+├── app-config.service.ts    # IAnkiConfig implementation (reads from validated AppConfig)
+├── config/                  # Zod-validated config system (schema, factory, APP_CONFIG token)
+├── tunnel/                  # Tunnel mode: WebSocket client, OAuth device flow, credentials
+│   ├── tunnel.client.ts     # WebSocket client for tunnel server
+│   ├── tunnel-mcp.service.ts # Bridges MCP ↔ tunnel via InMemoryTransport
+│   ├── device-flow.service.ts # OAuth device flow authentication
+│   ├── credentials.service.ts # Persistent credential storage
+│   └── commands/            # CLI command handlers (login, logout, tunnel)
 └── mcp/
     ├── clients/anki-connect.client.ts  # HTTP client using ky (retries, error handling, read-only guard)
     ├── config/anki-config.interface.ts # ANKI_CONFIG injection token + IAnkiConfig interface
@@ -113,7 +120,6 @@ These are upstream behaviors that shape tool design — surface them in tool des
 - **TypeScript** — `strict: true`, `module: "nodenext"`, target `ES2023`. Path aliases (`@/`, `@test/`) handle most imports.
 - **ESLint** — Flat config (`eslint.config.mjs`), not legacy `.eslintrc`.
 
-## Adding New Tools
 
 ### Logging Guidelines
 
