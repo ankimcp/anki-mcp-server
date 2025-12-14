@@ -84,21 +84,25 @@ The application follows a modular NestJS architecture with MCP primitives organi
 
 - **`src/main-stdio.ts`** - STDIO mode entry point
 - **`src/main-http.ts`** - HTTP mode entry point
+- **`src/main-tunnel.ts`** - Tunnel mode entry point
 - **`src/cli.ts`** - CLI argument parsing with commander (--port, --host, --anki-connect flags)
 - **`src/bootstrap.ts`** - Shared utilities for logger creation
-- **`src/app.module.ts`** - Root module with forStdio() and forHttp() factory methods
+- **`src/app.module.ts`** - Root module with forStdio(), forHttp(), and forTunnel() factory methods
 - **`src/config/`** - Configuration system:
   - `config.schema.ts` - Zod schema + `transformEnvToConfig()` (single source of truth for env var names)
   - `config.factory.ts` - `buildConfigInput()` for CLI overrides, `loadValidatedConfig()` helper
   - `index.ts` - Exports `APP_CONFIG` injection token for type-safe config access
 - **`src/app-config.service.ts`** - Type-safe config service (injects `AppConfig` via `APP_CONFIG` token)
 - **`src/http/guards/origin-validation.guard.ts`** - Origin validation for HTTP mode security
-- **`bin/ankimcp.js`** - CLI wrapper for npm global install (routes to main-http.js or main-stdio.js based on --stdio flag)
+- **`bin/ankimcp.js`** - CLI wrapper for npm global install (routes to main-http.js, main-stdio.js, or main-tunnel.js based on flags)
+  - `--stdio` → main-stdio.js
+  - `--tunnel`, `--login`, `--logout` → main-tunnel.js
+  - Default → main-http.js
   - Exposed as both `ankimcp` and `anki-mcp-server` commands when installed globally (see package.json bin field)
 
 ### Transport Modes
 
-The server supports two MCP transport modes via **separate entry points**:
+The server supports three MCP transport modes via **separate entry points**:
 
 **STDIO Mode**:
 - Entry point: `dist/main-stdio.js`
@@ -119,11 +123,25 @@ The server supports two MCP transport modes via **separate entry points**:
 - NPM package: `npx @ankimcp/anki-mcp-server` (HTTP mode) or `npx @ankimcp/anki-mcp-server --stdio` (STDIO mode)
 - Ngrok integration: `npx @ankimcp/anki-mcp-server --ngrok` (requires global ngrok installation)
 
+**Tunnel Mode**:
+- Entry point: `dist/main-tunnel.js`
+- For remote MCP access via managed tunnel service (no ngrok/port forwarding needed)
+- Uses `InMemoryTransport` for direct MCP communication (no HTTP round-trip)
+- Connects via WebSocket to tunnel server, receives requests, returns responses
+- Run: `ankimcp --tunnel` or `node dist/main-tunnel.js --tunnel`
+- Auth commands: `ankimcp --login` (OAuth device flow), `ankimcp --logout` (clear credentials)
+- CLI options: `--tunnel [url]`, `--login`, `--logout`, `--debug`
+- Key files:
+  - `src/tunnel/in-memory.transport.ts` - Custom MCP transport for direct in-process communication
+  - `src/tunnel/tunnel-mcp.service.ts` - NestJS service wrapping McpServer with InMemoryTransport
+  - `src/tunnel/tunnel.client.ts` - WebSocket client for tunnel server communication
+
 **Key Implementation Details**:
-- Both entry points compile together in single build (`npm run build`)
+- All entry points compile together in single build (`npm run build`)
 - Each has its own bootstrap logic:
   - `src/main-stdio.ts`: `NestFactory.createApplicationContext()` + AppModule.forStdio()
   - `src/main-http.ts`: `NestFactory.create()` + AppModule.forHttp() + guards
+  - `src/main-tunnel.ts`: `NestFactory.createApplicationContext()` + AppModule.forTunnel()
 - Shared utilities in `src/bootstrap.ts` (logger creation)
 - HTTP mode uses `mcpEndpoint: '/'` to mount MCP at root path
 

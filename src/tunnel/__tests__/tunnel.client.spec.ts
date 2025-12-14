@@ -61,7 +61,11 @@ describe("TunnelClient", () => {
 
     // Mock WebSocket instance
     mockWs = new EventEmitter() as any;
-    mockWs.readyState = WebSocket.CONNECTING;
+    Object.defineProperty(mockWs, "readyState", {
+      value: WebSocket.CONNECTING,
+      writable: true,
+      configurable: true,
+    });
     mockWs.send = jest.fn();
     mockWs.close = jest.fn();
     mockWs.terminate = jest.fn();
@@ -90,7 +94,7 @@ describe("TunnelClient", () => {
 
       // Simulate WebSocket open
       await Promise.resolve();
-      mockWs.readyState = WebSocket.OPEN;
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.OPEN });
       mockWs.emit("open");
 
       // Simulate tunnel_established message
@@ -137,7 +141,7 @@ describe("TunnelClient", () => {
       await new Promise((resolve) => setImmediate(resolve));
 
       // Simulate WebSocket open
-      mockWs.readyState = WebSocket.OPEN;
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.OPEN });
       mockWs.emit("open");
 
       // Simulate tunnel_established message
@@ -167,7 +171,7 @@ describe("TunnelClient", () => {
       const connectPromise = client.connect();
 
       await Promise.resolve();
-      mockWs.readyState = WebSocket.OPEN;
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.OPEN });
       mockWs.emit("open");
 
       const tunnelUrl = "https://abc123.tunnel.ankimcp.ai";
@@ -211,7 +215,7 @@ describe("TunnelClient", () => {
     beforeEach(async () => {
       const connectPromise = client.connect();
       await Promise.resolve();
-      mockWs.readyState = WebSocket.OPEN;
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.OPEN });
       mockWs.emit("open");
       mockWs.emit(
         "message",
@@ -244,7 +248,7 @@ describe("TunnelClient", () => {
     beforeEach(async () => {
       const connectPromise = client.connect();
       await Promise.resolve();
-      mockWs.readyState = WebSocket.OPEN;
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.OPEN });
       mockWs.emit("open");
       mockWs.emit(
         "message",
@@ -388,7 +392,7 @@ describe("TunnelClient", () => {
 
       const connectPromise = client.connect();
       await Promise.resolve();
-      mockWs.readyState = WebSocket.OPEN;
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.OPEN });
       mockWs.emit("open");
       mockWs.emit(
         "message",
@@ -408,7 +412,7 @@ describe("TunnelClient", () => {
 
       const connectPromise = client.connect();
       await Promise.resolve();
-      mockWs.readyState = WebSocket.OPEN;
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.OPEN });
       mockWs.emit("open");
 
       const tunnelUrl = "https://abc123.tunnel.ankimcp.ai";
@@ -430,7 +434,7 @@ describe("TunnelClient", () => {
     beforeEach(async () => {
       const connectPromise = client.connect();
       await Promise.resolve();
-      mockWs.readyState = WebSocket.OPEN;
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.OPEN });
       mockWs.emit("open");
       mockWs.emit(
         "message",

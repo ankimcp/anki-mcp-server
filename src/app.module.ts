@@ -12,7 +12,10 @@ import {
   transformEnvToConfig,
   ConfigInput,
   APP_CONFIG,
+  loadValidatedConfig,
+  CliOverrides,
 } from "@/config";
+import { TunnelMcpService } from "./tunnel/tunnel-mcp.service";
 
 @Module({})
 export class AppModule {
@@ -140,6 +143,70 @@ export class AppModule {
         AppConfigService,
       ],
       exports: [APP_CONFIG, AppConfigService],
+    };
+  }
+
+  /**
+   * Creates AppModule configured for Tunnel transport (in-memory MCP service)
+   * @param cliOverrides - Optional CLI argument overrides
+   */
+  static forTunnel(cliOverrides?: CliOverrides): DynamicModule {
+    // Use loadValidatedConfig to parse CLI overrides + env
+    const validatedConfig = loadValidatedConfig(cliOverrides);
+
+    return {
+      module: AppModule,
+      imports: [
+        // Configuration Module (uses same validated config)
+        ConfigModule.forRoot({
+          isGlobal: true,
+          cache: true,
+          load: [() => validatedConfig],
+        }),
+
+        // MCP Module with NO transport (TunnelMcpService handles transport via InMemoryTransport)
+        // Using empty array prevents StdioService from blocking stdin in watch mode
+        McpModule.forRoot({
+          name: process.env.MCP_SERVER_NAME || "anki-mcp-server",
+          version: process.env.MCP_SERVER_VERSION || "1.0.0",
+          transport: [],
+        }),
+
+        // Import MCP primitives with config
+        McpPrimitivesAnkiEssentialModule.forRoot({
+          ankiConfigProvider: {
+            provide: ANKI_CONFIG,
+            useClass: AppConfigService,
+          },
+          appConfigProvider: {
+            provide: APP_CONFIG,
+            useValue: validatedConfig,
+          },
+        }),
+
+        // Import GUI primitives with config
+        McpPrimitivesAnkiGuiModule.forRoot({
+          ankiConfigProvider: {
+            provide: ANKI_CONFIG,
+            useClass: AppConfigService,
+          },
+          appConfigProvider: {
+            provide: APP_CONFIG,
+            useValue: validatedConfig,
+          },
+        }),
+      ],
+      providers: [
+        // Provide validated config for type-safe injection
+        {
+          provide: APP_CONFIG,
+          useValue: validatedConfig,
+        },
+        AppConfigService,
+        // Custom tunnel MCP service (instead of StdioModule)
+        TunnelMcpService,
+      ],
+      exports: [APP_CONFIG, AppConfigService, TunnelMcpService],
     };
   }
 }
