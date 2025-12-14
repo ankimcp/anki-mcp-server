@@ -1,12 +1,19 @@
 import { NestFactory } from "@nestjs/core";
+import { Logger } from "@nestjs/common";
 import { AppModule } from "@/app.module";
 import { CredentialsService } from "@/tunnel";
 import { DeviceFlowService } from "@/tunnel";
 import { TunnelClient, McpRequestHandler, TunnelClientError } from "@/tunnel";
 import { TUNNEL_DEFAULTS } from "@/tunnel";
+import { TunnelMcpService } from "@/tunnel/tunnel-mcp.service";
 import { AppConfigService } from "@/app-config.service";
-import { buildConfigInput, loadValidatedConfig } from "@/config";
+import { loadValidatedConfig } from "@/config";
 import { cli, setDebugMode } from "@/cli/cli-output";
+import {
+  createPinoLogger,
+  createLoggerService,
+  LOG_DESTINATION,
+} from "@/bootstrap";
 
 /**
  * Display a simple text spinner for polling
@@ -89,8 +96,8 @@ function formatConnectionError(error: unknown, tunnelUrl?: string): string {
  *
  * Flow:
  * 1. Load credentials (or prompt to login)
- * 2. Create local NestJS HTTP server on random port
- * 3. Create McpRequestHandler that proxies to local server
+ * 2. Create NestJS application context with in-memory MCP service
+ * 3. Create McpRequestHandler that calls TunnelMcpService directly
  * 4. Connect to tunnel service via TunnelClient
  * 5. Display tunnel URL
  * 6. Listen for events (requests, errors, expiring, disconnected)
@@ -123,27 +130,38 @@ export async function handleTunnel(
       process.exit(1);
     }
 
-    // Step 2: Create local NestJS HTTP server on random port
-    const stopSpinner = startSpinner("Starting local MCP server...");
+    // Step 2: Create NestJS application context with in-memory MCP service
+    const stopSpinner = startSpinner("Starting MCP service...");
     let app;
-    let localPort: number;
+    let tunnelMcpService: TunnelMcpService;
+
+    // Create logger that writes to stderr (keeps stdout clear for CLI output)
+    const logLevel = debug ? "debug" : "info";
+    const pinoLogger = createPinoLogger(LOG_DESTINATION.STDERR, logLevel);
+    const loggerService = createLoggerService(pinoLogger);
+
+    // Enable debug log level for NestJS Logger instances (like TunnelClient)
+    // Logger.overrideLogger with array sets logLevels, with object sets staticInstanceRef
+    // We need BOTH: first set which levels are enabled, then set where logs go
+    if (debug) {
+      Logger.overrideLogger(["log", "error", "warn", "debug", "verbose"]);
+    }
+    Logger.overrideLogger(loggerService);
 
     try {
-      // Build config input from env + debug override if provided
-      const configInput = buildConfigInput(debug ? { debug } : {});
-
-      app = await NestFactory.create(AppModule.forHttp(configInput), {
-        logger: false,
-      });
-      await app.listen(0, "127.0.0.1");
-      const address = app.getHttpServer().address();
-      localPort = typeof address === "object" ? address.port : 0;
+      app = await NestFactory.createApplicationContext(
+        AppModule.forTunnel({ debug }),
+        {
+          logger: loggerService,
+        },
+      );
+      tunnelMcpService = app.get(TunnelMcpService);
       stopSpinner();
-      cli.success(`Local MCP server started on port ${localPort}`);
+      cli.success("MCP service ready");
     } catch (error) {
       stopSpinner();
       cli.error(
-        `Failed to start local server: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to start MCP service: ${error instanceof Error ? error.message : String(error)}`,
         error instanceof Error ? error : undefined,
       );
       cli.blank();
@@ -152,27 +170,14 @@ export async function handleTunnel(
 
     cli.blank();
 
-    // Step 3: Create McpRequestHandler that proxies to local server
+    // Step 3: Create McpRequestHandler that calls TunnelMcpService directly
     const mcpHandler: McpRequestHandler = {
       async handle(request) {
-        const response = await fetch(
-          `http://127.0.0.1:${localPort}${request.path}`,
-          {
-            method: request.method,
-            headers: request.headers,
-            body: request.method !== "GET" ? request.body : undefined,
-          },
-        );
-
-        const headers: Record<string, string> = {};
-        response.headers.forEach((v, k) => {
-          headers[k] = v;
-        });
-
+        const responseBody = await tunnelMcpService.handleRequest(request.body);
         return {
-          status: response.status,
-          headers,
-          body: await response.text(),
+          status: 200,
+          headers: { "content-type": "application/json" },
+          body: responseBody,
         };
       },
     };
