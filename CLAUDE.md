@@ -18,6 +18,8 @@ npm run build                    # Build → dist/ (both entry points)
 npm run start:dev:stdio          # STDIO mode with watch
 npm run start:dev:http           # HTTP mode with watch
 
+npm run start:dev:tunnel         # Tunnel mode with watch + debug
+
 # Testing
 npm test                         # All tests
 npm test -- path/to/file.spec.ts # Single test file
@@ -49,6 +51,7 @@ Two entry points compiled in a single build:
 
 ### Core Files
 
+<<<<<<< HEAD
 ```
 src/
 ├── main-stdio.ts            # STDIO bootstrap: NestFactory.createApplicationContext()

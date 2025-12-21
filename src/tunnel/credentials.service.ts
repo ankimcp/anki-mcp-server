@@ -6,6 +6,8 @@ import { Logger } from "@nestjs/common";
 
 /**
  * Tunnel credentials structure stored in ~/.ankimcp/credentials.json
+ *
+ * User data is enriched by the tunnel service with tier and custom slug information.
  */
 export interface TunnelCredentials {
   access_token: string;
@@ -15,6 +17,7 @@ export interface TunnelCredentials {
     id: string;
     email: string;
     tier: "free" | "paid";
+    customSlug: string | null;
   };
 }
 
@@ -193,6 +196,7 @@ export class CredentialsService {
     }
 
     const creds = obj as Record<string, unknown>;
+    const user = creds.user as Record<string, unknown>;
 
     return (
       typeof creds.access_token === "string" &&
@@ -200,10 +204,10 @@ export class CredentialsService {
       typeof creds.expires_at === "string" &&
       typeof creds.user === "object" &&
       creds.user !== null &&
-      typeof (creds.user as Record<string, unknown>).id === "string" &&
-      typeof (creds.user as Record<string, unknown>).email === "string" &&
-      ((creds.user as Record<string, unknown>).tier === "free" ||
-        (creds.user as Record<string, unknown>).tier === "paid")
+      typeof user.id === "string" &&
+      typeof user.email === "string" &&
+      (user.tier === "free" || user.tier === "paid") &&
+      (user.customSlug === null || typeof user.customSlug === "string")
     );
   }
 }
