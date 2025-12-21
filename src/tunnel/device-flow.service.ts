@@ -73,7 +73,6 @@ export class DeviceFlowService {
   private readonly logger = new Logger(DeviceFlowService.name);
   private readonly deviceEndpoint: string;
   private readonly tokenEndpoint: string;
-  private readonly refreshEndpoint: string;
 
   constructor(private readonly config: AppConfigService) {
     const tunnelUrl = this.config.tunnelServerUrl;
@@ -82,7 +81,6 @@ export class DeviceFlowService {
 
     this.deviceEndpoint = `${httpUrl}/auth/device`;
     this.tokenEndpoint = `${httpUrl}/auth/token`;
-    this.refreshEndpoint = `${httpUrl}/auth/refresh`;
 
     // Create ky client with configuration
     this.client = ky.create({
@@ -268,7 +266,7 @@ export class DeviceFlowService {
       this.logger.log("Refreshing access token via tunnel service");
 
       const response = await this.client
-        .post(this.refreshEndpoint, {
+        .post(this.tokenEndpoint, {
           body: new URLSearchParams({
             grant_type: "refresh_token",
             refresh_token: refreshToken,
