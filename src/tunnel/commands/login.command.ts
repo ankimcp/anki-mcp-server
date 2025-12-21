@@ -8,28 +8,6 @@ import { cli } from "@/cli/cli-output";
 
 const execAsync = promisify(exec);
 
-/**
- * Decode JWT payload without verification
- * Safe because token came from our own OAuth flow, not user input
- *
- * @param token - JWT access token
- * @returns Decoded payload containing user info
- */
-function decodeJwtPayload(token: string): {
-  sub: string;
-  email?: string;
-  preferred_username?: string;
-} {
-  try {
-    const payload = token.split(".")[1];
-    const decoded = Buffer.from(payload, "base64url").toString("utf-8");
-    return JSON.parse(decoded);
-  } catch (error) {
-    throw new Error(
-      `Failed to decode JWT: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-}
 
 /**
  * Open URL in default browser using platform-specific commands
@@ -86,12 +64,13 @@ function startSpinner(message: string): () => void {
  * Authenticates user with tunnel service via OAuth Device Flow
  *
  * Flow:
- * 1. Request device code from Keycloak
+ * 1. Request device code from tunnel service
  * 2. Display verification URL and user code
  * 3. Attempt to open browser automatically
  * 4. Poll for token until user authorizes
- * 5. Save credentials on success
- * 6. Display success message with user email
+ * 5. Receive enriched token response with user tier and custom slug
+ * 6. Save credentials with enriched user data
+ * 7. Display success message with user email and tier
  *
  * @throws {DeviceFlowError} If authentication fails
  * @throws {Error} If credential storage fails
@@ -137,33 +116,27 @@ export async function handleLogin(): Promise<void> {
     cli.success("Authentication successful");
     cli.blank();
 
-    // Step 5: Decode JWT to extract user info
-    // Safe to decode without verification - token came from our own OAuth flow
-    const payload = decodeJwtPayload(tokenResponse.access_token);
-    const email = payload.email || payload.preferred_username || "unknown";
-    const userId = payload.sub;
-
-    // Calculate token expiry time
+    // Step 5: Calculate token expiry time
     const expiresAt = new Date(
       Date.now() + tokenResponse.expires_in * 1000,
     ).toISOString();
 
-    // Step 6: Build and save credentials
+    // Step 6: Build and save credentials with enriched user data from tunnel service
     const credentials: TunnelCredentials = {
       access_token: tokenResponse.access_token,
       refresh_token: tokenResponse.refresh_token,
       expires_at: expiresAt,
-      user: {
-        id: userId,
-        email: email,
-        tier: "free", // Default tier - will be updated by tunnel server on first connect
-      },
+      user: tokenResponse.user, // Use enriched user data from tunnel service
     };
 
     await credentialsService.saveCredentials(credentials);
 
-    // Step 7: Display success message
-    cli.info(`Logged in as: ${email}`);
+    // Step 7: Display success message with tier information
+    cli.info(`Logged in as: ${tokenResponse.user.email}`);
+    cli.info(`Tier: ${tokenResponse.user.tier}`);
+    if (tokenResponse.user.customSlug) {
+      cli.info(`Custom slug: ${tokenResponse.user.customSlug}`);
+    }
     cli.info(`Credentials saved to ${credentialsService.getCredentialsPath()}`);
     cli.blank();
   } catch (error) {

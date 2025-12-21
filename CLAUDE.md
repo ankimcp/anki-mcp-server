@@ -18,6 +18,8 @@ This is an MCP (Model Context Protocol) server that enables AI assistants to int
 - `gui-tools-implementation-plan.md` - GUI tools design and planning
 - `MODEL_ACTIONS_IMPLEMENTATION_PLAN.md` - Model creation/modification tools
 - `ACTIONS_IMPLEMENTATION.md` - AnkiConnect API implementation status tracking
+- `CLA_IMPLEMENTATION_GUIDE.md` - CLA (Contributor License Agreement) setup
+- `RAG_IMPLEMENTATION_PLAN.md` - RAG integration planning
 
 **NPM Package**: Published as `@ankimcp/anki-mcp-server` on npm registry for global installation. The old `anki-mcp-http` package continues to be published for backward compatibility but is deprecated.
 
@@ -29,8 +31,9 @@ This is an MCP (Model Context Protocol) server that enables AI assistants to int
 npm run build           # Build project → dist/ (includes both entry points)
 
 # Development servers
-npm run start:dev:stdio # STDIO mode with watch (auto-rebuild)
-npm run start:dev:http  # HTTP mode with watch (auto-rebuild)
+npm run start:dev:stdio   # STDIO mode with watch (auto-rebuild)
+npm run start:dev:http    # HTTP mode with watch (auto-rebuild)
+npm run start:dev:tunnel  # Tunnel mode with watch (--tunnel --debug)
 
 # Production
 npm run start:prod:stdio   # Run STDIO mode: node dist/main-stdio.js
@@ -135,6 +138,9 @@ The server supports three MCP transport modes via **separate entry points**:
   - `src/tunnel/in-memory.transport.ts` - Custom MCP transport for direct in-process communication
   - `src/tunnel/tunnel-mcp.service.ts` - NestJS service wrapping McpServer with InMemoryTransport
   - `src/tunnel/tunnel.client.ts` - WebSocket client for tunnel server communication
+  - `src/tunnel/commands/*.ts` - Command handlers (login, logout, tunnel)
+  - `src/tunnel/credentials.service.ts` - Token storage/retrieval (file-based)
+  - `src/tunnel/device-flow.service.ts` - OAuth device authorization flow
 
 **Key Implementation Details**:
 - All entry points compile together in single build (`npm run build`)

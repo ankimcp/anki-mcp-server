@@ -15,13 +15,20 @@ export interface DeviceCodeResponse {
 }
 
 /**
- * Token response from Keycloak
+ * Token response from tunnel service
+ * Enriched with user data including tier and custom slug
  */
 export interface TokenResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
   refresh_token: string;
+  user: {
+    id: string;
+    email: string;
+    tier: 'free' | 'paid';
+    customSlug: string | null;
+  };
 }
 
 /**
@@ -52,8 +59,11 @@ export class DeviceFlowError extends Error {
 }
 
 /**
- * Service for handling OAuth Device Flow authentication with Keycloak
+ * Service for handling OAuth Device Flow authentication via Tunnel Service
  * Implements RFC 8628: OAuth 2.0 Device Authorization Grant
+ *
+ * The tunnel service proxies device flow requests to Keycloak and enriches
+ * token responses with user data (tier, customSlug) from the database.
  *
  * @see https://datatracker.ietf.org/doc/html/rfc8628
  */
@@ -63,12 +73,16 @@ export class DeviceFlowService {
   private readonly logger = new Logger(DeviceFlowService.name);
   private readonly deviceEndpoint: string;
   private readonly tokenEndpoint: string;
+  private readonly refreshEndpoint: string;
 
   constructor(private readonly config: AppConfigService) {
-    const { authUrl, authRealm } = this.config;
-    const baseUrl = `${authUrl}/realms/${authRealm}/protocol/openid-connect`;
-    this.deviceEndpoint = `${baseUrl}/auth/device`;
-    this.tokenEndpoint = `${baseUrl}/token`;
+    const tunnelUrl = this.config.tunnelServerUrl;
+    // Remove 'wss://' or 'ws://' prefix and replace with 'https://' or 'http://'
+    const httpUrl = tunnelUrl.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
+
+    this.deviceEndpoint = `${httpUrl}/auth/device`;
+    this.tokenEndpoint = `${httpUrl}/auth/token`;
+    this.refreshEndpoint = `${httpUrl}/auth/refresh`;
 
     // Create ky client with configuration
     this.client = ky.create({
@@ -92,7 +106,7 @@ export class DeviceFlowService {
   }
 
   /**
-   * Request a device code from Keycloak
+   * Request a device code from tunnel service
    * This initiates the Device Flow by getting a user code and verification URI
    *
    * @returns Device code response with user code and verification URL
@@ -104,7 +118,7 @@ export class DeviceFlowService {
    */
   async requestDeviceCode(): Promise<DeviceCodeResponse> {
     try {
-      this.logger.log("Requesting device code from Keycloak");
+      this.logger.log("Requesting device code from tunnel service");
 
       const response = await this.client
         .post(this.deviceEndpoint, {
@@ -240,8 +254,10 @@ export class DeviceFlowService {
    * Refresh an expired access token using a refresh token
    * This allows getting a new access token without re-authenticating
    *
+   * The tunnel service enriches the response with updated user data.
+   *
    * @param refreshToken - Refresh token from previous token response
-   * @returns New token response with fresh access and refresh tokens
+   * @returns New token response with fresh access and refresh tokens, plus enriched user data
    * @throws {DeviceFlowError} If refresh fails
    *
    * @example
@@ -249,10 +265,10 @@ export class DeviceFlowService {
    */
   async refreshToken(refreshToken: string): Promise<TokenResponse> {
     try {
-      this.logger.log("Refreshing access token");
+      this.logger.log("Refreshing access token via tunnel service");
 
       const response = await this.client
-        .post(this.tokenEndpoint, {
+        .post(this.refreshEndpoint, {
           body: new URLSearchParams({
             grant_type: "refresh_token",
             refresh_token: refreshToken,
@@ -296,7 +312,7 @@ export class DeviceFlowService {
   }
 
   /**
-   * Handle and format errors from Keycloak requests
+   * Handle and format errors from tunnel service requests
    * Converts various error types into DeviceFlowError with clear messages
    */
   private handleError(error: unknown, operation: string): DeviceFlowError {
@@ -315,7 +331,7 @@ export class DeviceFlowService {
 
       if (status >= 500) {
         return new DeviceFlowError(
-          "Keycloak server error. Please try again later.",
+          "Tunnel service error. Please try again later.",
           "server_error",
         );
       }
@@ -341,7 +357,7 @@ export class DeviceFlowService {
         error.message.includes("network")
       ) {
         return new DeviceFlowError(
-          `Cannot connect to authentication server (${this.config.authUrl}). Please check your internet connection.`,
+          `Cannot connect to tunnel service (${this.config.tunnelServerUrl}). Please check your internet connection.`,
           "network_error",
         );
       }
@@ -360,16 +376,14 @@ export class DeviceFlowService {
   }
 
   /**
-   * Get the Keycloak configuration for debugging/logging
+   * Get the tunnel service configuration for debugging/logging
    */
   getConfig(): {
-    keycloakUrl: string;
-    realm: string;
+    tunnelUrl: string;
     clientId: string;
   } {
     return {
-      keycloakUrl: this.config.authUrl,
-      realm: this.config.authRealm,
+      tunnelUrl: this.config.tunnelServerUrl,
       clientId: this.config.authClientId,
     };
   }
