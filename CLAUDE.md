@@ -96,6 +96,8 @@ The application follows a modular NestJS architecture with MCP primitives organi
   - `config.factory.ts` - `buildConfigInput()` for CLI overrides, `loadValidatedConfig()` helper
   - `index.ts` - Exports `APP_CONFIG` injection token for type-safe config access
 - **`src/app-config.service.ts`** - Type-safe config service (injects `AppConfig` via `APP_CONFIG` token)
+- **`src/version.ts`** - Dynamic version retrieval from package.json (used by CLI and tunnel services)
+- **`src/cli/cli-output.ts`** - User-facing CLI output helpers (`cli.success`, `cli.error`, `cli.box`, etc.)
 - **`src/http/guards/origin-validation.guard.ts`** - Origin validation for HTTP mode security
 - **`bin/ankimcp.js`** - CLI wrapper for npm global install (routes to main-http.js, main-stdio.js, or main-tunnel.js based on flags)
   - `--stdio` → main-stdio.js
@@ -138,9 +140,11 @@ The server supports three MCP transport modes via **separate entry points**:
   - `src/tunnel/in-memory.transport.ts` - Custom MCP transport for direct in-process communication
   - `src/tunnel/tunnel-mcp.service.ts` - NestJS service wrapping McpServer with InMemoryTransport
   - `src/tunnel/tunnel.client.ts` - WebSocket client for tunnel server communication
+  - `src/tunnel/tunnel.protocol.ts` - Protocol types for tunnel communication messages
   - `src/tunnel/commands/*.ts` - Command handlers (login, logout, tunnel)
   - `src/tunnel/credentials.service.ts` - Token storage/retrieval (file-based)
   - `src/tunnel/device-flow.service.ts` - OAuth device authorization flow
+  - `src/tunnel/index.ts` - Re-exports tunnel functionality (handleLogin, handleLogout, handleTunnel)
 
 **Key Implementation Details**:
 - All entry points compile together in single build (`npm run build`)
@@ -310,15 +314,16 @@ These work in both source code and tests via Jest's `moduleNameMapper`.
 
 **Two types of output - don't mix them:**
 
-1. **CLI Output** (user-facing, clean, no timestamps):
+1. **CLI Output** (user-facing, clean, no timestamps) - see `src/cli/cli-output.ts`:
    ```typescript
-   import { cli } from '@/cli';
+   import { cli, setDebugMode } from '@/cli/cli-output';
 
    cli.success('Connected to Anki');      // ✓ Connected to Anki
    cli.error('Connection failed');         // ✗ Connection failed
    cli.info('Starting server...');         // Starting server...
    cli.box('Tunnel URL', 'https://...');   // Boxed message
    cli.blank();                            // Empty line
+   setDebugMode(true);                     // Enable stack traces in error output
    ```
 
 2. **Logger** (internal logging, with timestamps and levels):
@@ -420,6 +425,27 @@ npx @ankimcp/anki-mcp-server --ngrok
 - Integration: `src/main-http.ts` bootstrap
 - CLI: `src/cli.ts` (--ngrok flag parsing)
 - Full documentation: `.claude-draft/architecture-tunnel.md`
+
+### Tunnel Mode Testing
+
+Test tunnel mode during development:
+
+```bash
+# Development with watch mode
+npm run start:dev:tunnel
+
+# Production with debug output
+node dist/main-tunnel.js --tunnel --debug
+
+# With custom tunnel server URL
+node dist/main-tunnel.js --tunnel wss://custom-server.example.com --debug
+
+# Auth flow testing
+node dist/main-tunnel.js --login   # OAuth device flow
+node dist/main-tunnel.js --logout  # Clear stored credentials
+```
+
+Credentials are stored in `~/.ankimcp/credentials.json` (managed by `CredentialsService`).
 
 **Legal/License:**
 - Uses shell execution (not embedded package)

@@ -45,6 +45,7 @@ describe("CredentialsService", () => {
       id: "user-123",
       email: "test@example.com",
       tier: "free",
+      customSlug: null,
     },
     ...overrides,
   });
@@ -174,6 +175,7 @@ describe("CredentialsService", () => {
           id: "user-456",
           email: "premium@example.com",
           tier: "paid",
+          customSlug: null,
         },
       });
 
@@ -513,6 +515,7 @@ describe("CredentialsService", () => {
           id: "user-123",
           email: "premium@example.com",
           tier: "paid",
+          customSlug: null,
         },
       });
 
@@ -918,6 +921,7 @@ describe("CredentialsService", () => {
           id: "1",
           email: "a@b.c",
           tier: "free",
+          customSlug: null,
         },
       };
 
@@ -940,6 +944,7 @@ describe("CredentialsService", () => {
           id: "1",
           email: "test@example.com",
           tier: "free",
+          customSlug: null,
         },
       };
 
