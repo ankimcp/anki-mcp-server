@@ -183,11 +183,14 @@ export async function handleTunnel(
     };
 
     // Step 4: Connect to tunnel service via TunnelClient
+    // Priority: CLI arg > env var (via config) > hardcoded default
+    const effectiveTunnelUrl = tunnelUrl || validatedConfig.tunnel.serverUrl;
+
     const tunnelClient = new TunnelClient(
       mcpHandler,
       credentialsService,
       deviceFlowService,
-      tunnelUrl,
+      effectiveTunnelUrl,
     );
 
     // Set up error listener BEFORE connecting to prevent unhandled 'error' event crash

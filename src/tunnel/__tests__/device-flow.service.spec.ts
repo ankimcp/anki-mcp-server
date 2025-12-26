@@ -127,8 +127,7 @@ describe("DeviceFlowService", () => {
 
     // Create mock config service
     mockConfigService = {
-      authUrl: "https://keycloak.anatoly.dev",
-      authRealm: "ankimcp-dev",
+      tunnelServerUrl: "wss://tunnel.ankimcp.ai",
       authClientId: "ankimcp-cli",
     } as jest.Mocked<AppConfigService>;
 
@@ -175,10 +174,9 @@ describe("DeviceFlowService", () => {
       );
     });
 
-    it("should have correct Keycloak configuration", () => {
+    it("should have correct tunnel configuration", () => {
       const config = service.getConfig();
-      expect(config.keycloakUrl).toBe("https://keycloak.anatoly.dev");
-      expect(config.realm).toBe("ankimcp-dev");
+      expect(config.tunnelUrl).toBe("wss://tunnel.ankimcp.ai");
       expect(config.clientId).toBe("ankimcp-cli");
     });
   });
@@ -209,7 +207,7 @@ describe("DeviceFlowService", () => {
         }),
       );
       expect(loggerSpy).toHaveBeenCalledWith(
-        "Requesting device code from Keycloak",
+        "Requesting device code from tunnel service",
       );
       expect(loggerSpy).toHaveBeenCalledWith(
         "Device code received successfully",
@@ -245,7 +243,7 @@ describe("DeviceFlowService", () => {
         DeviceFlowError,
       );
       await expect(service.requestDeviceCode()).rejects.toThrow(
-        "Cannot connect to authentication server",
+        "Cannot connect to tunnel service",
       );
 
       try {
@@ -293,7 +291,7 @@ describe("DeviceFlowService", () => {
       });
 
       await expect(service.requestDeviceCode()).rejects.toThrow(
-        "Keycloak server error. Please try again later.",
+        "Tunnel service error. Please try again later.",
       );
 
       try {
@@ -351,6 +349,12 @@ describe("DeviceFlowService", () => {
         token_type: "Bearer",
         expires_in: 3600,
         refresh_token: "test-refresh-token",
+        user: {
+          id: "user-123",
+          email: "test@example.com",
+          tier: "free",
+          customSlug: null,
+        },
       };
 
       // First poll returns success
@@ -386,6 +390,12 @@ describe("DeviceFlowService", () => {
         token_type: "Bearer",
         expires_in: 3600,
         refresh_token: "test-refresh-token",
+        user: {
+          id: "user-123",
+          email: "test@example.com",
+          tier: "free",
+          customSlug: null,
+        },
       };
 
       // First two polls return authorization_pending, third succeeds
@@ -443,6 +453,12 @@ describe("DeviceFlowService", () => {
         token_type: "Bearer",
         expires_in: 3600,
         refresh_token: "test-refresh-token",
+        user: {
+          id: "user-123",
+          email: "test@example.com",
+          tier: "free",
+          customSlug: null,
+        },
       };
 
       // First poll returns slow_down, second succeeds
@@ -633,7 +649,7 @@ describe("DeviceFlowService", () => {
       await Promise.resolve(); // Flush promises
 
       await expect(pollPromise).rejects.toThrow(
-        "Keycloak server error. Please try again later.",
+        "Tunnel service error. Please try again later.",
       );
     });
 
@@ -651,7 +667,7 @@ describe("DeviceFlowService", () => {
       await Promise.resolve(); // Flush promises
 
       await expect(pollPromise).rejects.toThrow(
-        "Cannot connect to authentication server",
+        "Cannot connect to tunnel service",
       );
     });
 
@@ -661,6 +677,12 @@ describe("DeviceFlowService", () => {
         token_type: "Bearer",
         expires_in: 3600,
         refresh_token: "test-refresh-token",
+        user: {
+          id: "user-123",
+          email: "test@example.com",
+          tier: "free",
+          customSlug: null,
+        },
       };
 
       mockKyInstance.post.mockReturnValueOnce({
@@ -684,6 +706,12 @@ describe("DeviceFlowService", () => {
         token_type: "Bearer",
         expires_in: 3600,
         refresh_token: "test-refresh-token",
+        user: {
+          id: "user-123",
+          email: "test@example.com",
+          tier: "free",
+          customSlug: null,
+        },
       };
 
       mockKyInstance.post.mockReturnValueOnce({
@@ -726,6 +754,12 @@ describe("DeviceFlowService", () => {
         token_type: "Bearer",
         expires_in: 3600,
         refresh_token: "new-refresh-token",
+        user: {
+          id: "user-123",
+          email: "test@example.com",
+          tier: "free",
+          customSlug: null,
+        },
       };
 
       mockKyInstance.post.mockReturnValue({
@@ -747,7 +781,7 @@ describe("DeviceFlowService", () => {
           body: expect.stringContaining("refresh_token=old-refresh-token"),
         }),
       );
-      expect(loggerSpy).toHaveBeenCalledWith("Refreshing access token");
+      expect(loggerSpy).toHaveBeenCalledWith("Refreshing access token via tunnel service");
       expect(loggerSpy).toHaveBeenCalledWith("Token refreshed successfully");
     });
 
@@ -821,7 +855,7 @@ describe("DeviceFlowService", () => {
       });
 
       await expect(service.refreshToken("test-token")).rejects.toThrow(
-        "Cannot connect to authentication server",
+        "Cannot connect to tunnel service",
       );
 
       try {
@@ -861,7 +895,7 @@ describe("DeviceFlowService", () => {
       });
 
       await expect(service.refreshToken("test-token")).rejects.toThrow(
-        "Keycloak server error. Please try again later.",
+        "Tunnel service error. Please try again later.",
       );
 
       try {
@@ -975,8 +1009,7 @@ describe("DeviceFlowService", () => {
       const config = service.getConfig();
 
       expect(config).toEqual({
-        keycloakUrl: "https://keycloak.anatoly.dev",
-        realm: "ankimcp-dev",
+        tunnelUrl: "wss://tunnel.ankimcp.ai",
         clientId: "ankimcp-cli",
       });
     });
@@ -991,7 +1024,7 @@ describe("DeviceFlowService", () => {
       });
 
       await expect(service.requestDeviceCode()).rejects.toThrow(
-        "Cannot connect to authentication server",
+        "Cannot connect to tunnel service",
       );
     });
 
@@ -1069,7 +1102,7 @@ describe("DeviceFlowService", () => {
       });
 
       await expect(service.requestDeviceCode()).rejects.toThrow(
-        "Keycloak server error. Please try again later.",
+        "Tunnel service error. Please try again later.",
       );
 
       try {
