@@ -26,7 +26,7 @@ export interface TokenResponse {
   user: {
     id: string;
     email: string;
-    tier: 'free' | 'paid';
+    tier: "free" | "paid";
     customSlug: string | null;
   };
 }
@@ -77,7 +77,9 @@ export class DeviceFlowService {
   constructor(private readonly config: AppConfigService) {
     const tunnelUrl = this.config.tunnelServerUrl;
     // Remove 'wss://' or 'ws://' prefix and replace with 'https://' or 'http://'
-    const httpUrl = tunnelUrl.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
+    const httpUrl = tunnelUrl
+      .replace(/^wss:/, "https:")
+      .replace(/^ws:/, "http:");
 
     this.deviceEndpoint = `${httpUrl}/auth/device`;
     this.tokenEndpoint = `${httpUrl}/auth/token`;

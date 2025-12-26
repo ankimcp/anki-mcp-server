@@ -46,7 +46,9 @@ export class InMemoryTransport implements Transport {
         pending.resolve(message);
         this.pendingRequests.delete(message.id);
       } else {
-        this.logger.warn(`Received response for unknown request ID: ${message.id}`);
+        this.logger.warn(
+          `Received response for unknown request ID: ${message.id}`,
+        );
       }
     }
     // Server-initiated notifications/requests are ignored in tunnel context

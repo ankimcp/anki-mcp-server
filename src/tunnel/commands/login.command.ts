@@ -8,7 +8,6 @@ import { cli } from "@/cli/cli-output";
 
 const execAsync = promisify(exec);
 
-
 /**
  * Open URL in default browser using platform-specific commands
  * Gracefully degrades on failure (non-critical UX enhancement)
