@@ -95,9 +95,6 @@ tsconfig.build.tsbuildinfo
 *.db
 *.sqlite
 
-# Docker
-.docker/
-
 # Claude draft files
 .claude-draft/
 
