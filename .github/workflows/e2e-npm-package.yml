@@ -54,8 +54,10 @@ jobs:
 
     - name: Start HTTP server (npm package)
       run: |
-        ankimcp &
+        nohup ankimcp > /tmp/ankimcp.log 2>&1 &
         sleep 5
+        cat /tmp/ankimcp.log
+        curl -s http://127.0.0.1:3000 -X POST -d '{}' || echo "Server not responding yet"
 
     - name: Run E2E tests (HTTP)
       run: npm run e2e:test:http
@@ -67,6 +69,11 @@ jobs:
       env:
         TEST_NPM_PACKAGE: 'true'
 
-    - name: Show container logs on failure
+    - name: Show logs on failure
       if: failure()
-      run: docker compose -f .docker/docker-compose.yml logs
+      run: |
+        echo "=== AnkiMCP Server Log ==="
+        cat /tmp/ankimcp.log || echo "No server log"
+        echo ""
+        echo "=== Docker Container Logs ==="
+        docker compose -f .docker/docker-compose.yml logs
