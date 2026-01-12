@@ -35,6 +35,7 @@
     "e2e:test": "jest --config test/e2e/jest-e2e.config.js",
     "e2e:test:http": "jest --config test/e2e/jest-e2e.config.js --testPathPatterns='http\\.e2e-spec'",
     "e2e:test:stdio": "jest --config test/e2e/jest-e2e.config.js --testPathPatterns='stdio\\.e2e-spec'",
+    "e2e:full:local": "./scripts/e2e-full.sh",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist dist-stdio dist-http node_modules",
     "inspector:stdio": "./node_modules/.bin/mcp-inspector --config mcp-inspector-config.json --server stdio-server",
