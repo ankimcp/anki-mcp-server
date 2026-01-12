@@ -1,9 +1,10 @@
-name: E2E Tests
+name: E2E Tests (Source)
 
 on:
   push:
     branches: ['**']
   pull_request:
+  workflow_call:  # Allow this workflow to be called from other workflows
 
 jobs:
   e2e:

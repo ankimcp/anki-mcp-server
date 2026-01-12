@@ -1,7 +1,11 @@
 name: E2E Tests (NPM Package)
 
 on:
-  workflow_dispatch:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_call:  # Allow this workflow to be called from other workflows
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
   e2e-npm-package:

@@ -6,7 +6,21 @@ on:
       - 'v*.*.*'
 
 jobs:
+  # Run unit tests
+  unit-tests:
+    uses: ./.github/workflows/unit-tests.yml
+
+  # Run E2E tests on source code
+  e2e-source:
+    uses: ./.github/workflows/e2e-tests.yml
+
+  # Run E2E tests on npm package
+  e2e-npm-package:
+    uses: ./.github/workflows/e2e-npm-package.yml
+
+  # Only create release if all test suites pass
   build-and-release:
+    needs: [unit-tests, e2e-source, e2e-npm-package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
