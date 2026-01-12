@@ -57,22 +57,6 @@ jobs:
         nohup ankimcp > /tmp/ankimcp.log 2>&1 &
         sleep 5
         cat /tmp/ankimcp.log
-        echo "Testing connectivity..."
-        curl -s http://127.0.0.1:3000 -X POST -d '{}' || echo "Server not responding on 127.0.0.1"
-        curl -s http://localhost:3000 -X POST -d '{}' || echo "Server not responding on localhost"
-
-    - name: Debug MCP Inspector
-      run: |
-        echo "=== Testing MCP Inspector directly ==="
-        echo "Node and npm versions:"
-        node --version
-        npm --version
-        echo ""
-        echo "Testing with 30-second timeout..."
-        timeout 30 npx @modelcontextprotocol/inspector --cli http://localhost:3000 --transport http --method tools/list 2>&1 || echo "Inspector command failed/timed out with exit code $?"
-        echo ""
-        echo "=== Server log after inspector test ==="
-        cat /tmp/ankimcp.log
 
     - name: Run E2E tests (HTTP)
       run: npm run e2e:test:http
