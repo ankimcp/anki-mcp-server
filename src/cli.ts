@@ -11,7 +11,7 @@ export interface CliOptions {
   ankiConnect: string;
   ngrok: boolean;
   readOnly: boolean;
-  login: boolean;
+  login: string | boolean;
   logout: boolean;
   tunnel: string | boolean;
   debug: boolean;
@@ -57,7 +57,7 @@ export function parseCliArgs(): CliOptions {
       "--read-only",
       "Run in read-only mode (blocks all write operations)",
     )
-    .option("--login", "Authenticate with tunnel service")
+    .option("--login [url]", "Authenticate with tunnel service")
     .option("--logout", "Clear tunnel credentials")
     .option(
       "--tunnel [url]",
@@ -106,7 +106,8 @@ Ngrok Setup (one-time):
   4. Run: ankimcp --ngrok
 
 Tunnel Mode:
-  $ ankimcp --login                           # Login to tunnel service
+  $ ankimcp --login                           # Login to default tunnel service
+  $ ankimcp --login wss://custom.server.com/tunnel   # Login to custom server
   $ ankimcp --logout                          # Clear saved credentials
   $ ankimcp --tunnel                          # Connect to localhost:3004
   $ ankimcp --tunnel wss://tunnel.ankimcp.ai/tunnel  # Production tunnel
@@ -123,7 +124,7 @@ Tunnel Mode:
     ankiConnect: options.ankiConnect,
     ngrok: options.ngrok || false,
     readOnly: options.readOnly || false,
-    login: options.login || false,
+    login: options.login ?? false,
     logout: options.logout || false,
     tunnel: options.tunnel ?? false,
     debug: options.debug || false,

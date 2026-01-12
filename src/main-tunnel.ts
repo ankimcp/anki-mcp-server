@@ -13,7 +13,9 @@ async function bootstrap() {
 
   // Handle auth commands first (mutually exclusive with tunnel mode)
   if (options.login) {
-    await handleLogin();
+    const loginUrl =
+      typeof options.login === "string" ? options.login : undefined;
+    await handleLogin(loginUrl);
     process.exit(0);
   }
 
