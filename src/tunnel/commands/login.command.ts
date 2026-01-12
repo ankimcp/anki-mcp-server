@@ -71,12 +71,13 @@ function startSpinner(message: string): () => void {
  * 6. Save credentials with enriched user data
  * 7. Display success message with user email and tier
  *
+ * @param tunnelUrl - Optional custom tunnel URL (overrides TUNNEL_SERVER_URL env var)
  * @throws {DeviceFlowError} If authentication fails
  * @throws {Error} If credential storage fails
  */
-export async function handleLogin(): Promise<void> {
+export async function handleLogin(tunnelUrl?: string): Promise<void> {
   const credentialsService = new CredentialsService();
-  const validatedConfig = loadValidatedConfig();
+  const validatedConfig = loadValidatedConfig({ tunnel: tunnelUrl });
   const appConfigService = new AppConfigService(validatedConfig);
   const deviceFlowService = new DeviceFlowService(appConfigService);
 
@@ -133,9 +134,6 @@ export async function handleLogin(): Promise<void> {
     // Step 7: Display success message with tier information
     cli.info(`Logged in as: ${tokenResponse.user.email}`);
     cli.info(`Tier: ${tokenResponse.user.tier}`);
-    if (tokenResponse.user.customSlug) {
-      cli.info(`Custom slug: ${tokenResponse.user.customSlug}`);
-    }
     cli.info(`Credentials saved to ${credentialsService.getCredentialsPath()}`);
     cli.blank();
   } catch (error) {

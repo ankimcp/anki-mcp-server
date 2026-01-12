@@ -227,6 +227,43 @@ describe("CLI Module", () => {
       expect(options.port).toBe(8080);
       expect(options.debug).toBe(true);
     });
+
+    it("should parse --login flag alone as true", () => {
+      process.argv = ["node", "ankimcp", "--login"];
+
+      const options = parseCliArgs();
+
+      expect(options.login).toBe(true);
+    });
+
+    it("should parse --login with custom URL as string", () => {
+      process.argv = [
+        "node",
+        "ankimcp",
+        "--login",
+        "wss://custom.server.com/tunnel",
+      ];
+
+      const options = parseCliArgs();
+
+      expect(options.login).toBe("wss://custom.server.com/tunnel");
+    });
+
+    it("should parse --login with WebSocket URL", () => {
+      process.argv = ["node", "ankimcp", "--login", "ws://localhost:3004"];
+
+      const options = parseCliArgs();
+
+      expect(options.login).toBe("ws://localhost:3004");
+    });
+
+    it("should parse --logout flag", () => {
+      process.argv = ["node", "ankimcp", "--logout"];
+
+      const options = parseCliArgs();
+
+      expect(options.logout).toBe(true);
+    });
   });
 
   describe("getVersion", () => {

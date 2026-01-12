@@ -16,7 +16,7 @@ export interface DeviceCodeResponse {
 
 /**
  * Token response from tunnel service
- * Enriched with user data including tier and custom slug
+ * Enriched with user data including tier information
  */
 export interface TokenResponse {
   access_token: string;
@@ -27,7 +27,6 @@ export interface TokenResponse {
     id: string;
     email: string;
     tier: "free" | "paid";
-    customSlug: string | null;
   };
 }
 
@@ -63,7 +62,7 @@ export class DeviceFlowError extends Error {
  * Implements RFC 8628: OAuth 2.0 Device Authorization Grant
  *
  * The tunnel service proxies device flow requests to Keycloak and enriches
- * token responses with user data (tier, customSlug) from the database.
+ * token responses with user data (tier) from the database.
  *
  * @see https://datatracker.ietf.org/doc/html/rfc8628
  */

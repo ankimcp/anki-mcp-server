@@ -45,7 +45,6 @@ describe("CredentialsService", () => {
       id: "user-123",
       email: "test@example.com",
       tier: "free",
-      customSlug: null,
     },
     ...overrides,
   });
@@ -175,7 +174,6 @@ describe("CredentialsService", () => {
           id: "user-456",
           email: "premium@example.com",
           tier: "paid",
-          customSlug: null,
         },
       });
 
@@ -340,6 +338,9 @@ describe("CredentialsService", () => {
       expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Corrupted credentials file"),
       );
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        "  - Missing field: access_token",
+      );
     });
 
     it("should return null when credentials structure is invalid - missing refresh_token", async () => {
@@ -486,6 +487,9 @@ describe("CredentialsService", () => {
       expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Corrupted credentials file"),
       );
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        "  - Invalid tier value: expected 'free' or 'paid', got 'invalid-tier'",
+      );
     });
 
     it("should return null when credentials structure is invalid - null user", async () => {
@@ -515,7 +519,6 @@ describe("CredentialsService", () => {
           id: "user-123",
           email: "premium@example.com",
           tier: "paid",
-          customSlug: null,
         },
       });
 
@@ -606,6 +609,65 @@ describe("CredentialsService", () => {
       expect(result).toBeNull();
       expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining("Corrupted credentials file"),
+      );
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        "  - Credentials must be an object",
+      );
+    });
+
+    it("should provide detailed type mismatch errors", async () => {
+      const invalidCredentials = {
+        access_token: 12345, // should be string
+        refresh_token: "test-refresh-token",
+        expires_at: new Date().toISOString(),
+        user: {
+          id: "user-123",
+          email: "test@example.com",
+          tier: "free",
+        },
+      };
+
+      (fs.access as jest.Mock).mockResolvedValue(undefined);
+      (fs.readFile as jest.Mock).mockResolvedValue(
+        JSON.stringify(invalidCredentials),
+      );
+
+      const result = await service.loadCredentials();
+
+      expect(result).toBeNull();
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.stringContaining("Corrupted credentials file"),
+      );
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        "  - Invalid type for access_token: expected string, got number",
+      );
+    });
+
+    it("should provide detailed error for missing user.email", async () => {
+      const invalidCredentials = {
+        access_token: "test-access-token",
+        refresh_token: "test-refresh-token",
+        expires_at: new Date().toISOString(),
+        user: {
+          id: "user-123",
+          // missing email
+          tier: "free",
+        },
+      };
+
+      (fs.access as jest.Mock).mockResolvedValue(undefined);
+      (fs.readFile as jest.Mock).mockResolvedValue(
+        JSON.stringify(invalidCredentials),
+      );
+
+      const result = await service.loadCredentials();
+
+      expect(result).toBeNull();
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.stringContaining("Corrupted credentials file"),
+      );
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        "  - Missing field: user.email",
       );
     });
   });
@@ -827,7 +889,8 @@ describe("CredentialsService", () => {
     });
 
     it("should correctly parse ISO 8601 timestamp", () => {
-      const futureDate = new Date("2025-12-31T23:59:59.000Z");
+      // Use a date far in the future to avoid test failures as time passes
+      const futureDate = new Date("2030-12-31T23:59:59.000Z");
       const credentials = createTestCredentials({
         expires_at: futureDate.toISOString(),
       });
@@ -921,7 +984,6 @@ describe("CredentialsService", () => {
           id: "1",
           email: "a@b.c",
           tier: "free",
-          customSlug: null,
         },
       };
 
@@ -944,7 +1006,6 @@ describe("CredentialsService", () => {
           id: "1",
           email: "test@example.com",
           tier: "free",
-          customSlug: null,
         },
       };
 
