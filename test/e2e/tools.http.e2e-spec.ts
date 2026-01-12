@@ -119,7 +119,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
 
     it("should have Basic model", () => {
       const result = callTool("modelNames");
-      expect((result.modelNames as string[])).toContain("Basic");
+      expect(result.modelNames as string[]).toContain("Basic");
     });
   });
 

@@ -5,12 +5,7 @@
  *   - Docker container running: npm run e2e:up
  *   - Built project: npm run build
  */
-import {
-  callTool,
-  listTools,
-  setTransport,
-  getTransport,
-} from "./helpers";
+import { callTool, listTools, setTransport, getTransport } from "./helpers";
 
 /** Generate unique suffix to avoid duplicate conflicts */
 function uniqueId(): string {
@@ -113,7 +108,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
 
     it("should have Basic model", () => {
       const result = callTool("modelNames");
-      expect((result.modelNames as string[])).toContain("Basic");
+      expect(result.modelNames as string[]).toContain("Basic");
     });
   });
 
