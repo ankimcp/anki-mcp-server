@@ -353,7 +353,6 @@ describe("DeviceFlowService", () => {
           id: "user-123",
           email: "test@example.com",
           tier: "free",
-          customSlug: null,
         },
       };
 
@@ -394,7 +393,6 @@ describe("DeviceFlowService", () => {
           id: "user-123",
           email: "test@example.com",
           tier: "free",
-          customSlug: null,
         },
       };
 
@@ -457,7 +455,6 @@ describe("DeviceFlowService", () => {
           id: "user-123",
           email: "test@example.com",
           tier: "free",
-          customSlug: null,
         },
       };
 
@@ -681,7 +678,6 @@ describe("DeviceFlowService", () => {
           id: "user-123",
           email: "test@example.com",
           tier: "free",
-          customSlug: null,
         },
       };
 
@@ -710,7 +706,6 @@ describe("DeviceFlowService", () => {
           id: "user-123",
           email: "test@example.com",
           tier: "free",
-          customSlug: null,
         },
       };
 
@@ -758,7 +753,6 @@ describe("DeviceFlowService", () => {
           id: "user-123",
           email: "test@example.com",
           tier: "free",
-          customSlug: null,
         },
       };
 
@@ -781,7 +775,9 @@ describe("DeviceFlowService", () => {
           body: expect.stringContaining("refresh_token=old-refresh-token"),
         }),
       );
-      expect(loggerSpy).toHaveBeenCalledWith("Refreshing access token via tunnel service");
+      expect(loggerSpy).toHaveBeenCalledWith(
+        "Refreshing access token via tunnel service",
+      );
       expect(loggerSpy).toHaveBeenCalledWith("Token refreshed successfully");
     });
 

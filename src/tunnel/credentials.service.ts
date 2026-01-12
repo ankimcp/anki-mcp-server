@@ -7,7 +7,7 @@ import { Logger } from "@nestjs/common";
 /**
  * Tunnel credentials structure stored in ~/.ankimcp/credentials.json
  *
- * User data is enriched by the tunnel service with tier and custom slug information.
+ * User data is enriched by the tunnel service with tier information.
  */
 export interface TunnelCredentials {
   access_token: string;
@@ -17,8 +17,15 @@ export interface TunnelCredentials {
     id: string;
     email: string;
     tier: "free" | "paid";
-    customSlug: string | null;
   };
+}
+
+/**
+ * Credentials validation result
+ */
+interface ValidationResult {
+  valid: boolean;
+  errors: string[];
 }
 
 /**
@@ -99,10 +106,14 @@ export class CredentialsService {
       const credentials = JSON.parse(content) as TunnelCredentials;
 
       // Validate structure
-      if (!this.isValidCredentials(credentials)) {
+      const validation = this.validateCredentials(credentials);
+      if (!validation.valid) {
         this.logger.warn(
-          `Corrupted credentials file at ${CredentialsService.CREDENTIALS_FILE}`,
+          `Corrupted credentials file at ${CredentialsService.CREDENTIALS_FILE}:`,
         );
+        validation.errors.forEach((error) => {
+          this.logger.warn(`  - ${error}`);
+        });
         return null;
       }
 
@@ -187,27 +198,86 @@ export class CredentialsService {
   }
 
   /**
-   * Validate credentials structure
-   * Basic runtime type checking for loaded credentials
+   * Validate credentials structure with detailed error reporting
+   * Performs comprehensive runtime type checking for loaded credentials
+   *
+   * @param obj - Object to validate
+   * @returns Validation result with specific error messages
    */
-  private isValidCredentials(obj: unknown): obj is TunnelCredentials {
+  private validateCredentials(obj: unknown): ValidationResult {
+    const errors: string[] = [];
+
+    // Check if object exists and is an object
     if (!obj || typeof obj !== "object") {
-      return false;
+      errors.push("Credentials must be an object");
+      return { valid: false, errors };
     }
 
     const creds = obj as Record<string, unknown>;
-    const user = creds.user as Record<string, unknown>;
 
-    return (
-      typeof creds.access_token === "string" &&
-      typeof creds.refresh_token === "string" &&
-      typeof creds.expires_at === "string" &&
-      typeof creds.user === "object" &&
-      creds.user !== null &&
-      typeof user.id === "string" &&
-      typeof user.email === "string" &&
-      (user.tier === "free" || user.tier === "paid") &&
-      (user.customSlug === null || typeof user.customSlug === "string")
-    );
+    // Validate top-level fields
+    if (!("access_token" in creds)) {
+      errors.push("Missing field: access_token");
+    } else if (typeof creds.access_token !== "string") {
+      errors.push(
+        `Invalid type for access_token: expected string, got ${typeof creds.access_token}`,
+      );
+    }
+
+    if (!("refresh_token" in creds)) {
+      errors.push("Missing field: refresh_token");
+    } else if (typeof creds.refresh_token !== "string") {
+      errors.push(
+        `Invalid type for refresh_token: expected string, got ${typeof creds.refresh_token}`,
+      );
+    }
+
+    if (!("expires_at" in creds)) {
+      errors.push("Missing field: expires_at");
+    } else if (typeof creds.expires_at !== "string") {
+      errors.push(
+        `Invalid type for expires_at: expected string, got ${typeof creds.expires_at}`,
+      );
+    }
+
+    // Validate user object
+    if (!("user" in creds)) {
+      errors.push("Missing field: user");
+    } else if (!creds.user || typeof creds.user !== "object") {
+      errors.push(
+        `Invalid type for user: expected object, got ${typeof creds.user}`,
+      );
+    } else {
+      const user = creds.user as Record<string, unknown>;
+
+      // Validate user.id
+      if (!("id" in user)) {
+        errors.push("Missing field: user.id");
+      } else if (typeof user.id !== "string") {
+        errors.push(
+          `Invalid type for user.id: expected string, got ${typeof user.id}`,
+        );
+      }
+
+      // Validate user.email
+      if (!("email" in user)) {
+        errors.push("Missing field: user.email");
+      } else if (typeof user.email !== "string") {
+        errors.push(
+          `Invalid type for user.email: expected string, got ${typeof user.email}`,
+        );
+      }
+
+      // Validate user.tier
+      if (!("tier" in user)) {
+        errors.push("Missing field: user.tier");
+      } else if (user.tier !== "free" && user.tier !== "paid") {
+        errors.push(
+          `Invalid tier value: expected 'free' or 'paid', got '${String(user.tier)}'`,
+        );
+      }
+    }
+
+    return { valid: errors.length === 0, errors };
   }
 }

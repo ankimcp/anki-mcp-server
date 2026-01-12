@@ -23,7 +23,6 @@ describe("TunnelClient", () => {
       id: "user123",
       email: "test@example.com",
       tier: "free",
-      customSlug: null,
     },
   };
 
