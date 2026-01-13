@@ -31,7 +31,7 @@ export class GuiAddCardsTool {
           .min(1)
           .describe('Note type/model (e.g., "Basic", "Cloze")'),
         fields: z
-          .record(z.string())
+          .record(z.string(), z.string())
           .describe(
             'Field values to pre-fill (e.g., {"Front": "question", "Back": "answer"})',
           ),

@@ -46,9 +46,9 @@ import { GuiShowQuestionTool } from "./tools/gui-show-question.tool";
 import { GuiShowAnswerTool } from "./tools/gui-show-answer.tool";
 import { GuiUndoTool } from "./tools/gui-undo.tool";
 
-const MCP_PRIMITIVES = [
-  // Client
-  AnkiConnectClient,
+// MCP tools that need to be discovered by McpNest
+// These are exported for use in AppModule.providers (required by MCP-Nest 1.9.0+)
+export const GUI_MCP_TOOLS = [
   // Browser Tools
   GuiBrowseTool,
   GuiSelectCardTool,
@@ -65,6 +65,9 @@ const MCP_PRIMITIVES = [
   GuiUndoTool,
 ];
 
+// All providers for the module (includes infrastructure like AnkiConnectClient)
+const GUI_MCP_PRIMITIVES = [AnkiConnectClient, ...GUI_MCP_TOOLS];
+
 export interface McpPrimitivesAnkiGuiModuleOptions {
   ankiConfigProvider: Provider;
   /** Required when ankiConfigProvider uses AppConfigService (provides APP_CONFIG dependency) */
@@ -76,7 +79,7 @@ export class McpPrimitivesAnkiGuiModule {
   static forRoot(options: McpPrimitivesAnkiGuiModuleOptions): DynamicModule {
     const providers: Provider[] = [
       options.ankiConfigProvider,
-      ...MCP_PRIMITIVES,
+      ...GUI_MCP_PRIMITIVES,
     ];
 
     // Add appConfigProvider if provided (needed for AppConfigService injection)
@@ -87,7 +90,7 @@ export class McpPrimitivesAnkiGuiModule {
     return {
       module: McpPrimitivesAnkiGuiModule,
       providers,
-      exports: MCP_PRIMITIVES,
+      exports: GUI_MCP_PRIMITIVES,
     };
   }
 }

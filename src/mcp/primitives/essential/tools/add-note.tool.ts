@@ -29,7 +29,7 @@ export class AddNoteTool {
         .min(1)
         .describe('The note type/model to use (e.g., "Basic", "Cloze")'),
       fields: z
-        .record(z.string())
+        .record(z.string(), z.string())
         .describe(
           'Field values as key-value pairs (e.g., {"Front": "question", "Back": "answer"})',
         ),

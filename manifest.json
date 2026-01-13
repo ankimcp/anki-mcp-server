@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "anki-mcp-server",
   "display_name": "Anki MCP Server",
-  "version": "0.8.5",
+  "version": "0.10.0",
   "license": "AGPL-3.0-or-later",
   "description": "Model Context Protocol server for Anki spaced repetition flashcard application",
   "long_description": "Transform your Anki experience with natural language interaction - like having a private tutor. This MCP server enables AI assistants to interact with Anki, allowing them to explain concepts, make learning more engaging, provide context, and adapt to your learning style. Features include review sessions, deck management, note creation and editing, and more.\n\nRequires Anki with the AnkiConnect plugin installed.",
@@ -23,6 +23,10 @@
     {
       "name": "get_due_cards",
       "description": "Get cards that are due for review, optionally filtered by deck"
+    },
+    {
+      "name": "get_cards",
+      "description": "Get cards with flexible filtering by state (due, new, learning, suspended, buried) and deck"
     },
     {
       "name": "present_card",
@@ -67,6 +71,10 @@
     {
       "name": "modelFieldNames",
       "description": "Get field names for a specific note type"
+    },
+    {
+      "name": "getTags",
+      "description": "Get all tags in the Anki collection. Helps discover existing tags before creating notes to prevent duplication"
     },
     {
       "name": "modelStyling",

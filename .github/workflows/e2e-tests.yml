@@ -1,0 +1,63 @@
+name: E2E Tests (Source)
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_call:  # Allow this workflow to be called from other workflows
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build project
+      run: npm run build
+
+    - name: Start Anki container
+      run: |
+        cd .docker
+        docker compose up -d
+        cd ..
+
+    - name: Wait for AnkiConnect
+      run: |
+        echo "Waiting for AnkiConnect to be ready..."
+        for i in {1..60}; do
+          if curl -s http://localhost:8765 -X POST -d '{"action":"version","version":6}' | grep -q "result"; then
+            echo "AnkiConnect is ready"
+            exit 0
+          fi
+          echo "Attempt $i/60 - waiting..."
+          sleep 2
+        done
+        echo "AnkiConnect failed to start"
+        docker compose -f .docker/docker-compose.yml logs
+        exit 1
+
+    - name: Start HTTP server
+      run: |
+        npm run start:prod:http &
+        sleep 5
+
+    - name: Run E2E tests (HTTP)
+      run: npm run e2e:test:http
+
+    - name: Run E2E tests (STDIO)
+      run: npm run e2e:test:stdio
+
+    - name: Show container logs on failure
+      if: failure()
+      run: docker compose -f .docker/docker-compose.yml logs

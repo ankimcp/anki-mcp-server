@@ -1,0 +1,82 @@
+name: E2E Tests (NPM Package)
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_call:  # Allow this workflow to be called from other workflows
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  e2e-npm-package:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build and pack
+      run: npm run pack:local
+
+    - name: Install package globally
+      run: npm install -g ./ankimcp-anki-mcp-server-*.tgz
+
+    - name: Verify installation
+      run: |
+        which ankimcp
+        ankimcp --version
+
+    - name: Start Anki container
+      run: |
+        cd .docker
+        docker compose up -d
+        cd ..
+
+    - name: Wait for AnkiConnect
+      run: |
+        echo "Waiting for AnkiConnect to be ready..."
+        for i in {1..60}; do
+          if curl -s http://localhost:8765 -X POST -d '{"action":"version","version":6}' | grep -q "result"; then
+            echo "AnkiConnect is ready"
+            exit 0
+          fi
+          echo "Attempt $i/60 - waiting..."
+          sleep 2
+        done
+        echo "AnkiConnect failed to start"
+        docker compose -f .docker/docker-compose.yml logs
+        exit 1
+
+    - name: Start HTTP server (npm package)
+      run: |
+        nohup ankimcp > /tmp/ankimcp.log 2>&1 &
+        sleep 5
+        cat /tmp/ankimcp.log
+
+    - name: Run E2E tests (HTTP)
+      run: npm run e2e:test:http
+      env:
+        TEST_NPM_PACKAGE: 'true'
+
+    - name: Run E2E tests (STDIO)
+      run: npm run e2e:test:stdio
+      env:
+        TEST_NPM_PACKAGE: 'true'
+
+    - name: Show logs on failure
+      if: failure()
+      run: |
+        echo "=== AnkiMCP Server Log ==="
+        cat /tmp/ankimcp.log || echo "No server log"
+        echo ""
+        echo "=== Docker Container Logs ==="
+        docker compose -f .docker/docker-compose.yml logs

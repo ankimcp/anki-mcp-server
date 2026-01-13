@@ -1,0 +1,12 @@
+services:
+  anki:
+    image: ghcr.io/ankimcp/headless-anki:x11-vnc-v1.1.0
+    volumes:
+      # Custom entrypoint to install AnkiConnect
+      - ./entrypoint.sh:/app/entrypoint.sh:ro
+      # AnkiConnect config (binds to 0.0.0.0 for container access)
+      - ./ankiconnect-config.json:/app/ankiconnect-config.json:ro
+    ports:
+      - "8765:8765"   # AnkiConnect API
+      - "5900:5900"   # VNC (for debugging)
+    entrypoint: ["/bin/bash", "/app/entrypoint.sh"]

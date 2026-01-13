@@ -64,6 +64,7 @@ export const mockCards = {
   dueCard: {
     cardId: 1502298033754,
     noteId: 1502298033753,
+    note: 1502298033753,
     deckName: "Spanish",
     question: "¿Cómo estás?",
     answer: "How are you?",
@@ -75,10 +76,14 @@ export const mockCards = {
     type: 2,
     queue: 2,
     modelName: "Basic",
+    fieldOrder: 0,
+    ord: 0,
+    css: ".card { font-family: arial; }",
   },
   newCard: {
     cardId: 1502298033758,
     noteId: 1502298033757,
+    note: 1502298033757,
     deckName: "Japanese::JLPT N5",
     question: "こんにちは",
     answer: "Hello",
@@ -90,6 +95,9 @@ export const mockCards = {
     type: 0,
     queue: 0,
     modelName: "Basic (and reversed card)",
+    fieldOrder: 0,
+    ord: 0,
+    css: ".card { font-family: arial; }",
   },
 };
 

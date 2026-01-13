@@ -4,8 +4,12 @@ import { McpModule, McpTransportType } from "@rekog/mcp-nest";
 import {
   McpPrimitivesAnkiEssentialModule,
   ANKI_CONFIG,
+  ESSENTIAL_MCP_TOOLS,
 } from "./mcp/primitives/essential";
-import { McpPrimitivesAnkiGuiModule } from "./mcp/primitives/gui";
+import {
+  McpPrimitivesAnkiGuiModule,
+  GUI_MCP_TOOLS,
+} from "./mcp/primitives/gui";
 import { AppConfigService } from "./app-config.service";
 import {
   configSchema,
@@ -70,13 +74,15 @@ export class AppModule {
           },
         }),
       ],
+      // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured
       providers: [
-        // Provide validated config for type-safe injection
         {
           provide: APP_CONFIG,
           useValue: validatedConfig,
         },
         AppConfigService,
+        ...ESSENTIAL_MCP_TOOLS,
+        ...GUI_MCP_TOOLS,
       ],
       exports: [APP_CONFIG, AppConfigService],
     };
@@ -134,13 +140,15 @@ export class AppModule {
           },
         }),
       ],
+      // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured
       providers: [
-        // Provide validated config for type-safe injection
         {
           provide: APP_CONFIG,
           useValue: validatedConfig,
         },
         AppConfigService,
+        ...ESSENTIAL_MCP_TOOLS,
+        ...GUI_MCP_TOOLS,
       ],
       exports: [APP_CONFIG, AppConfigService],
     };
@@ -196,8 +204,8 @@ export class AppModule {
           },
         }),
       ],
+      // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured
       providers: [
-        // Provide validated config for type-safe injection
         {
           provide: APP_CONFIG,
           useValue: validatedConfig,
@@ -205,6 +213,8 @@ export class AppModule {
         AppConfigService,
         // Custom tunnel MCP service (instead of StdioModule)
         TunnelMcpService,
+        ...ESSENTIAL_MCP_TOOLS,
+        ...GUI_MCP_TOOLS,
       ],
       exports: [APP_CONFIG, AppConfigService, TunnelMcpService],
     };
