@@ -9,6 +9,11 @@ import { InMemoryTransport } from "../in-memory.transport";
 // Mock InMemoryTransport
 jest.mock("../in-memory.transport");
 
+// Mock version to avoid hardcoding version strings in tests
+jest.mock("../../version", () => ({
+  getVersion: jest.fn().mockReturnValue("test-version"),
+}));
+
 // Mock McpServer
 jest.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
   McpServer: jest.fn(),
@@ -102,7 +107,7 @@ describe("TunnelMcpService", () => {
       await service.onApplicationBootstrap();
 
       expect(McpServer).toHaveBeenCalledWith(
-        { name: "anki-mcp-server", version: "0.8.5" },
+        { name: "anki-mcp-server", version: "test-version" },
         { capabilities: {} },
       );
     });
@@ -118,7 +123,7 @@ describe("TunnelMcpService", () => {
 
       expect(registry.getTools).toHaveBeenCalledWith(mockMcpModuleId);
       expect(McpServer).toHaveBeenCalledWith(
-        { name: "anki-mcp-server", version: "0.8.5" },
+        { name: "anki-mcp-server", version: "test-version" },
         {
           capabilities: {
             tools: { listChanged: true },
@@ -135,7 +140,7 @@ describe("TunnelMcpService", () => {
 
       expect(registry.getResources).toHaveBeenCalledWith(mockMcpModuleId);
       expect(McpServer).toHaveBeenCalledWith(
-        { name: "anki-mcp-server", version: "0.8.5" },
+        { name: "anki-mcp-server", version: "test-version" },
         {
           capabilities: {
             resources: { listChanged: true },
@@ -158,7 +163,7 @@ describe("TunnelMcpService", () => {
         mockMcpModuleId,
       );
       expect(McpServer).toHaveBeenCalledWith(
-        { name: "anki-mcp-server", version: "0.8.5" },
+        { name: "anki-mcp-server", version: "test-version" },
         {
           capabilities: {
             resources: { listChanged: true },
@@ -175,7 +180,7 @@ describe("TunnelMcpService", () => {
 
       expect(registry.getPrompts).toHaveBeenCalledWith(mockMcpModuleId);
       expect(McpServer).toHaveBeenCalledWith(
-        { name: "anki-mcp-server", version: "0.8.5" },
+        { name: "anki-mcp-server", version: "test-version" },
         {
           capabilities: {
             prompts: { listChanged: true },
@@ -194,7 +199,7 @@ describe("TunnelMcpService", () => {
       await service.onApplicationBootstrap();
 
       expect(McpServer).toHaveBeenCalledWith(
-        { name: "anki-mcp-server", version: "0.8.5" },
+        { name: "anki-mcp-server", version: "test-version" },
         {
           capabilities: {
             tools: { listChanged: true },
