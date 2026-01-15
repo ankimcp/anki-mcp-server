@@ -31,12 +31,13 @@ jobs:
       - name: Publish to npm as @ankimcp/anki-mcp-server
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          echo "Package version: $VERSION"
 
           # Extract prerelease tag (e.g., "beta" from "0.12.0-beta.1")
           if [[ "$VERSION" =~ -([a-zA-Z]+) ]]; then
-            TAG="${BASH_REMATCH[1]}"
-            echo "Publishing prerelease to tag: $TAG"
-            npm publish --access public --tag "$TAG"
+            NPM_TAG="${BASH_REMATCH[1]}"
+            echo "Publishing prerelease to tag: $NPM_TAG"
+            npm publish --access public --tag "$NPM_TAG"
           else
             echo "Publishing stable release to latest"
             npm publish --access public
