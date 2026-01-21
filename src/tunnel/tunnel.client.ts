@@ -1,6 +1,7 @@
 import { EventEmitter } from "events";
 import WebSocket from "ws";
 import { Logger } from "@nestjs/common";
+import { HTTPError } from "ky";
 import {
   ServerMessage,
   TunnelEstablishedMessage,
@@ -73,6 +74,9 @@ export class TunnelClient extends EventEmitter {
   private currentTunnelUrl: string | null = null;
   private credentials: TunnelCredentials | null = null;
   private connectionTimeout: NodeJS.Timeout | null = null;
+  private lastServerPingTime: number = 0;
+  private healthCheckInterval: NodeJS.Timeout | null = null;
+  private pongTimeout: NodeJS.Timeout | null = null;
 
   constructor(
     private readonly mcpHandler: McpRequestHandler,
@@ -143,6 +147,7 @@ export class TunnelClient extends EventEmitter {
     this.isManualDisconnect = true;
     this.clearReconnectTimer();
     this.clearConnectionTimeout();
+    this.stopHealthCheck();
 
     if (this.ws) {
       this.ws.close(TunnelCloseCodes.NORMAL, "Client disconnect");
@@ -203,6 +208,9 @@ export class TunnelClient extends EventEmitter {
         this.logger.log("WebSocket connected, waiting for tunnel_established");
       });
 
+      // Handle WebSocket-level pong (for health checks)
+      this.ws.on("pong", () => this.handlePong());
+
       // Handle messages
       this.ws.on("message", (data: WebSocket.Data) => {
         try {
@@ -216,6 +224,7 @@ export class TunnelClient extends EventEmitter {
             const establishedMsg = message as TunnelEstablishedMessage;
             this.currentTunnelUrl = establishedMsg.url;
             this.logger.log(`Tunnel established: ${establishedMsg.url}`);
+            this.startHealthCheck();
             this.emit("connected");
             this.emit("tunnel_url", establishedMsg.url);
             resolve(establishedMsg.url);
@@ -248,6 +257,7 @@ export class TunnelClient extends EventEmitter {
       // Handle connection close
       this.ws.on("close", (code: number, reason: Buffer) => {
         this.clearConnectionTimeout();
+        this.stopHealthCheck();
         const reasonStr = reason.toString();
         this.logger.log(`WebSocket closed: ${code} - ${reasonStr}`);
 
@@ -365,6 +375,7 @@ export class TunnelClient extends EventEmitter {
    * Responds with pong to keep connection alive
    */
   private handlePing(message: TunnelPingMessage): void {
+    this.lastServerPingTime = Date.now();
     this.logger.debug("Received ping, sending pong");
     this.sendPong({ type: "pong", timestamp: message.timestamp });
   }
@@ -472,17 +483,103 @@ export class TunnelClient extends EventEmitter {
         await this.connect();
       } catch (error) {
         this.logger.error("Reconnection failed:", error);
-        this.emit(
-          "error",
-          new TunnelClientError(
-            "Reconnection failed",
-            "reconnect_failed",
-            error,
-          ),
-        );
+
+        // Don't wrap session_expired errors - emit them directly
+        if (
+          error instanceof TunnelClientError &&
+          error.code === "session_expired"
+        ) {
+          this.emit("error", error);
+        } else {
+          this.emit(
+            "error",
+            new TunnelClientError(
+              "Reconnection failed",
+              "reconnect_failed",
+              error,
+            ),
+          );
+        }
         // handleReconnection will be called again via close handler
       }
     }, delay);
+  }
+
+  /**
+   * Start periodic health checks for connection liveness
+   */
+  private startHealthCheck(): void {
+    this.stopHealthCheck();
+    this.lastServerPingTime = Date.now();
+
+    this.healthCheckInterval = setInterval(() => {
+      this.checkConnectionHealth();
+    }, TUNNEL_DEFAULTS.HEARTBEAT_INTERVAL);
+  }
+
+  /**
+   * Stop health check interval and clear pong timeout
+   */
+  private stopHealthCheck(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+    }
+    if (this.pongTimeout) {
+      clearTimeout(this.pongTimeout);
+      this.pongTimeout = null;
+    }
+  }
+
+  /**
+   * Check connection health using both passive and active methods
+   * Passive: Check if server has been silent too long
+   * Active: Send WebSocket ping and expect pong response
+   */
+  private checkConnectionHealth(): void {
+    if (this.ws?.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    const timeSinceServerPing = Date.now() - this.lastServerPingTime;
+    const maxSilence = TUNNEL_DEFAULTS.HEARTBEAT_INTERVAL * 2; // 60s
+
+    // PASSIVE CHECK: Has server been silent too long?
+    if (timeSinceServerPing > maxSilence) {
+      this.logger.error(
+        `Connection appears dead: no server ping in ${Math.round(timeSinceServerPing / 1000)}s`,
+      );
+      this.ws.terminate();
+      return;
+    }
+
+    // ACTIVE CHECK: Send WebSocket-level ping and expect pong
+    this.logger.debug("Sending health check ping");
+    this.ws.ping();
+
+    // Clear any existing pong timeout
+    if (this.pongTimeout) {
+      clearTimeout(this.pongTimeout);
+    }
+
+    // Set timeout for pong response
+    this.pongTimeout = setTimeout(() => {
+      this.logger.error(
+        `Connection dead: no pong received in ${TUNNEL_DEFAULTS.HEARTBEAT_TIMEOUT}ms`,
+      );
+      this.ws?.terminate();
+    }, TUNNEL_DEFAULTS.HEARTBEAT_TIMEOUT);
+  }
+
+  /**
+   * Handle pong response from WebSocket-level ping
+   */
+  private handlePong(): void {
+    this.logger.debug("Received pong (health check)");
+    if (this.pongTimeout) {
+      clearTimeout(this.pongTimeout);
+      this.pongTimeout = null;
+    }
   }
 
   /**
@@ -519,20 +616,15 @@ export class TunnelClient extends EventEmitter {
       await this.credentialsService.saveCredentials(this.credentials);
       this.logger.log("Access token refreshed and saved");
     } catch (error) {
-      // If refresh fails (invalid/expired refresh token), clear credentials
-      if (error instanceof DeviceFlowError && error.code === "invalid_grant") {
-        this.logger.error(
-          "Refresh token invalid/expired, clearing credentials",
-        );
-        await this.credentialsService.clearCredentials();
-        this.credentials = null;
+      // Any error during token refresh means we need to re-authenticate
+      // This includes: invalid_grant, http_error, auth_failed, server_error, etc.
+      if (error instanceof DeviceFlowError || error instanceof HTTPError) {
         throw new TunnelClientError(
-          "Session expired. Please login again.",
+          "Session expired. Please run `ankimcp --login` to re-authenticate.",
           "session_expired",
           error,
         );
       }
-
       throw error;
     }
   }
