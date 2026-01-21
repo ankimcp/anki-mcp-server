@@ -196,6 +196,16 @@ export async function handleTunnel(
     // Set up error listener BEFORE connecting to prevent unhandled 'error' event crash
     // (Node's EventEmitter throws if 'error' event has no listener)
     tunnelClient.on("error", (error: Error) => {
+      // Check for session expired error
+      if (
+        error instanceof TunnelClientError &&
+        error.code === "session_expired"
+      ) {
+        console.error("\n❌ " + error.message);
+        tunnelClient.disconnect();
+        process.exit(1);
+      }
+
       // During connect(), errors are caught by try/catch, so we only log post-connect errors
       if (tunnelClient.isConnected()) {
         cli.error(`Tunnel error: ${error.message}`, error);
@@ -213,6 +223,16 @@ export async function handleTunnel(
       cli.blank();
     } catch (error) {
       connectSpinner();
+
+      // Check for session expired error
+      if (
+        error instanceof TunnelClientError &&
+        error.code === "session_expired"
+      ) {
+        console.error("\n❌ " + error.message);
+        await app.close();
+        process.exit(1);
+      }
 
       // Format user-friendly error message
       const errorMessage = formatConnectionError(error, tunnelUrl);
