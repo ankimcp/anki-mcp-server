@@ -77,9 +77,11 @@ All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`.
 
 1. Create `src/mcp/primitives/essential/tools/your-tool.tool.ts`
 2. Export from `src/mcp/primitives/essential/index.ts`
-3. Add to `MCP_PRIMITIVES` array
+3. Add to `ESSENTIAL_MCP_TOOLS` array
 4. **Update `manifest.json`** ← Don't forget!
 5. Create test: `src/mcp/primitives/essential/tools/__tests__/your-tool.tool.spec.ts`
+
+**Note**: `ESSENTIAL_MCP_TOOLS` contains tools, prompts, and resources that MCP-Nest discovers. The separate `ESSENTIAL_MCP_PRIMITIVES` array adds infrastructure like `AnkiConnectClient`.
 
 ### GUI Tools (interface operations)
 
@@ -141,6 +143,8 @@ Check `.claude-draft/` for implementation plans and analysis:
 - `ACTIONS_IMPLEMENTATION.md` - AnkiConnect API coverage tracking
 - `PROJECT_SUMMARY.md` - Architecture decisions
 - `TEST_PLAN.md` - Testing strategy
+- `MODEL_ACTIONS_IMPLEMENTATION_PLAN.md` - Model/template tools
+- `gui-tools-implementation-plan.md` - GUI tools implementation
 
 ## Environment
 

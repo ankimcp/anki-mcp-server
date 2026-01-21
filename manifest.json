@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "anki-mcp-server",
   "display_name": "Anki MCP Server",
-  "version": "0.11.0",
+  "version": "0.12.1-beta.1",
   "license": "AGPL-3.0-or-later",
   "description": "Model Context Protocol server for Anki spaced repetition flashcard application",
   "long_description": "Transform your Anki experience with natural language interaction - like having a private tutor. This MCP server enables AI assistants to interact with Anki, allowing them to explain concepts, make learning more engaging, provide context, and adapt to your learning style. Features include review sessions, deck management, note creation and editing, and more.\n\nRequires Anki with the AnkiConnect plugin installed.",
@@ -139,6 +139,18 @@
     {
       "name": "tagActions",
       "description": "Manage tags on Anki notes. Actions: addTags (add tags to notes), removeTags (remove tags from notes), replaceTags (rename a tag), clearUnusedTags (remove orphaned tags). Use getTags to discover existing tags first"
+    },
+    {
+      "name": "deck_stats",
+      "description": "Get comprehensive statistics for a single deck including card counts, ease factor distribution, and interval distribution"
+    },
+    {
+      "name": "collection_stats",
+      "description": "Get aggregated statistics across all decks in the collection with per-deck breakdown"
+    },
+    {
+      "name": "review_stats",
+      "description": "Get review history analysis including temporal patterns, retention metrics, and study streak information"
     }
   ],
   "prompts_generated": true,
