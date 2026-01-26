@@ -51,20 +51,42 @@ export class GetDueCardsTool {
       await context.reportProgress({ progress: 10, total: 100 });
 
       // Build search query for due cards
-      let query = "is:due";
+      // Include due, learning, and new cards, but exclude suspended cards
+      let query: string;
       if (deck_name) {
-        // Escape special characters in deck name for Anki search
         const escapedDeckName = deck_name.replace(/"/g, '\\"');
-        query = `"deck:${escapedDeckName}" ${query}`;
+        query = `"deck:${escapedDeckName}" -is:suspended (is:due OR is:learn OR is:new)`;
+        this.logger.log(`🔍 Deck filter requested: "${deck_name}"`);
+        this.logger.log(`🔍 Constructed query: ${query}`);
+        // Output to stderr for MCP stdio visibility
+        console.error(`[get_due_cards] Received deck_name: "${deck_name}"`);
+        console.error(`[get_due_cards] Escaped deck name: "${escapedDeckName}"`);
+        console.error(`[get_due_cards] Final query: "${query}"`);
+      } else {
+        query = "-is:suspended (is:due OR is:learn OR is:new)";
+        this.logger.log(`🔍 No deck filter - searching all decks`);
+        this.logger.log(`🔍 Constructed query: ${query}`);
+        console.error(`[get_due_cards] No deck filter, query: "${query}"`);
       }
 
       // Find due cards using AnkiConnect
+      this.logger.log(`📡 Calling AnkiConnect findCards with query: "${query}"`);
+      console.error(`[get_due_cards] About to call AnkiConnect.findCards with query: "${query}"`);
       const cardIds = await this.ankiClient.invoke<number[]>("findCards", {
         query,
       });
-
-      if (cardIds.length === 0) {
-        this.logger.log("No due cards found");
+      this.logger.log(`📊 AnkiConnect returned ${cardIds.length} card ID(s)`);
+      console.error(`[get_due_cards] AnkiConnect.findCards returned ${cardIds.length} card ID(s)`);
+      if (cardIds.length > 0) {
+        this.logger.log(`📋 First few card IDs: ${cardIds.slice(0, 5).join(", ")}`);
+        console.error(`[get_due_cards] First 5 card IDs: [${cardIds.slice(0, 5).join(", ")}]`);
+      } else {
+        this.logger.warn(`⚠️  No due cards found for query: "${query}"`);
+        console.error(`[get_due_cards] ⚠️  ZERO cards returned for query: "${query}"`);
+        console.error(`[get_due_cards] This suggests either:`);
+        console.error(`[get_due_cards]   1. No cards match this query in Anki`);
+        console.error(`[get_due_cards]   2. The query syntax is incorrect`);
+        console.error(`[get_due_cards]   3. AnkiConnect is not returning the expected data`);
         await context.reportProgress({ progress: 100, total: 100 });
         return createSuccessResponse({
           success: true,

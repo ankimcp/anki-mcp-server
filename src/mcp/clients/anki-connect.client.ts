@@ -87,6 +87,13 @@ export class AnkiConnectClient {
 
     try {
       this.logger.log(`Invoking AnkiConnect action: ${action}`);
+      
+      // Log to stderr for MCP stdio visibility
+      console.error(`[AnkiConnectClient] ===== REQUEST =====`);
+      console.error(`[AnkiConnectClient] Action: ${action}`);
+      console.error(`[AnkiConnectClient] Params: ${JSON.stringify(params, null, 2)}`);
+      console.error(`[AnkiConnectClient] Full request body: ${JSON.stringify(request, null, 2)}`);
+      console.error(`[AnkiConnectClient] URL: ${this.config.ankiConnectUrl}`);
 
       const response = await this.client
         .post("", {
@@ -94,8 +101,18 @@ export class AnkiConnectClient {
         })
         .json<AnkiConnectResponse<T>>();
 
+      // Log response to stderr
+      console.error(`[AnkiConnectClient] ===== RESPONSE =====`);
+      console.error(`[AnkiConnectClient] Response: ${JSON.stringify(response, null, 2)}`);
+      console.error(`[AnkiConnectClient] Result type: ${typeof response.result}`);
+      console.error(`[AnkiConnectClient] Result is array: ${Array.isArray(response.result)}`);
+      if (Array.isArray(response.result)) {
+        console.error(`[AnkiConnectClient] Result array length: ${response.result.length}`);
+      }
+
       // Check for AnkiConnect errors
       if (response.error) {
+        console.error(`[AnkiConnectClient] ⚠️  AnkiConnect returned error: ${response.error}`);
         throw new AnkiConnectError(
           `AnkiConnect error: ${response.error}`,
           action,
@@ -104,10 +121,18 @@ export class AnkiConnectClient {
       }
 
       this.logger.log(`AnkiConnect action successful: ${action}`);
+      console.error(`[AnkiConnectClient] ===== SUCCESS =====`);
       return response.result;
     } catch (error) {
+      // Log error to stderr
+      console.error(`[AnkiConnectClient] ===== ERROR =====`);
+      console.error(`[AnkiConnectClient] Action that failed: ${action}`);
+      console.error(`[AnkiConnectClient] Error type: ${error?.constructor?.name}`);
+      console.error(`[AnkiConnectClient] Error message: ${error instanceof Error ? error.message : String(error)}`);
+      
       // Handle HTTP errors
       if (error instanceof HTTPError) {
+        console.error(`[AnkiConnectClient] HTTP Status: ${error.response.status}`);
         if (error.response.status === 403) {
           throw new AnkiConnectError(
             "Permission denied. Please check AnkiConnect configuration and API key.",
@@ -122,6 +147,7 @@ export class AnkiConnectClient {
 
       // Handle connection errors
       if (error instanceof Error && error.message.includes("fetch")) {
+        console.error(`[AnkiConnectClient] Connection error - Anki may not be running`);
         throw new AnkiConnectError(
           "Cannot connect to Anki. Please ensure Anki is running and AnkiConnect plugin is installed.",
           action,
