@@ -31,7 +31,7 @@ export class UpdateNoteFieldsTool {
             "The ID of the note to update. Get this from findNotes or notesInfo.",
           ),
         fields: z
-          .record(z.string())
+          .record(z.string(), z.string())
           .describe(
             "Fields to update with new content. Only include fields you want to change. " +
               'HTML content is supported. Example: {"Front": "<b>New question</b>", "Back": "New answer"}',

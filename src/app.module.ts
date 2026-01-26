@@ -4,8 +4,12 @@ import { McpModule, McpTransportType } from "@rekog/mcp-nest";
 import {
   McpPrimitivesAnkiEssentialModule,
   ANKI_CONFIG,
+  ESSENTIAL_MCP_TOOLS,
 } from "./mcp/primitives/essential";
-import { McpPrimitivesAnkiGuiModule } from "./mcp/primitives/gui";
+import {
+  McpPrimitivesAnkiGuiModule,
+  GUI_MCP_TOOLS,
+} from "./mcp/primitives/gui";
 import { AnkiConfigService } from "./anki-config.service";
 
 @Module({})
@@ -47,7 +51,8 @@ export class AppModule {
           },
         }),
       ],
-      providers: [AnkiConfigService],
+      // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured
+      providers: [AnkiConfigService, ...ESSENTIAL_MCP_TOOLS, ...GUI_MCP_TOOLS],
     };
   }
 
@@ -89,7 +94,8 @@ export class AppModule {
           },
         }),
       ],
-      providers: [AnkiConfigService],
+      // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured
+      providers: [AnkiConfigService, ...ESSENTIAL_MCP_TOOLS, ...GUI_MCP_TOOLS],
     };
   }
 }

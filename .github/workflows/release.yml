@@ -3,10 +3,25 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
+  # Run unit tests
+  unit-tests:
+    uses: ./.github/workflows/unit-tests.yml
+
+  # Run E2E tests on source code
+  e2e-source:
+    uses: ./.github/workflows/e2e-tests.yml
+
+  # Run E2E tests on npm package
+  e2e-npm-package:
+    uses: ./.github/workflows/e2e-npm-package.yml
+
+  # Only create release if all test suites pass
   build-and-release:
+    needs: [unit-tests, e2e-source, e2e-npm-package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -26,10 +41,21 @@ jobs:
       - name: Bundle
         run: npm run mcpb:bundle
 
+      - name: Check if prerelease
+        id: check_prerelease
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *"-"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: '*.mcpb'
           generate_release_notes: true
+          prerelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

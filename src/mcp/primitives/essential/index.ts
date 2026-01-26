@@ -19,6 +19,7 @@ export { SyncTool } from "./tools/sync.tool";
 export { ListDecksTool } from "./tools/list-decks.tool";
 export { CreateDeckTool } from "./tools/create-deck.tool";
 export { GetDueCardsTool } from "./tools/get-due-cards.tool";
+export { GetCardsTool } from "./tools/get-cards.tool";
 export { PresentCardTool } from "./tools/present-card.tool";
 export { RateCardTool } from "./tools/rate-card.tool";
 export { ModelNamesTool } from "./tools/model-names.tool";
@@ -32,6 +33,11 @@ export { NotesInfoTool } from "./tools/notes-info.tool";
 export { UpdateNoteFieldsTool } from "./tools/update-note-fields.tool";
 export { DeleteNotesTool } from "./tools/delete-notes.tool";
 export { MediaActionsTool } from "./tools/mediaActions";
+export { GetTagsTool } from "./tools/get-tags.tool";
+export { TagActionsTool } from "./tools/tagActions";
+export { DeckStatsTool } from "./tools/deck-stats";
+export { CollectionStatsTool } from "./tools/collection-stats";
+export { ReviewStatsTool } from "./tools/review-stats";
 
 // Prompts
 export { ReviewSessionPrompt } from "./prompts/review-session.prompt";
@@ -47,6 +53,7 @@ import { SyncTool } from "./tools/sync.tool";
 import { ListDecksTool } from "./tools/list-decks.tool";
 import { CreateDeckTool } from "./tools/create-deck.tool";
 import { GetDueCardsTool } from "./tools/get-due-cards.tool";
+import { GetCardsTool } from "./tools/get-cards.tool";
 import { PresentCardTool } from "./tools/present-card.tool";
 import { RateCardTool } from "./tools/rate-card.tool";
 import { ModelNamesTool } from "./tools/model-names.tool";
@@ -60,18 +67,23 @@ import { NotesInfoTool } from "./tools/notes-info.tool";
 import { UpdateNoteFieldsTool } from "./tools/update-note-fields.tool";
 import { DeleteNotesTool } from "./tools/delete-notes.tool";
 import { MediaActionsTool } from "./tools/mediaActions";
+import { GetTagsTool } from "./tools/get-tags.tool";
+import { TagActionsTool } from "./tools/tagActions";
+import { DeckStatsTool } from "./tools/deck-stats";
+import { CollectionStatsTool } from "./tools/collection-stats";
+import { ReviewStatsTool } from "./tools/review-stats";
 import { ReviewSessionPrompt } from "./prompts/review-session.prompt";
 import { TwentyRulesPrompt } from "./prompts/twenty-rules.prompt";
 import { SystemInfoResource } from "./resources/system-info.resource";
 
-const MCP_PRIMITIVES = [
-  // Client
-  AnkiConnectClient,
-  // Tools
+// MCP primitives that need to be discovered by McpNest (tools, prompts, resources)
+// These are exported for use in AppModule.providers (required by MCP-Nest 1.9.0+)
+export const ESSENTIAL_MCP_TOOLS = [
   SyncTool,
   ListDecksTool,
   CreateDeckTool,
   GetDueCardsTool,
+  GetCardsTool,
   PresentCardTool,
   RateCardTool,
   ModelNamesTool,
@@ -85,12 +97,20 @@ const MCP_PRIMITIVES = [
   UpdateNoteFieldsTool,
   DeleteNotesTool,
   MediaActionsTool,
+  GetTagsTool,
+  TagActionsTool,
+  DeckStatsTool,
+  CollectionStatsTool,
+  ReviewStatsTool,
   // Prompts
   ReviewSessionPrompt,
   TwentyRulesPrompt,
   // Resources
   SystemInfoResource,
 ];
+
+// All providers for the module (includes infrastructure like AnkiConnectClient)
+const ESSENTIAL_MCP_PRIMITIVES = [AnkiConnectClient, ...ESSENTIAL_MCP_TOOLS];
 
 export interface McpPrimitivesAnkiEssentialModuleOptions {
   ankiConfigProvider: Provider;
@@ -103,8 +123,8 @@ export class McpPrimitivesAnkiEssentialModule {
   ): DynamicModule {
     return {
       module: McpPrimitivesAnkiEssentialModule,
-      providers: [options.ankiConfigProvider, ...MCP_PRIMITIVES],
-      exports: MCP_PRIMITIVES,
+      providers: [options.ankiConfigProvider, ...ESSENTIAL_MCP_PRIMITIVES],
+      exports: ESSENTIAL_MCP_PRIMITIVES,
     };
   }
 }

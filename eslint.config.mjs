@@ -53,6 +53,14 @@ export default tseslint.config(
   },
 
   {
+    // Test files - relax strict typing rules
+    files: ['**/*.spec.ts', '**/*.test.ts', '**/test/**/*.ts', '**/__tests__/**/*.ts', '**/test-fixtures/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+
+  {
     // Ignore patterns
     ignores: [
       'dist/**',
