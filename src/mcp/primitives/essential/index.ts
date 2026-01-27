@@ -34,6 +34,10 @@ export { UpdateNoteFieldsTool } from "./tools/update-note-fields.tool";
 export { DeleteNotesTool } from "./tools/delete-notes.tool";
 export { MediaActionsTool } from "./tools/mediaActions";
 export { GetTagsTool } from "./tools/get-tags.tool";
+export { TagActionsTool } from "./tools/tagActions";
+export { DeckStatsTool } from "./tools/deck-stats";
+export { CollectionStatsTool } from "./tools/collection-stats";
+export { ReviewStatsTool } from "./tools/review-stats";
 
 // Prompts
 export { ReviewSessionPrompt } from "./prompts/review-session.prompt";
@@ -64,6 +68,10 @@ import { UpdateNoteFieldsTool } from "./tools/update-note-fields.tool";
 import { DeleteNotesTool } from "./tools/delete-notes.tool";
 import { MediaActionsTool } from "./tools/mediaActions";
 import { GetTagsTool } from "./tools/get-tags.tool";
+import { TagActionsTool } from "./tools/tagActions";
+import { DeckStatsTool } from "./tools/deck-stats";
+import { CollectionStatsTool } from "./tools/collection-stats";
+import { ReviewStatsTool } from "./tools/review-stats";
 import { ReviewSessionPrompt } from "./prompts/review-session.prompt";
 import { TwentyRulesPrompt } from "./prompts/twenty-rules.prompt";
 import { SystemInfoResource } from "./resources/system-info.resource";
@@ -90,6 +98,10 @@ export const ESSENTIAL_MCP_TOOLS = [
   DeleteNotesTool,
   MediaActionsTool,
   GetTagsTool,
+  TagActionsTool,
+  DeckStatsTool,
+  CollectionStatsTool,
+  ReviewStatsTool,
   // Prompts
   ReviewSessionPrompt,
   TwentyRulesPrompt,

@@ -179,6 +179,188 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
       expect(result.tags as string[]).toContain(filterableTag);
       expect((result.tags as string[]).length).toBeGreaterThanOrEqual(1);
     });
+
+    describe("tagActions", () => {
+      it("should add tags to notes", () => {
+        const uid = uniqueId();
+        const deckName = `HTTP::AddTags${uid}`;
+        const newTag = `http-added-${uid}`;
+
+        // Create deck and note without tags
+        callTool("create_deck", { deck_name: deckName });
+        const addResult = callTool("addNote", {
+          deckName: deckName,
+          modelName: "Basic",
+          fields: {
+            Front: `AddTags Test ${uid}`,
+            Back: `AddTags Answer ${uid}`,
+          },
+        });
+        const noteId = addResult.noteId as number;
+
+        // Add tags using tagActions
+        const result = callTool("tagActions", {
+          action: "addTags",
+          notes: [noteId],
+          tags: newTag,
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.notesAffected).toBe(1);
+        expect(result.tagsAdded).toContain(newTag);
+
+        // Verify tag was added via notesInfo
+        const infoResult = callTool("notesInfo", { notes: [noteId] });
+        const notes = infoResult.notes as Array<{ tags: string[] }>;
+        expect(notes[0].tags).toContain(newTag);
+      });
+
+      it("should add multiple space-separated tags", () => {
+        const uid = uniqueId();
+        const deckName = `HTTP::MultiTags${uid}`;
+        const tag1 = `http-multi1-${uid}`;
+        const tag2 = `http-multi2-${uid}`;
+
+        // Create deck and note
+        callTool("create_deck", { deck_name: deckName });
+        const addResult = callTool("addNote", {
+          deckName: deckName,
+          modelName: "Basic",
+          fields: {
+            Front: `MultiTag Test ${uid}`,
+            Back: `MultiTag Answer ${uid}`,
+          },
+        });
+        const noteId = addResult.noteId as number;
+
+        // Add multiple tags (space-separated)
+        const result = callTool("tagActions", {
+          action: "addTags",
+          notes: [noteId],
+          tags: `${tag1} ${tag2}`,
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.tagsAdded).toContain(tag1);
+        expect(result.tagsAdded).toContain(tag2);
+
+        // Verify both tags exist
+        const infoResult = callTool("notesInfo", { notes: [noteId] });
+        const notes = infoResult.notes as Array<{ tags: string[] }>;
+        expect(notes[0].tags).toContain(tag1);
+        expect(notes[0].tags).toContain(tag2);
+      });
+
+      it("should remove tags from notes", () => {
+        const uid = uniqueId();
+        const deckName = `HTTP::RemoveTags${uid}`;
+        const tagToRemove = `http-remove-${uid}`;
+
+        // Create deck and note with tag
+        callTool("create_deck", { deck_name: deckName });
+        const addResult = callTool("addNote", {
+          deckName: deckName,
+          modelName: "Basic",
+          fields: {
+            Front: `RemoveTags Test ${uid}`,
+            Back: `RemoveTags Answer ${uid}`,
+          },
+          tags: [tagToRemove],
+        });
+        const noteId = addResult.noteId as number;
+
+        // Verify tag exists
+        let infoResult = callTool("notesInfo", { notes: [noteId] });
+        let notes = infoResult.notes as Array<{ tags: string[] }>;
+        expect(notes[0].tags).toContain(tagToRemove);
+
+        // Remove tag using tagActions
+        const result = callTool("tagActions", {
+          action: "removeTags",
+          notes: [noteId],
+          tags: tagToRemove,
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.notesAffected).toBe(1);
+        expect(result.tagsRemoved).toContain(tagToRemove);
+
+        // Verify tag was removed
+        infoResult = callTool("notesInfo", { notes: [noteId] });
+        notes = infoResult.notes as Array<{ tags: string[] }>;
+        expect(notes[0].tags).not.toContain(tagToRemove);
+      });
+
+      it("should replace tag on notes", () => {
+        const uid = uniqueId();
+        const deckName = `HTTP::ReplaceTags${uid}`;
+        const oldTag = `http-old-${uid}`;
+        const newTag = `http-new-${uid}`;
+
+        // Create deck and note with old tag
+        callTool("create_deck", { deck_name: deckName });
+        const addResult = callTool("addNote", {
+          deckName: deckName,
+          modelName: "Basic",
+          fields: {
+            Front: `ReplaceTags Test ${uid}`,
+            Back: `ReplaceTags Answer ${uid}`,
+          },
+          tags: [oldTag],
+        });
+        const noteId = addResult.noteId as number;
+
+        // Replace tag using tagActions
+        const result = callTool("tagActions", {
+          action: "replaceTags",
+          notes: [noteId],
+          tagToReplace: oldTag,
+          replaceWithTag: newTag,
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.notesAffected).toBe(1);
+        expect(result.tagToReplace).toBe(oldTag);
+        expect(result.replaceWithTag).toBe(newTag);
+
+        // Verify tag was replaced
+        const infoResult = callTool("notesInfo", { notes: [noteId] });
+        const notes = infoResult.notes as Array<{ tags: string[] }>;
+        expect(notes[0].tags).not.toContain(oldTag);
+        expect(notes[0].tags).toContain(newTag);
+      });
+
+      it("should clear unused tags", () => {
+        // clearUnusedTags removes orphaned tags from the collection
+        // We can't easily verify this in E2E, but we can ensure it executes
+        const result = callTool("tagActions", {
+          action: "clearUnusedTags",
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.message).toContain("Successfully cleared unused tags");
+      });
+
+      it("should fail when notes array is missing for addTags", () => {
+        const result = callTool("tagActions", {
+          action: "addTags",
+          tags: "test-tag",
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("notes array is required");
+      });
+
+      it("should fail when tags string is missing for removeTags", () => {
+        const result = callTool("tagActions", {
+          action: "removeTags",
+          notes: [12345],
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("tags string is required");
+      });
+    });
   });
 
   describe("Add Note", () => {

@@ -17,6 +17,23 @@ jest.config.js
 eslint.config.mjs
 .prettierrc
 .editorconfig
+nest-cli.json
+
+# Claude development files
+/.claude/
+/.claude-draft/
+
+# Docker development files
+/.docker/
+
+# Husky hooks (git hooks for dev)
+/.husky/
+
+# NPM bin scripts (package.json bin handles this)
+/bin/
+
+# Documentation (available on GitHub)
+/docs/
 
 # Git and GitHub
 .git/
@@ -43,6 +60,16 @@ mcp-inspector-config.json
 
 # Build artifacts
 *.tsbuildinfo
+/dist-executables/
+/dist-bundle/
+*.tgz
+*.mcpb
+
+# Generated files
+llms-full.txt
+
+# Development scripts (not needed in bundle)
+/scripts/
 
 # Logs
 *.log

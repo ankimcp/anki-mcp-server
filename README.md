@@ -73,7 +73,7 @@ Just tell Claude where the image is, and it will handle the upload automatically
 ## Prerequisites
 
 - [Anki](https://apps.ankiweb.net/) with [AnkiConnect](https://github.com/FooSoft/anki-connect) plugin installed
-- Node.js 20+
+- Node.js 20.19.0+
 
 ## Installation
 
@@ -388,6 +388,24 @@ For a comprehensive list of known issues and limitations, please visit our docum
 **Workaround**: Always close the browser or navigate to a different note before updating.
 
 For more details and other known issues, see the [full documentation](https://ankimcp.ai/docs/known-issues/).
+
+## Troubleshooting
+
+### ERR_REQUIRE_ESM Error
+
+If you see an error like:
+```
+Error [ERR_REQUIRE_ESM]: require() of ES Module not supported
+```
+
+This means your Node.js version is too old. The server requires **Node.js 20.19.0 or later**.
+
+**Check your version:**
+```bash
+node --version
+```
+
+**Solution:** Update Node.js to version 20.19.0 or later. You can download it from [nodejs.org](https://nodejs.org/) or use a version manager like [nvm](https://github.com/nvm-sh/nvm).
 
 ## Development
 

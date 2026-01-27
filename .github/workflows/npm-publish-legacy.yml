@@ -3,7 +3,7 @@ name: Publish to npm (anki-mcp-http - legacy)
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*'
   workflow_dispatch:  # Allows manual triggering from GitHub UI
 
 jobs:
@@ -32,6 +32,18 @@ jobs:
         run: bash scripts/prepare-legacy-package.sh
 
       - name: Publish to npm as anki-mcp-http (legacy)
-        run: npm publish
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Package version: $VERSION"
+
+          # Extract prerelease tag (e.g., "beta" from "0.12.0-beta.1")
+          if [[ "$VERSION" =~ -([a-zA-Z]+) ]]; then
+            NPM_TAG="${BASH_REMATCH[1]}"
+            echo "Publishing prerelease to tag: $NPM_TAG"
+            npm publish --tag "$NPM_TAG"
+          else
+            echo "Publishing stable release to latest"
+            npm publish
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
