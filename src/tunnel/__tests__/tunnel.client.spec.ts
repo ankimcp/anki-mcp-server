@@ -69,6 +69,7 @@ describe("TunnelClient", () => {
     mockWs.send = jest.fn();
     mockWs.close = jest.fn();
     mockWs.terminate = jest.fn();
+    mockWs.ping = jest.fn();
 
     // Mock WebSocket constructor
     (WebSocket as any).mockImplementation(() => mockWs);
