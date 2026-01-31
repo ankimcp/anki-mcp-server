@@ -398,14 +398,16 @@ If you see an error like:
 Error [ERR_REQUIRE_ESM]: require() of ES Module not supported
 ```
 
-This means your Node.js version is too old. The server requires **Node.js 20.19.0 or later**.
+This means your Node.js version is not supported. The server requires **Node.js 20.19.0+ or 22.12.0+**.
+
+> **Note:** Node.js 21.x is not supported. The `require(esm)` feature was added in Node 22 and backported to Node 20.17+, but was never available in Node 21. See [#16](https://github.com/ankimcp/anki-mcp-server/issues/16) for details.
 
 **Check your version:**
 ```bash
 node --version
 ```
 
-**Solution:** Update Node.js to version 20.19.0 or later. You can download it from [nodejs.org](https://nodejs.org/) or use a version manager like [nvm](https://github.com/nvm-sh/nvm).
+**Solution:** Update Node.js to version 20.19.0+ or 22.12.0+. You can download it from [nodejs.org](https://nodejs.org/) or use a version manager like [nvm](https://github.com/nvm-sh/nvm).
 
 ## Development
 
