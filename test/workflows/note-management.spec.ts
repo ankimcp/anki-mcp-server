@@ -70,6 +70,9 @@ describe("Note Management Workflow", () => {
       // Step 1: Add a new note
       ankiClient.invoke.mockImplementation(
         async (action: string, _params?: any) => {
+          if (action === "modelFieldNames") {
+            return ["Front", "Back"];
+          }
           if (action === "addNote") {
             return newNoteId;
           }
@@ -360,6 +363,9 @@ describe("Note Management Workflow", () => {
       // Step 2: Create the note first
       ankiClient.invoke.mockImplementation(
         async (action: string, _params?: any) => {
+          if (action === "modelFieldNames") {
+            return ["Front", "Back"];
+          }
           if (action === "addNote") {
             return noteId;
           }

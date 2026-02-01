@@ -92,27 +92,50 @@ export class AddNoteTool {
     context: Context,
   ) {
     try {
-      // Validate fields are not empty
-      const emptyFields = Object.entries(fields).filter(
-        ([_, value]) => !value || value.trim() === "",
+      this.logger.log(
+        `Adding note to deck "${deckName}" with model "${modelName}"`,
       );
-      if (emptyFields.length > 0) {
+      await context.reportProgress({ progress: 20, total: 100 });
+
+      // Get the field names for the model to determine the sort field (first field)
+      const fieldNames = await this.ankiClient.invoke<string[]>(
+        "modelFieldNames",
+        {
+          modelName: modelName,
+        },
+      );
+
+      if (!fieldNames || fieldNames.length === 0) {
         return createErrorResponse(
-          new Error(
-            `Fields cannot be empty: ${emptyFields.map(([key]) => key).join(", ")}`,
-          ),
+          new Error(`Model "${modelName}" not found or has no fields`),
           {
-            deckName,
             modelName,
-            emptyFields: emptyFields.map(([key]) => key),
+            hint: "Use modelNames tool to see available models",
           },
         );
       }
 
-      this.logger.log(
-        `Adding note to deck "${deckName}" with model "${modelName}"`,
-      );
-      await context.reportProgress({ progress: 25, total: 100 });
+      await context.reportProgress({ progress: 35, total: 100 });
+
+      // Validate that the first field (sort field) is non-empty
+      const sortField = fieldNames[0];
+      const sortFieldValue = fields[sortField];
+
+      if (!sortFieldValue || sortFieldValue.trim() === "") {
+        return createErrorResponse(
+          new Error(
+            `The first field "${sortField}" cannot be empty. Anki requires the sort field to have content.`,
+          ),
+          {
+            modelName,
+            sortField,
+            providedFields: Object.keys(fields),
+            hint: `The first field "${sortField}" is the sort field and must contain non-empty content.`,
+          },
+        );
+      }
+
+      await context.reportProgress({ progress: 50, total: 100 });
 
       // Build the note parameters for AnkiConnect
       const noteParams: any = {
@@ -149,14 +172,14 @@ export class AddNoteTool {
         noteParams.options = options;
       }
 
-      await context.reportProgress({ progress: 50, total: 100 });
+      await context.reportProgress({ progress: 60, total: 100 });
 
       // Add the note using AnkiConnect
       const noteId = await this.ankiClient.invoke<number | null>("addNote", {
         note: noteParams,
       });
 
-      await context.reportProgress({ progress: 75, total: 100 });
+      await context.reportProgress({ progress: 80, total: 100 });
 
       if (!noteId) {
         this.logger.warn("Note creation failed - possibly a duplicate");
