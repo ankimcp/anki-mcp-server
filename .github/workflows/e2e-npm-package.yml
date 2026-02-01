@@ -62,6 +62,14 @@ jobs:
         sleep 5
         cat /tmp/ankimcp.log
 
+    - name: Debug inspector version
+      run: |
+        echo "=== Local inspector ==="
+        ls node_modules/.bin/mcp-inspector* 2>/dev/null || echo "not in node_modules/.bin"
+        npx @modelcontextprotocol/inspector --version 2>&1 || true
+        echo "=== npx cache ==="
+        ls ~/.npm/_npx/ 2>/dev/null || echo "no npx cache"
+
     - name: Run E2E tests (HTTP)
       run: npm run e2e:test:http
       env:
