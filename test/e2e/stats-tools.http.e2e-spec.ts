@@ -405,13 +405,14 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     });
 
     it("should validate date format", () => {
-      // MCP inspector throws on validation errors, so we catch and verify
-      expect(() => {
-        callTool("review_stats", {
-          deck: testDeck1.deckName,
-          start_date: "invalid-date",
-        });
-      }).toThrow(/date|format|iso|invalid/i);
+      // Validation errors return a response with error text instead of throwing
+      const result = callTool("review_stats", {
+        deck: testDeck1.deckName,
+        start_date: "invalid-date",
+      });
+
+      const text = result.text as string;
+      expect(text).toMatch(/date|format|iso|invalid/i);
     });
 
     it("should default end_date to today when omitted", () => {
@@ -437,15 +438,16 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     });
 
     it("should require deck parameter", () => {
-      // deck is required for review_stats due to AnkiConnect API limitation
+      // Validation errors return a response with error text instead of throwing
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 7);
 
-      expect(() => {
-        callTool("review_stats", {
-          start_date: startDate.toISOString().split("T")[0],
-        });
-      }).toThrow(/deck|required|invalid/i);
+      const result = callTool("review_stats", {
+        start_date: startDate.toISOString().split("T")[0],
+      });
+
+      const text = result.text as string;
+      expect(text).toMatch(/deck|required|invalid/i);
     });
   });
 
