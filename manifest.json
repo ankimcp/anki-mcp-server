@@ -37,14 +37,6 @@
       "description": "Rate card performance (Again, Hard, Good, Easy) and schedule next review"
     },
     {
-      "name": "list_decks",
-      "description": "Show all available Anki decks with their statistics"
-    },
-    {
-      "name": "createDeck",
-      "description": "Create a new empty deck in Anki. IMPORTANT: This tool ONLY creates an empty deck. DO NOT add cards or notes after creating a deck unless the user EXPLICITLY asks to add them"
-    },
-    {
       "name": "addNote",
       "description": "Create new notes with specified fields and tags. IMPORTANT: Only create notes that were explicitly requested by the user"
     },
@@ -141,8 +133,8 @@
       "description": "Manage tags on Anki notes. Actions: addTags (add tags to notes), removeTags (remove tags from notes), replaceTags (rename a tag), clearUnusedTags (remove orphaned tags). Use getTags to discover existing tags first"
     },
     {
-      "name": "deck_stats",
-      "description": "Get comprehensive statistics for a single deck including card counts, ease factor distribution, and interval distribution"
+      "name": "deckActions",
+      "description": "Manage Anki deck operations. Actions: listDecks (list all decks with optional stats), createDeck (create new empty deck, max 2 levels), deckStats (get comprehensive deck statistics), changeDeck (move cards to different deck)"
     },
     {
       "name": "collection_stats",

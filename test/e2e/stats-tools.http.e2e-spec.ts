@@ -1,7 +1,7 @@
 /**
  * E2E tests for Stats Tools - HTTP Streamable transport
  *
- * Tests deck_stats, collection_stats, and review_stats tools against
+ * Tests deckActions (deckStats action), collection_stats, and review_stats tools against
  * a real Anki instance via Docker.
  *
  * Requires:
@@ -31,7 +31,10 @@ async function createStatsTestDeck(uid: string): Promise<StatsTestFixture> {
   const deckName = `STATS_HTTP_E2E_${uid}`;
 
   // Create test deck
-  const deckResult = callTool("create_deck", { deck_name: deckName });
+  const deckResult = callTool("deckActions", {
+    action: "createDeck",
+    deckName: deckName,
+  });
   expect(deckResult).toHaveProperty("deckId");
 
   const noteIds: number[] = [];
@@ -86,9 +89,12 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
 
   // No cleanup needed - Docker container is one-time use
 
-  describe("deck_stats", () => {
+  describe("deckActions - deckStats", () => {
     it("should return correct structure for test deck", () => {
-      const result = callTool("deck_stats", { deck: testDeck1.deckName });
+      const result = callTool("deckActions", {
+        action: "deckStats",
+        deck: testDeck1.deckName,
+      });
 
       // Verify structure
       expect(result).toHaveProperty("deck", testDeck1.deckName);
@@ -122,7 +128,10 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     });
 
     it("should return correct card counts for test deck", () => {
-      const result = callTool("deck_stats", { deck: testDeck1.deckName });
+      const result = callTool("deckActions", {
+        action: "deckStats",
+        deck: testDeck1.deckName,
+      });
 
       const counts = result.counts as Record<string, number>;
 
@@ -136,7 +145,10 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     });
 
     it("should handle new cards with no ease data", () => {
-      const result = callTool("deck_stats", { deck: testDeck1.deckName });
+      const result = callTool("deckActions", {
+        action: "deckStats",
+        deck: testDeck1.deckName,
+      });
 
       const ease = result.ease as Record<string, unknown>;
 
@@ -153,7 +165,10 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     });
 
     it("should handle new cards with no interval data", () => {
-      const result = callTool("deck_stats", { deck: testDeck1.deckName });
+      const result = callTool("deckActions", {
+        action: "deckStats",
+        deck: testDeck1.deckName,
+      });
 
       const intervals = result.intervals as Record<string, unknown>;
 
@@ -170,9 +185,10 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     });
 
     it("should accept custom ease buckets", () => {
-      const result = callTool("deck_stats", {
+      const result = callTool("deckActions", {
+        action: "deckStats",
         deck: testDeck1.deckName,
-        ease_buckets: [2.0, 3.0],
+        easeBuckets: [2.0, 3.0],
       });
 
       expect(result).toHaveProperty("ease");
@@ -185,9 +201,10 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     });
 
     it("should accept custom interval buckets", () => {
-      const result = callTool("deck_stats", {
+      const result = callTool("deckActions", {
+        action: "deckStats",
         deck: testDeck1.deckName,
-        interval_buckets: [14, 30, 60],
+        intervalBuckets: [14, 30, 60],
       });
 
       expect(result).toHaveProperty("intervals");
@@ -202,7 +219,8 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     it("should return empty stats for non-existent deck", () => {
       // Note: AnkiConnect's getDeckStats returns empty stats for non-existent decks
       // rather than throwing an error
-      const result = callTool("deck_stats", {
+      const result = callTool("deckActions", {
+        action: "deckStats",
         deck: `NONEXISTENT_DECK_${uniqueId()}`,
       });
 
@@ -452,8 +470,11 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
   });
 
   describe("Integration: Stats Tools Working Together", () => {
-    it("deck_stats and collection_stats should have consistent counts", () => {
-      const deckStats = callTool("deck_stats", { deck: testDeck1.deckName });
+    it("deckStats and collection_stats should have consistent counts", () => {
+      const deckStats = callTool("deckActions", {
+        action: "deckStats",
+        deck: testDeck1.deckName,
+      });
       const collectionStats = callTool("collection_stats");
 
       // Find test deck in collection stats

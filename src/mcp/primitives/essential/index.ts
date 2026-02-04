@@ -16,8 +16,6 @@ export {
 
 // Tools
 export { SyncTool } from "./tools/sync.tool";
-export { ListDecksTool } from "./tools/list-decks.tool";
-export { CreateDeckTool } from "./tools/create-deck.tool";
 export { GetDueCardsTool } from "./tools/get-due-cards.tool";
 export { GetCardsTool } from "./tools/get-cards.tool";
 export { PresentCardTool } from "./tools/present-card.tool";
@@ -35,7 +33,7 @@ export { DeleteNotesTool } from "./tools/delete-notes.tool";
 export { MediaActionsTool } from "./tools/mediaActions";
 export { GetTagsTool } from "./tools/get-tags.tool";
 export { TagActionsTool } from "./tools/tagActions";
-export { DeckStatsTool } from "./tools/deck-stats";
+export { DeckActionsTool } from "./tools/deckActions";
 export { CollectionStatsTool } from "./tools/collection-stats";
 export { ReviewStatsTool } from "./tools/review-stats";
 
@@ -50,8 +48,6 @@ export { SystemInfoResource } from "./resources/system-info.resource";
 import { Module, DynamicModule, Provider } from "@nestjs/common";
 import { AnkiConnectClient } from "../../clients/anki-connect.client";
 import { SyncTool } from "./tools/sync.tool";
-import { ListDecksTool } from "./tools/list-decks.tool";
-import { CreateDeckTool } from "./tools/create-deck.tool";
 import { GetDueCardsTool } from "./tools/get-due-cards.tool";
 import { GetCardsTool } from "./tools/get-cards.tool";
 import { PresentCardTool } from "./tools/present-card.tool";
@@ -69,7 +65,7 @@ import { DeleteNotesTool } from "./tools/delete-notes.tool";
 import { MediaActionsTool } from "./tools/mediaActions";
 import { GetTagsTool } from "./tools/get-tags.tool";
 import { TagActionsTool } from "./tools/tagActions";
-import { DeckStatsTool } from "./tools/deck-stats";
+import { DeckActionsTool } from "./tools/deckActions";
 import { CollectionStatsTool } from "./tools/collection-stats";
 import { ReviewStatsTool } from "./tools/review-stats";
 import { ReviewSessionPrompt } from "./prompts/review-session.prompt";
@@ -80,8 +76,6 @@ import { SystemInfoResource } from "./resources/system-info.resource";
 // These are exported for use in AppModule.providers (required by MCP-Nest 1.9.0+)
 export const ESSENTIAL_MCP_TOOLS = [
   SyncTool,
-  ListDecksTool,
-  CreateDeckTool,
   GetDueCardsTool,
   GetCardsTool,
   PresentCardTool,
@@ -99,7 +93,7 @@ export const ESSENTIAL_MCP_TOOLS = [
   MediaActionsTool,
   GetTagsTool,
   TagActionsTool,
-  DeckStatsTool,
+  DeckActionsTool,
   CollectionStatsTool,
   ReviewStatsTool,
   // Prompts

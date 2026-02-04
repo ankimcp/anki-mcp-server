@@ -1,7 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { AnkiConnectClient } from "../../src/mcp/clients/anki-connect.client";
 import { SyncTool } from "../../src/mcp/primitives/essential";
-import { ListDecksTool } from "../../src/mcp/primitives/essential";
+import { DeckActionsTool } from "../../src/mcp/primitives/essential";
 import { GetDueCardsTool } from "../../src/mcp/primitives/essential";
 import { PresentCardTool } from "../../src/mcp/primitives/essential";
 import { RateCardTool } from "../../src/mcp/primitives/essential";
@@ -16,7 +16,7 @@ jest.mock("../../src/mcp/clients/anki-connect.client");
 describe("Review Session Workflow", () => {
   let ankiClient: jest.Mocked<AnkiConnectClient>;
   let syncTool: SyncTool;
-  let listDecksTool: ListDecksTool;
+  let deckActionsTool: DeckActionsTool;
   let getDueCardsTool: GetDueCardsTool;
   let presentCardTool: PresentCardTool;
   let rateCardTool: RateCardTool;
@@ -27,7 +27,7 @@ describe("Review Session Workflow", () => {
       providers: [
         AnkiConnectClient,
         SyncTool,
-        ListDecksTool,
+        DeckActionsTool,
         GetDueCardsTool,
         PresentCardTool,
         RateCardTool,
@@ -38,7 +38,7 @@ describe("Review Session Workflow", () => {
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
     syncTool = module.get<SyncTool>(SyncTool);
-    listDecksTool = module.get<ListDecksTool>(ListDecksTool);
+    deckActionsTool = module.get<DeckActionsTool>(DeckActionsTool);
     getDueCardsTool = module.get<GetDueCardsTool>(GetDueCardsTool);
     presentCardTool = module.get<PresentCardTool>(PresentCardTool);
     rateCardTool = module.get<RateCardTool>(RateCardTool);
@@ -65,7 +65,7 @@ describe("Review Session Workflow", () => {
       expect(syncResult.success).toBe(true);
       expect(syncResult.message).toContain("Successfully synchronized");
 
-      // Step 2: List available decks with stats
+      // Step 2: List available decks with stats using deckActions
       ankiClient.invoke.mockImplementation(
         async (action: string, _params?: any) => {
           if (action === "deckNames") {
@@ -78,8 +78,8 @@ describe("Review Session Workflow", () => {
         },
       );
 
-      const decksRawResult = await listDecksTool.listDecks(
-        { include_stats: true },
+      const decksRawResult = await deckActionsTool.execute(
+        { action: "listDecks", includeStats: true },
         mockContext,
       );
       const decksResult = parseToolResult(decksRawResult);
@@ -402,11 +402,14 @@ describe("Review Session Workflow", () => {
       await syncTool.sync({}, trackingContext);
       expect(trackingContext.reportProgress).toHaveBeenCalled();
 
-      // List decks
+      // List decks using deckActions
       ankiClient.invoke
         .mockResolvedValueOnce(["Deck1"])
         .mockResolvedValueOnce({});
-      await listDecksTool.listDecks({ include_stats: true }, trackingContext);
+      await deckActionsTool.execute(
+        { action: "listDecks", includeStats: true },
+        trackingContext,
+      );
       expect(trackingContext.reportProgress).toHaveBeenCalled();
 
       // Get due cards

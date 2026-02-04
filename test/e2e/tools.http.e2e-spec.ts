@@ -36,10 +36,10 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
       expect(tools.length).toBeGreaterThan(0);
     });
 
-    it("should have list_decks tool", () => {
+    it("should have deckActions tool", () => {
       const tools = listTools();
       const toolNames = tools.map((t) => t.name);
-      expect(toolNames).toContain("list_decks");
+      expect(toolNames).toContain("deckActions");
     });
 
     it("should have sync tool", () => {
@@ -62,35 +62,47 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
   });
 
   describe("Deck Tools", () => {
-    it("should list decks", () => {
-      const result = callTool("list_decks");
+    it("should list decks via deckActions", () => {
+      const result = callTool("deckActions", { action: "listDecks" });
       expect(result).toHaveProperty("decks");
       expect(Array.isArray(result.decks)).toBe(true);
       // Default deck should always exist
       expect((result.decks as unknown[]).length).toBeGreaterThanOrEqual(1);
     });
 
-    it("should create a simple deck", () => {
+    it("should create a simple deck via deckActions", () => {
       const deckName = `HTTP_E2E_${uniqueId()}`;
-      const result = callTool("create_deck", { deck_name: deckName });
+      const result = callTool("deckActions", {
+        action: "createDeck",
+        deckName: deckName,
+      });
       expect(result).toHaveProperty("deckId");
       expect(typeof result.deckId).toBe("number");
       expect((result.deckId as number) > 0).toBe(true);
     });
 
-    it("should create a nested deck (2 levels)", () => {
+    it("should create a nested deck (2 levels) via deckActions", () => {
       const deckName = `HTTP::Nested${uniqueId()}`;
-      const result = callTool("create_deck", { deck_name: deckName });
+      const result = callTool("deckActions", {
+        action: "createDeck",
+        deckName: deckName,
+      });
       expect(result).toHaveProperty("deckId");
       expect((result.deckId as number) > 0).toBe(true);
     });
 
-    it("should return existing deck ID when creating duplicate", () => {
+    it("should return existing deck ID when creating duplicate via deckActions", () => {
       const deckName = `HTTP::Exist${uniqueId()}`;
-      const result1 = callTool("create_deck", { deck_name: deckName });
+      const result1 = callTool("deckActions", {
+        action: "createDeck",
+        deckName: deckName,
+      });
       const deckId = result1.deckId;
 
-      const result2 = callTool("create_deck", { deck_name: deckName });
+      const result2 = callTool("deckActions", {
+        action: "createDeck",
+        deckName: deckName,
+      });
       expect(result2.deckId).toBe(deckId);
     });
   });
@@ -137,7 +149,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
       const uniqueTag = `http-e2e-tag-${uid}`;
 
       // Create deck and note with unique tag
-      callTool("create_deck", { deck_name: deckName });
+      callTool("deckActions", { action: "createDeck", deckName: deckName });
       callTool("addNote", {
         deckName: deckName,
         modelName: "Basic",
@@ -161,7 +173,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
       const filterableTag = `http-filter-${uid}`;
 
       // Create note with filterable tag
-      callTool("create_deck", { deck_name: deckName });
+      callTool("deckActions", { action: "createDeck", deckName: deckName });
       callTool("addNote", {
         deckName: deckName,
         modelName: "Basic",
@@ -187,7 +199,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
         const newTag = `http-added-${uid}`;
 
         // Create deck and note without tags
-        callTool("create_deck", { deck_name: deckName });
+        callTool("deckActions", { action: "createDeck", deckName: deckName });
         const addResult = callTool("addNote", {
           deckName: deckName,
           modelName: "Basic",
@@ -222,7 +234,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
         const tag2 = `http-multi2-${uid}`;
 
         // Create deck and note
-        callTool("create_deck", { deck_name: deckName });
+        callTool("deckActions", { action: "createDeck", deckName: deckName });
         const addResult = callTool("addNote", {
           deckName: deckName,
           modelName: "Basic",
@@ -257,7 +269,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
         const tagToRemove = `http-remove-${uid}`;
 
         // Create deck and note with tag
-        callTool("create_deck", { deck_name: deckName });
+        callTool("deckActions", { action: "createDeck", deckName: deckName });
         const addResult = callTool("addNote", {
           deckName: deckName,
           modelName: "Basic",
@@ -298,7 +310,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
         const newTag = `http-new-${uid}`;
 
         // Create deck and note with old tag
-        callTool("create_deck", { deck_name: deckName });
+        callTool("deckActions", { action: "createDeck", deckName: deckName });
         const addResult = callTool("addNote", {
           deckName: deckName,
           modelName: "Basic",
@@ -367,7 +379,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
     it("should create a basic note", () => {
       const uid = uniqueId();
       const deckName = `HTTP::Notes${uid}`;
-      callTool("create_deck", { deck_name: deckName });
+      callTool("deckActions", { action: "createDeck", deckName: deckName });
 
       const result = callTool("addNote", {
         deckName: deckName,
@@ -385,7 +397,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
     it("should create a note with tags", () => {
       const uid = uniqueId();
       const deckName = `HTTP::Tags${uid}`;
-      callTool("create_deck", { deck_name: deckName });
+      callTool("deckActions", { action: "createDeck", deckName: deckName });
 
       const result = callTool("addNote", {
         deckName: deckName,
@@ -406,7 +418,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
     it("should get note information", () => {
       const uid = uniqueId();
       const deckName = `HTTP::Info${uid}`;
-      callTool("create_deck", { deck_name: deckName });
+      callTool("deckActions", { action: "createDeck", deckName: deckName });
 
       const addResult = callTool("addNote", {
         deckName: deckName,
