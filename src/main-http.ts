@@ -15,6 +15,7 @@ async function bootstrap() {
   process.env.PORT = options.port.toString();
   process.env.HOST = options.host;
   process.env.ANKI_CONNECT_URL = options.ankiConnect;
+  process.env.READ_ONLY = options.readOnly ? "true" : "false";
 
   // Create logger that writes to stdout (fd 1) for HTTP mode
   const pinoLogger = createPinoLogger(1);

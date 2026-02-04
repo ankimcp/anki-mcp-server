@@ -37,4 +37,9 @@ export class AnkiConfigService implements IAnkiConfig {
     );
     return parseInt(timeout, 10);
   }
+
+  get readOnly(): boolean {
+    const readOnly = this.configService.get<string>("READ_ONLY", "false");
+    return readOnly === "true" || readOnly === "1";
+  }
 }

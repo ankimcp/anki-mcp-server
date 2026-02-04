@@ -12,6 +12,7 @@ export * from "../../utils/anki.utils";
 export {
   AnkiConnectClient,
   AnkiConnectError,
+  ReadOnlyModeError,
 } from "../../clients/anki-connect.client";
 
 // Tools

@@ -27,6 +27,7 @@ describe("CLI Module", () => {
         host: "127.0.0.1",
         ankiConnect: "http://localhost:8765",
         ngrok: false,
+        readOnly: false,
       });
     });
 
@@ -108,6 +109,7 @@ describe("CLI Module", () => {
         host: "0.0.0.0",
         ankiConnect: "http://custom-host:9999",
         ngrok: false,
+        readOnly: false,
       });
     });
 
@@ -126,6 +128,33 @@ describe("CLI Module", () => {
       const options = parseCliArgs();
 
       expect(options.port).toBe(3000);
+    });
+
+    it("should parse --read-only flag", () => {
+      process.argv = ["node", "ankimcp", "--read-only"];
+
+      const options = parseCliArgs();
+
+      expect(options.readOnly).toBe(true);
+      expect(options.port).toBe(3000); // defaults
+      expect(options.host).toBe("127.0.0.1"); // defaults
+    });
+
+    it("should parse --read-only with other options", () => {
+      process.argv = [
+        "node",
+        "ankimcp",
+        "--port",
+        "8080",
+        "--read-only",
+        "--ngrok",
+      ];
+
+      const options = parseCliArgs();
+
+      expect(options.readOnly).toBe(true);
+      expect(options.ngrok).toBe(true);
+      expect(options.port).toBe(8080);
     });
   });
 
@@ -179,6 +208,7 @@ describe("CLI Module", () => {
         host: "127.0.0.1",
         ankiConnect: "http://localhost:8765",
         ngrok: false,
+        readOnly: false,
       };
 
       displayStartupBanner(options);
@@ -204,6 +234,7 @@ describe("CLI Module", () => {
         host: "0.0.0.0",
         ankiConnect: "http://192.168.1.100:8765",
         ngrok: false,
+        readOnly: false,
       };
 
       displayStartupBanner(options);
@@ -226,6 +257,7 @@ describe("CLI Module", () => {
         host: "127.0.0.1",
         ankiConnect: "http://localhost:8765",
         ngrok: false,
+        readOnly: false,
       };
 
       displayStartupBanner(options);
@@ -246,6 +278,7 @@ describe("CLI Module", () => {
         host: "127.0.0.1",
         ankiConnect: "http://localhost:8765",
         ngrok: false,
+        readOnly: false,
       };
 
       displayStartupBanner(options);
@@ -265,6 +298,7 @@ describe("CLI Module", () => {
         host: "127.0.0.1",
         ankiConnect: "http://localhost:8765",
         ngrok: false,
+        readOnly: false,
       };
 
       displayStartupBanner(options);
@@ -272,6 +306,47 @@ describe("CLI Module", () => {
       const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
 
       expect(output).toContain("ankimcp --help");
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it("should show read-only warning when enabled", () => {
+      const consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
+
+      const options: CliOptions = {
+        port: 3000,
+        host: "127.0.0.1",
+        ankiConnect: "http://localhost:8765",
+        ngrok: false,
+        readOnly: true,
+      };
+
+      displayStartupBanner(options);
+
+      const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
+
+      expect(output).toContain("READ-ONLY MODE ENABLED");
+      expect(output).toContain("Read-only");
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it("should not show read-only warning when disabled", () => {
+      const consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
+
+      const options: CliOptions = {
+        port: 3000,
+        host: "127.0.0.1",
+        ankiConnect: "http://localhost:8765",
+        ngrok: false,
+        readOnly: false,
+      };
+
+      displayStartupBanner(options);
+
+      const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
+
+      expect(output).not.toContain("READ-ONLY MODE ENABLED");
 
       consoleLogSpy.mockRestore();
     });

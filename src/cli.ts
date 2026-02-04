@@ -8,6 +8,7 @@ export interface CliOptions {
   host: string;
   ankiConnect: string;
   ngrok: boolean;
+  readOnly: boolean;
 }
 
 function getPackageJson() {
@@ -50,6 +51,10 @@ export function parseCliArgs(): CliOptions {
       "--ngrok",
       "Start ngrok tunnel (requires global ngrok installation)",
     )
+    .option(
+      "--read-only",
+      "Run in read-only mode (blocks all write operations)",
+    )
     .addHelpText(
       "after",
       `
@@ -81,6 +86,10 @@ Examples - STDIO Mode:
     }
   }
 
+Examples - Read-Only Mode:
+  $ ankimcp --read-only                        # HTTP mode, read-only
+  $ ankimcp --stdio --read-only                # STDIO mode, read-only
+
 Ngrok Setup (one-time):
   1. Install: npm install -g ngrok
   2. Get auth token from: https://dashboard.ngrok.com/get-started/your-authtoken
@@ -98,6 +107,7 @@ Ngrok Setup (one-time):
     host: options.host,
     ankiConnect: options.ankiConnect,
     ngrok: options.ngrok || false,
+    readOnly: options.readOnly || false,
   };
 }
 
@@ -111,19 +121,23 @@ export function displayStartupBanner(
   const paddedTitle =
     " ".repeat(padding) + title + " ".repeat(64 - padding - title.length);
 
+  const readOnlyWarning = options.readOnly
+    ? "\n\n** READ-ONLY MODE ENABLED **\nContent modifications (addNote, deleteNotes, createDeck, etc.) are blocked.\nReview operations (sync, answerCards, suspend) remain available."
+    : "";
+
   console.log(`
 ╔════════════════════════════════════════════════════════════════╗
 ║${paddedTitle}║
-╚════════════════════════════════════════════════════════════════╝
+╚════════════════════════════════════════════════════════════════╝${readOnlyWarning}
 
 🚀 Server running on: http://${options.host}:${options.port}
-🔌 AnkiConnect URL:   ${options.ankiConnect}${ngrokUrl ? `\n🌐 Ngrok tunnel:      ${ngrokUrl}` : ""}
+🔌 AnkiConnect URL:   ${options.ankiConnect}${ngrokUrl ? `\n🌐 Ngrok tunnel:      ${ngrokUrl}` : ""}${options.readOnly ? "\n🔒 Mode:              Read-only" : ""}
 
 Configuration:
   • Port:               ${options.port} (override: --port 8080)
   • Host:               ${options.host} (override: --host 0.0.0.0)
   • AnkiConnect:        ${options.ankiConnect}
-                        (override: --anki-connect http://localhost:8765)${ngrokUrl ? `\n  • Ngrok tunnel:       ${ngrokUrl}\n  • Ngrok dashboard:    http://localhost:4040` : ""}
+                        (override: --anki-connect http://localhost:8765)${options.readOnly ? "\n  • Read-only:          Yes (write operations blocked)" : ""}${ngrokUrl ? `\n  • Ngrok tunnel:       ${ngrokUrl}\n  • Ngrok dashboard:    http://localhost:4040` : ""}
 ${
   !ngrokUrl
     ? `
