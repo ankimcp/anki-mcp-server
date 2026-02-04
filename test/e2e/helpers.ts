@@ -39,6 +39,19 @@ const STDIO_CONFIG: TransportConfig = TEST_NPM_PACKAGE
       args: [resolve(__dirname, "../../dist/main-stdio.js")],
     };
 
+// Read-only STDIO config
+const STDIO_READ_ONLY_CONFIG: TransportConfig = TEST_NPM_PACKAGE
+  ? {
+      mode: "stdio",
+      command: "ankimcp",
+      args: ["--stdio", "--read-only"],
+    }
+  : {
+      mode: "stdio",
+      command: "node",
+      args: [resolve(__dirname, "../../dist/main-stdio.js"), "--read-only"],
+    };
+
 // Current transport config (set by test setup)
 let currentConfig: TransportConfig = HTTP_CONFIG;
 
@@ -65,8 +78,17 @@ interface McpResource {
 /**
  * Set transport mode for tests
  */
-export function setTransport(mode: TransportMode): void {
-  currentConfig = mode === "http" ? HTTP_CONFIG : STDIO_CONFIG;
+export function setTransport(
+  mode: TransportMode,
+  options?: { readOnly?: boolean },
+): void {
+  if (mode === "http") {
+    currentConfig = HTTP_CONFIG;
+  } else if (options?.readOnly) {
+    currentConfig = STDIO_READ_ONLY_CONFIG;
+  } else {
+    currentConfig = STDIO_CONFIG;
+  }
 }
 
 /**
