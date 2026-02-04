@@ -41,8 +41,11 @@ For comprehensive guides, real-world examples, and step-by-step tutorials on usi
 - `rate_card` - Rate card performance
 
 ### Deck Management
-- `list_decks` - Show available decks
-- `createDeck` - Create new decks
+- `deckActions` - Unified deck operations:
+  - `listDecks` - List all decks with optional statistics
+  - `createDeck` - Create new decks (max 2 levels: "Parent::Child")
+  - `deckStats` - Get comprehensive deck statistics
+  - `changeDeck` - Move cards to a different deck
 
 ### Note Management
 - `addNote` - Create new notes
