@@ -219,6 +219,7 @@ Options:
   -h, --host <host>              Host to bind to (HTTP mode, default: 127.0.0.1)
   -a, --anki-connect <url>       AnkiConnect URL (default: http://localhost:8765)
   --ngrok                        Start ngrok tunnel (requires global ngrok installation)
+  --read-only                    Run in read-only mode (blocks all write operations)
   --help                         Show help message
 
 Usage with npx (no installation needed):
@@ -226,6 +227,7 @@ Usage with npx (no installation needed):
   npx @ankimcp/anki-mcp-server --port 8080            # Custom port
   npx @ankimcp/anki-mcp-server --stdio                # STDIO mode
   npx @ankimcp/anki-mcp-server --ngrok                # HTTP mode with ngrok tunnel
+  npx @ankimcp/anki-mcp-server --read-only            # Read-only mode
 
 Usage with global installation:
   npm install -g @ankimcp/anki-mcp-server             # Install once
@@ -233,6 +235,46 @@ Usage with global installation:
   ankimcp --port 8080                                 # Custom port
   ankimcp --stdio                                     # STDIO mode
   ankimcp --ngrok                                     # HTTP mode with ngrok tunnel
+  ankimcp --read-only                                 # Read-only mode
+```
+
+**Read-Only Mode:**
+
+The `--read-only` flag prevents any modifications to your Anki collection. When enabled:
+- All read operations work normally (browsing decks, viewing cards, searching notes)
+- Review operations are allowed (sync, answerCards, suspend/unsuspend)
+- Content modifications are blocked (addNote, deleteNotes, createDeck, updateNoteFields, etc.)
+- Useful for safely exploring Anki data without risk of accidental changes
+
+```bash
+# HTTP mode with read-only
+ankimcp --read-only
+
+# STDIO mode with read-only
+ankimcp --stdio --read-only
+
+# Can combine with other flags
+ankimcp --ngrok --read-only
+```
+
+You can also enable read-only mode via environment variable:
+```bash
+READ_ONLY=true ankimcp
+```
+
+Or in MCP client configuration:
+```json
+{
+  "mcpServers": {
+    "anki-mcp": {
+      "command": "npx",
+      "args": ["-y", "@ankimcp/anki-mcp-server", "--stdio", "--read-only"],
+      "env": {
+        "ANKI_CONNECT_URL": "http://localhost:8765"
+      }
+    }
+  }
+}
 ```
 
 **Using with ngrok:**
@@ -324,6 +366,7 @@ For more details, see the [official MCP documentation](https://modelcontextproto
 | `ANKI_CONNECT_API_VERSION` | API version | `6` |
 | `ANKI_CONNECT_API_KEY` | API key if configured in AnkiConnect | - |
 | `ANKI_CONNECT_TIMEOUT` | Request timeout in ms | `5000` |
+| `READ_ONLY` | Enable read-only mode (`true` or `1`) | `false` |
 
 ## Usage Examples
 

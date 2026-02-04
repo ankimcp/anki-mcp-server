@@ -1,6 +1,10 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { Logger } from "@nestjs/common";
-import { AnkiConnectClient, AnkiConnectError } from "../anki-connect.client";
+import {
+  AnkiConnectClient,
+  AnkiConnectError,
+  ReadOnlyModeError,
+} from "../anki-connect.client";
 import { ANKI_CONFIG } from "@/mcp/config/anki-config.interface";
 import type { IAnkiConfig } from "@/mcp/config/anki-config.interface";
 import ky, { HTTPError } from "ky";
@@ -129,6 +133,7 @@ describe("AnkiConnectClient", () => {
     // Setup logger spies
     loggerSpy = jest.spyOn(Logger.prototype, "log").mockImplementation();
     jest.spyOn(Logger.prototype, "debug").mockImplementation();
+    jest.spyOn(Logger.prototype, "warn").mockImplementation();
   });
 
   afterEach(() => {
@@ -1168,6 +1173,222 @@ describe("AnkiConnectClient", () => {
       const error = new AnkiConnectError("Test");
       expect(error.stack).toBeDefined();
       expect(error.stack).toContain("AnkiConnectError");
+    });
+  });
+
+  describe("ReadOnlyModeError Class", () => {
+    it("should create error with action name", () => {
+      const error = new ReadOnlyModeError("addNote");
+
+      expect(error).toBeInstanceOf(Error);
+      expect(error).toBeInstanceOf(ReadOnlyModeError);
+      expect(error.name).toBe("ReadOnlyModeError");
+      expect(error.action).toBe("addNote");
+      expect(error.message).toContain("addNote");
+      expect(error.message).toContain("read-only mode");
+    });
+
+    it("should include helpful message about removing flag", () => {
+      const error = new ReadOnlyModeError("sync");
+
+      expect(error.message).toContain("--read-only");
+      expect(error.message).toContain("Remove the --read-only flag");
+    });
+
+    it("should be catchable as Error", () => {
+      const error = new ReadOnlyModeError("deleteNotes");
+
+      try {
+        throw error;
+      } catch (e) {
+        expect(e).toBeInstanceOf(Error);
+        expect(e).toBeInstanceOf(ReadOnlyModeError);
+      }
+    });
+  });
+
+  describe("invoke() - Read-Only Mode", () => {
+    let readOnlyClient: AnkiConnectClient;
+
+    beforeEach(async () => {
+      const readOnlyConfig: IAnkiConfig = {
+        ...mockConfig,
+        readOnly: true,
+      };
+
+      const module = await Test.createTestingModule({
+        providers: [
+          AnkiConnectClient,
+          {
+            provide: ANKI_CONFIG,
+            useValue: readOnlyConfig,
+          },
+        ],
+      }).compile();
+
+      readOnlyClient = module.get<AnkiConnectClient>(AnkiConnectClient);
+    });
+
+    describe("should block write actions", () => {
+      // Only actions actually exposed by our tools
+      const writeActions = [
+        // Note operations
+        { action: "addNote", params: { note: {} } },
+        { action: "updateNoteFields", params: { note: { id: 1 } } },
+        { action: "deleteNotes", params: { notes: [] } },
+        // Deck operations
+        { action: "createDeck", params: { deck: "Test" } },
+        { action: "changeDeck", params: { cards: [], deck: "Test" } },
+        // Tag operations
+        { action: "addTags", params: { notes: [], tags: "" } },
+        { action: "removeTags", params: { notes: [], tags: "" } },
+        { action: "clearUnusedTags", params: {} },
+        { action: "replaceTags", params: {} },
+        // Media operations
+        { action: "storeMediaFile", params: { filename: "", data: "" } },
+        { action: "deleteMediaFile", params: { filename: "" } },
+        // Model operations
+        { action: "createModel", params: { modelName: "Test" } },
+        { action: "updateModelStyling", params: { model: {} } },
+      ];
+
+      it.each(writeActions)(
+        'should block "$action" in read-only mode',
+        async ({ action, params }) => {
+          await expect(readOnlyClient.invoke(action, params)).rejects.toThrow(
+            ReadOnlyModeError,
+          );
+          await expect(readOnlyClient.invoke(action, params)).rejects.toThrow(
+            `Action "${action}" is blocked`,
+          );
+        },
+      );
+    });
+
+    describe("should allow read actions", () => {
+      const readActions = [
+        { action: "deckNames", result: ["Default"] },
+        { action: "modelNames", result: ["Basic"] },
+        { action: "findNotes", result: [1, 2, 3] },
+        { action: "notesInfo", result: [] },
+        { action: "cardsInfo", result: [] },
+        { action: "getDeckStats", result: {} },
+        { action: "getNumCardsReviewedToday", result: 10 },
+        { action: "modelFieldNames", result: ["Front", "Back"] },
+        { action: "modelStyling", result: { css: "" } },
+        { action: "guiBrowse", result: [] },
+        { action: "guiCurrentCard", result: null },
+        { action: "guiShowQuestion", result: true },
+        { action: "guiShowAnswer", result: true },
+        // Review/scheduling operations are allowed (read-only protects content, not review state)
+        { action: "sync", result: null },
+        { action: "suspend", result: true },
+        { action: "unsuspend", result: true },
+        { action: "answerCards", result: [true] },
+        { action: "forgetCards", result: null },
+        { action: "relearnCards", result: null },
+        { action: "guiAnswerCard", result: true },
+        { action: "guiSelectNote", result: true },
+        { action: "guiAddCards", result: 123 },
+      ];
+
+      it.each(readActions)(
+        'should allow "$action" in read-only mode',
+        async ({ action, result }) => {
+          const mockResponse: AnkiConnectResponse<any> = {
+            result,
+            error: null,
+          };
+
+          mockKyInstance.post.mockReturnValue({
+            json: jest.fn().mockResolvedValue(mockResponse),
+          });
+
+          const response = await readOnlyClient.invoke(action);
+          expect(response).toEqual(result);
+        },
+      );
+    });
+
+    it("should not block actions when readOnly is false", async () => {
+      const mockResponse: AnkiConnectResponse<number> = {
+        result: 123,
+        error: null,
+      };
+
+      mockKyInstance.post.mockReturnValue({
+        json: jest.fn().mockResolvedValue(mockResponse),
+      });
+
+      // Using the default client (readOnly: false/undefined)
+      const result = await client.invoke("addNote", {
+        note: { deckName: "Test", modelName: "Basic", fields: {} },
+      });
+
+      expect(result).toBe(123);
+    });
+
+    it("should not block actions when readOnly is undefined", async () => {
+      const configWithoutReadOnly: IAnkiConfig = {
+        ankiConnectUrl: "http://localhost:8765",
+        ankiConnectApiVersion: 6,
+        ankiConnectTimeout: 5000,
+        // readOnly not specified
+      };
+
+      const module = await Test.createTestingModule({
+        providers: [
+          AnkiConnectClient,
+          {
+            provide: ANKI_CONFIG,
+            useValue: configWithoutReadOnly,
+          },
+        ],
+      }).compile();
+
+      const clientWithoutReadOnly =
+        module.get<AnkiConnectClient>(AnkiConnectClient);
+
+      const mockResponse: AnkiConnectResponse<number> = {
+        result: 456,
+        error: null,
+      };
+
+      mockKyInstance.post.mockReturnValue({
+        json: jest.fn().mockResolvedValue(mockResponse),
+      });
+
+      const result = await clientWithoutReadOnly.invoke("addNote", {
+        note: {},
+      });
+      expect(result).toBe(456);
+    });
+
+    it("should re-throw ReadOnlyModeError without wrapping", async () => {
+      await expect(readOnlyClient.invoke("addNote", {})).rejects.toBeInstanceOf(
+        ReadOnlyModeError,
+      );
+
+      try {
+        await readOnlyClient.invoke("addNote", {});
+      } catch (error) {
+        expect(error).toBeInstanceOf(ReadOnlyModeError);
+        expect((error as ReadOnlyModeError).action).toBe("addNote");
+        // Ensure it's not wrapped in AnkiConnectError
+        expect(error).not.toBeInstanceOf(AnkiConnectError);
+      }
+    });
+
+    it("should log warning when blocking write action", async () => {
+      const warnSpy = jest.spyOn(Logger.prototype, "warn");
+
+      await expect(
+        readOnlyClient.invoke("deleteNotes", { notes: [] }),
+      ).rejects.toThrow();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Blocked write action "deleteNotes" in read-only mode',
+      );
     });
   });
 

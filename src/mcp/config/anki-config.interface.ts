@@ -25,6 +25,12 @@ export interface IAnkiConfig {
    * @default 5000
    */
   ankiConnectTimeout: number;
+
+  /**
+   * Read-only mode - blocks all write operations
+   * @default false
+   */
+  readOnly?: boolean;
 }
 
 /**

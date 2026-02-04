@@ -5,6 +5,34 @@ import type { IAnkiConfig } from "../config/anki-config.interface";
 import { AnkiConnectRequest, AnkiConnectResponse } from "../types/anki.types";
 
 /**
+ * Set of AnkiConnect actions that modify collection content.
+ * Used to block write operations in read-only mode.
+ *
+ * Only includes actions actually exposed by our tools.
+ * Review/scheduling operations (answerCards, suspend, sync, etc.) are allowed.
+ */
+const WRITE_ACTIONS = new Set([
+  // Note operations
+  "addNote",
+  "updateNoteFields",
+  "deleteNotes",
+  // Deck operations
+  "createDeck",
+  "changeDeck",
+  // Tag operations
+  "addTags",
+  "removeTags",
+  "clearUnusedTags",
+  "replaceTags",
+  // Media operations
+  "storeMediaFile",
+  "deleteMediaFile",
+  // Model operations
+  "createModel",
+  "updateModelStyling",
+]);
+
+/**
  * Error class for AnkiConnect-specific errors
  */
 export class AnkiConnectError extends Error {
@@ -19,6 +47,19 @@ export class AnkiConnectError extends Error {
 }
 
 /**
+ * Error class for read-only mode violations
+ */
+export class ReadOnlyModeError extends Error {
+  constructor(public readonly action: string) {
+    super(
+      `Action "${action}" is blocked: server is running in read-only mode. ` +
+        `Write operations are disabled. Remove the --read-only flag to enable writes.`,
+    );
+    this.name = "ReadOnlyModeError";
+  }
+}
+
+/**
  * AnkiConnect client for communication with Anki via AnkiConnect plugin
  */
 @Injectable()
@@ -26,11 +67,13 @@ export class AnkiConnectClient {
   private readonly client: KyInstance;
   private readonly apiVersion: number;
   private readonly apiKey?: string;
+  private readonly readOnly: boolean;
   private readonly logger = new Logger(AnkiConnectClient.name);
 
   constructor(@Inject(ANKI_CONFIG) private readonly config: IAnkiConfig) {
     this.apiVersion = config.ankiConnectApiVersion;
     this.apiKey = config.ankiConnectApiKey;
+    this.readOnly = config.readOnly ?? false;
 
     // Create ky client with configuration
     this.client = ky.create({
@@ -69,11 +112,18 @@ export class AnkiConnectClient {
    * @param action - The AnkiConnect action to perform
    * @param params - Parameters for the action
    * @returns The result from AnkiConnect
+   * @throws ReadOnlyModeError if in read-only mode and action is a write operation
    */
   async invoke<T = any>(
     action: string,
     params?: Record<string, any>,
   ): Promise<T> {
+    // Check for read-only mode violation
+    if (this.readOnly && WRITE_ACTIONS.has(action)) {
+      this.logger.warn(`Blocked write action "${action}" in read-only mode`);
+      throw new ReadOnlyModeError(action);
+    }
+
     const request: AnkiConnectRequest = {
       action,
       version: this.apiVersion,
@@ -106,6 +156,11 @@ export class AnkiConnectClient {
       this.logger.log(`AnkiConnect action successful: ${action}`);
       return response.result;
     } catch (error) {
+      // Re-throw ReadOnlyModeError without wrapping
+      if (error instanceof ReadOnlyModeError) {
+        throw error;
+      }
+
       // Handle HTTP errors
       if (error instanceof HTTPError) {
         if (error.response.status === 403) {
