@@ -1,0 +1,3 @@
+echo "🔄 Syncing version..."
+npm run sync-version || exit 1
+git add manifest.json
