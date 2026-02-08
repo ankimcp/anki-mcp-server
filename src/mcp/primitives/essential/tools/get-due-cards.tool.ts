@@ -36,10 +36,30 @@ export class GetDueCardsTool {
         .max(50)
         .default(10)
         .describe("Maximum number of cards to return"),
+      include_learning: z
+        .boolean()
+        .default(true)
+        .describe(
+          "Include cards in learning phase (seen but not yet graduated). Default: true",
+        ),
+      include_new: z
+        .boolean()
+        .default(false)
+        .describe("Include new cards (never seen before). Default: false"),
     }),
   })
   async getDueCards(
-    { deck_name, limit }: { deck_name?: string; limit?: number },
+    {
+      deck_name,
+      limit,
+      include_learning = true,
+      include_new = false,
+    }: {
+      deck_name?: string;
+      limit?: number;
+      include_learning?: boolean;
+      include_new?: boolean;
+    },
     context: Context,
   ) {
     try {
@@ -51,7 +71,16 @@ export class GetDueCardsTool {
       await context.reportProgress({ progress: 10, total: 100 });
 
       // Build search query for due cards
-      let query = "is:due";
+      // Always exclude suspended cards, include due cards, optionally learning and new
+      const states: string[] = ["is:due"];
+      if (include_learning) {
+        states.push("is:learn");
+      }
+      if (include_new) {
+        states.push("is:new");
+      }
+
+      let query = `-is:suspended (${states.join(" OR ")})`;
       if (deck_name) {
         // Escape special characters in deck name for Anki search
         const escapedDeckName = deck_name.replace(/"/g, '\\"');
