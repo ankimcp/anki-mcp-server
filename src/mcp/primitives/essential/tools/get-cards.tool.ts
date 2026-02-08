@@ -76,7 +76,10 @@ export class GetCardsTool {
 
       // Build search query from card state
       const stateQuery = CARD_STATE_QUERY_MAP[card_state];
-      let query = stateQuery;
+      // Exclude suspended cards unless explicitly querying for suspended
+      const excludeSuspended =
+        card_state !== "suspended" ? "-is:suspended " : "";
+      let query = `${excludeSuspended}${stateQuery}`;
 
       if (deck_name) {
         // Escape special characters in deck name for Anki search

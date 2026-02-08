@@ -309,8 +309,8 @@ describe("Review Session Workflow", () => {
       ankiClient.invoke.mockImplementation(
         async (action: string, params?: any) => {
           if (action === "findCards") {
-            // When no deck specified, return cards from all decks
-            expect(params?.query).toBe("is:due");
+            // New query format: excludes suspended and includes learning by default
+            expect(params?.query).toBe("-is:suspended (is:due OR is:learn)");
             return mixedDueCards.map((c) => c.cardId);
           }
           if (action === "cardsInfo") {
