@@ -41,6 +41,10 @@
       "description": "Create new notes with specified fields and tags. IMPORTANT: Only create notes that were explicitly requested by the user"
     },
     {
+      "name": "addNotes",
+      "description": "Add multiple notes to Anki in a single batch. Up to 100 notes sharing the same deck and model. Supports partial success - individual failures don't affect others."
+    },
+    {
       "name": "findNotes",
       "description": "Search for notes using Anki query syntax (deck:, tag:, is:due, etc.)"
     },

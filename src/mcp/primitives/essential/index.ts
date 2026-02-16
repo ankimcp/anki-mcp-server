@@ -27,6 +27,7 @@ export { ModelStylingTool } from "./tools/model-styling.tool";
 export { CreateModelTool } from "./tools/create-model.tool";
 export { UpdateModelStylingTool } from "./tools/update-model-styling.tool";
 export { AddNoteTool } from "./tools/add-note.tool";
+export { AddNotesTool } from "./tools/add-notes.tool";
 export { FindNotesTool } from "./tools/find-notes.tool";
 export { NotesInfoTool } from "./tools/notes-info.tool";
 export { UpdateNoteFieldsTool } from "./tools/update-note-fields.tool";
@@ -59,6 +60,7 @@ import { ModelStylingTool } from "./tools/model-styling.tool";
 import { CreateModelTool } from "./tools/create-model.tool";
 import { UpdateModelStylingTool } from "./tools/update-model-styling.tool";
 import { AddNoteTool } from "./tools/add-note.tool";
+import { AddNotesTool } from "./tools/add-notes.tool";
 import { FindNotesTool } from "./tools/find-notes.tool";
 import { NotesInfoTool } from "./tools/notes-info.tool";
 import { UpdateNoteFieldsTool } from "./tools/update-note-fields.tool";
@@ -87,6 +89,7 @@ export const ESSENTIAL_MCP_TOOLS = [
   CreateModelTool,
   UpdateModelStylingTool,
   AddNoteTool,
+  AddNotesTool,
   FindNotesTool,
   NotesInfoTool,
   UpdateNoteFieldsTool,
