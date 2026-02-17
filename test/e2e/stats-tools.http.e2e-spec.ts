@@ -216,21 +216,15 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
       expect(buckets).toBeDefined();
     });
 
-    it("should return empty stats for non-existent deck", () => {
-      // Note: AnkiConnect's getDeckStats returns empty stats for non-existent decks
-      // rather than throwing an error
+    it("should return error for non-existent deck", () => {
       const result = callTool("deckActions", {
         action: "deckStats",
         deck: `NONEXISTENT_DECK_${uniqueId()}`,
       });
 
-      // Should return stats with zero counts
-      expect(result).toHaveProperty("counts");
-      const counts = result.counts as Record<string, number>;
-      expect(counts.total).toBe(0);
-      expect(counts.new).toBe(0);
-      expect(counts.learning).toBe(0);
-      expect(counts.review).toBe(0);
+      expect(result).toHaveProperty("success", false);
+      expect(result).toHaveProperty("error");
+      expect((result as { error: string }).error).toContain("not found");
     });
   });
 

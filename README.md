@@ -48,7 +48,8 @@ For comprehensive guides, real-world examples, and step-by-step tutorials on usi
   - `changeDeck` - Move cards to a different deck
 
 ### Note Management
-- `addNote` - Create new notes
+- `addNote` - Create a single note
+- `addNotes` - Create multiple notes in batch (up to 100, partial success supported)
 - `findNotes` - Search for notes using Anki query syntax
 - `notesInfo` - Get detailed information about notes (fields, tags, CSS)
 - `updateNoteFields` - Update existing note fields (CSS-aware, supports HTML)
@@ -788,7 +789,7 @@ This project follows [Semantic Versioning](https://semver.org/) with a pre-1.0 d
   - Will be released when the API is stable and tested
   - Breaking changes will require major version bumps (2.0.0, etc.)
 
-**Current Status**: `0.8.0` - Active beta development. New features include integrated ngrok tunneling (`--ngrok` flag), the `twenty_rules` prompt for evidence-based flashcard creation, media file management, and improved prompt system. APIs may change based on feedback and testing.
+**Current Status**: `0.14.0` - Active beta development. Recent features include batch note creation (`addNotes`), integrated ngrok tunneling (`--ngrok` flag), media file management, model/template management, and comprehensive deck statistics. APIs may change based on feedback and testing.
 
 ## Similar Projects
 
