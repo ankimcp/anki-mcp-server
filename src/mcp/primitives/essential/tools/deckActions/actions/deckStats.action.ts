@@ -82,21 +82,27 @@ export async function deckStats(
     intervalBuckets = [7, 21, 90],
   } = params;
 
-  // Step 1: Get basic card counts from getDeckStats
+  // Step 1: Resolve deck name → ID (getDeckStats returns short names for child decks,
+  // so we match by ID instead of name to handle "Parent::Child" decks correctly)
+  const deckNamesAndIds = await client.invoke<Record<string, number>>(
+    "deckNamesAndIds",
+    {},
+  );
+  const deckId = deckNamesAndIds?.[deck];
+
+  if (deckId == null) {
+    throw new Error(`Deck "${deck}" not found`);
+  }
+
+  // Step 2: Get basic card counts from getDeckStats
   const deckStatsResponse = await client.invoke<
     Record<string, AnkiDeckStatsResponse>
   >("getDeckStats", {
     decks: [deck],
   });
 
-  // Check if deck exists
-  if (!deckStatsResponse || Object.keys(deckStatsResponse).length === 0) {
-    throw new Error(`Deck "${deck}" not found`);
-  }
-
-  // Extract stats from response (keyed by deck ID)
-  const deckStatsArray = Object.values(deckStatsResponse);
-  const deckStatsData = deckStatsArray.find((s) => s.name === deck);
+  // Extract stats by deck ID
+  const deckStatsData = deckStatsResponse?.[String(deckId)];
 
   if (!deckStatsData) {
     throw new Error(`Deck "${deck}" not found in statistics response`);
@@ -124,7 +130,7 @@ export async function deckStats(
     };
   }
 
-  // Step 2: Get all card IDs for this deck
+  // Step 3: Get all card IDs for this deck
   // Escape special characters in deck name for Anki search
   const escapedDeckName = deck.replace(/"/g, '\\"');
   const cardIds = await client.invoke<number[]>("findCards", {
@@ -145,7 +151,7 @@ export async function deckStats(
 
   await onProgress?.(50);
 
-  // Step 3: Get ease factors (divide by 1000!)
+  // Step 4: Get ease factors (divide by 1000!)
   const easeFactorsRaw = await client.invoke<number[]>("getEaseFactors", {
     cards: cardIds,
   });
@@ -157,7 +163,7 @@ export async function deckStats(
 
   await onProgress?.(70);
 
-  // Step 4: Get intervals (filter negatives = learning cards)
+  // Step 5: Get intervals (filter negatives = learning cards)
   const intervalsRaw = await client.invoke<number[]>("getIntervals", {
     cards: cardIds,
   });
@@ -167,7 +173,7 @@ export async function deckStats(
 
   await onProgress?.(90);
 
-  // Step 5: Compute distributions
+  // Step 6: Compute distributions
   const ease = computeDistribution(easeValues, {
     boundaries: easeBuckets,
   });

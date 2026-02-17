@@ -57,6 +57,10 @@ describe("DeckActionsTool", () => {
     it("should return deck names with stats when includeStats is true", async () => {
       // Arrange
       const deckNames = ["Spanish", "Japanese"];
+      const deckNamesAndIds = {
+        Spanish: 1234567890,
+        Japanese: 1234567891,
+      };
       const statsResponse = {
         "1234567890": {
           deck_id: 1234567890,
@@ -77,6 +81,7 @@ describe("DeckActionsTool", () => {
       };
       ankiClient.invoke
         .mockResolvedValueOnce(deckNames)
+        .mockResolvedValueOnce(deckNamesAndIds)
         .mockResolvedValueOnce(statsResponse);
 
       // Act
@@ -87,9 +92,14 @@ describe("DeckActionsTool", () => {
       const result = parseToolResult(rawResult);
 
       // Assert
-      expect(ankiClient.invoke).toHaveBeenCalledTimes(2);
+      expect(ankiClient.invoke).toHaveBeenCalledTimes(3);
       expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "deckNames");
-      expect(ankiClient.invoke).toHaveBeenNthCalledWith(2, "getDeckStats", {
+      expect(ankiClient.invoke).toHaveBeenNthCalledWith(
+        2,
+        "deckNamesAndIds",
+        {},
+      );
+      expect(ankiClient.invoke).toHaveBeenNthCalledWith(3, "getDeckStats", {
         decks: deckNames,
       });
 
@@ -110,6 +120,67 @@ describe("DeckActionsTool", () => {
         new_cards: 70,
         learning_cards: 15,
         review_cards: 35,
+      });
+    });
+
+    it("should resolve child deck stats by ID when getDeckStats returns short name", async () => {
+      // Arrange
+      const deckNames = ["Test", "Test::STDIO-AddNotes"];
+      const deckNamesAndIds = {
+        Test: 1111111111,
+        "Test::STDIO-AddNotes": 2222222222,
+      };
+      const statsResponse = {
+        "1111111111": {
+          deck_id: 1111111111,
+          name: "Test", // matches full name
+          new_count: 0,
+          learn_count: 0,
+          review_count: 0,
+          total_in_deck: 0,
+        },
+        "2222222222": {
+          deck_id: 2222222222,
+          name: "STDIO-AddNotes", // SHORT name - the bug trigger
+          new_count: 5,
+          learn_count: 2,
+          review_count: 8,
+          total_in_deck: 15,
+        },
+      };
+      ankiClient.invoke
+        .mockResolvedValueOnce(deckNames)
+        .mockResolvedValueOnce(deckNamesAndIds)
+        .mockResolvedValueOnce(statsResponse);
+
+      // Act
+      const rawResult = await tool.execute(
+        { action: "listDecks", includeStats: true },
+        mockContext,
+      );
+      const result = parseToolResult(rawResult);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(result.decks).toHaveLength(2);
+
+      const childDeck = result.decks.find(
+        (d: any) => d.name === "Test::STDIO-AddNotes",
+      );
+      expect(childDeck).toBeDefined();
+      expect(childDeck.stats).toBeDefined();
+      expect(childDeck.stats.total_cards).toBe(15);
+      expect(childDeck.stats.new_count).toBe(5);
+      expect(childDeck.stats.learn_count).toBe(2);
+      expect(childDeck.stats.review_count).toBe(8);
+      // The stats name should be the full deck name, not the short name
+      expect(childDeck.stats.name).toBe("Test::STDIO-AddNotes");
+
+      expect(result.summary).toMatchObject({
+        total_cards: 15,
+        new_cards: 5,
+        learning_cards: 2,
+        review_cards: 8,
       });
     });
 
@@ -283,6 +354,9 @@ describe("DeckActionsTool", () => {
       const deckName = "Test Deck";
 
       ankiClient.invoke.mockImplementation((action: string) => {
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({ [deckName]: 1234567890 });
+        }
         if (action === "getDeckStats") {
           return Promise.resolve({
             "1234567890": {
@@ -325,7 +399,7 @@ describe("DeckActionsTool", () => {
       const result = parseToolResult(rawResult) as DeckStatsResult;
 
       // Assert
-      expect(ankiClient.invoke).toHaveBeenCalledTimes(4);
+      expect(ankiClient.invoke).toHaveBeenCalledTimes(5);
       expect(result.deck).toBe(deckName);
       expect(result.counts).toEqual({
         total: 35,
@@ -335,6 +409,56 @@ describe("DeckActionsTool", () => {
       });
       expect(result.ease.count).toBe(25);
       expect(result.intervals.count).toBe(20);
+    });
+
+    it("should resolve child deck stats by ID when getDeckStats returns short name", async () => {
+      // Arrange
+      const fullDeckName = "Test::STDIO-AddNotes";
+
+      ankiClient.invoke.mockImplementation((action: string) => {
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({
+            Test: 1111111111,
+            "Test::STDIO-AddNotes": 2222222222,
+          });
+        }
+        if (action === "getDeckStats") {
+          return Promise.resolve({
+            "2222222222": {
+              deck_id: 2222222222,
+              name: "STDIO-AddNotes", // SHORT name - the bug trigger
+              new_count: 5,
+              learn_count: 2,
+              review_count: 8,
+              total_in_deck: 15,
+            },
+          });
+        }
+        if (action === "findCards") {
+          return Promise.resolve(Array.from({ length: 15 }, (_, i) => i + 1));
+        }
+        if (action === "getEaseFactors") {
+          return Promise.resolve(Array(15).fill(2500));
+        }
+        if (action === "getIntervals") {
+          return Promise.resolve(Array(15).fill(10));
+        }
+        return Promise.resolve({});
+      });
+
+      // Act
+      const rawResult = await tool.execute(
+        { action: "deckStats", deck: fullDeckName },
+        mockContext,
+      );
+      const result = parseToolResult(rawResult) as DeckStatsResult;
+
+      // Assert
+      expect(result.deck).toBe(fullDeckName);
+      expect(result.counts.total).toBe(15);
+      expect(result.counts.new).toBe(5);
+      expect(result.counts.learning).toBe(2);
+      expect(result.counts.review).toBe(8);
     });
 
     it("should handle deck not found", async () => {
@@ -358,6 +482,9 @@ describe("DeckActionsTool", () => {
       const deckName = "Empty Deck";
 
       ankiClient.invoke.mockImplementation((action: string) => {
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({ [deckName]: 1234567890 });
+        }
         if (action === "getDeckStats") {
           return Promise.resolve({
             "1234567890": {
@@ -392,6 +519,9 @@ describe("DeckActionsTool", () => {
       const deckName = "Custom Buckets";
 
       ankiClient.invoke.mockImplementation((action: string) => {
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({ [deckName]: 1234567890 });
+        }
         if (action === "getDeckStats") {
           return Promise.resolve({
             "1234567890": {
@@ -457,6 +587,9 @@ describe("DeckActionsTool", () => {
       const deckName = "Ease Factor Test";
 
       ankiClient.invoke.mockImplementation((action: string) => {
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({ [deckName]: 1234567890 });
+        }
         if (action === "getDeckStats") {
           return Promise.resolve({
             "1234567890": {
@@ -500,6 +633,9 @@ describe("DeckActionsTool", () => {
       const deckName = "Mixed Intervals";
 
       ankiClient.invoke.mockImplementation((action: string) => {
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({ [deckName]: 1234567890 });
+        }
         if (action === "getDeckStats") {
           return Promise.resolve({
             "1234567890": {
@@ -782,6 +918,9 @@ describe("DeckActionsTool", () => {
       const deckName = "Test Deck";
 
       ankiClient.invoke.mockImplementation((action: string) => {
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({ [deckName]: 1234567890 });
+        }
         if (action === "getDeckStats") {
           return Promise.resolve({
             "1234567890": {
