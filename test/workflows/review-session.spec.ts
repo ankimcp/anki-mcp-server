@@ -72,7 +72,10 @@ describe("Review Session Workflow", () => {
             return ["Spanish", "Japanese::JLPT N5"];
           }
           if (action === "deckNamesAndIds") {
-            return { "Spanish": 1651445861967, "Japanese::JLPT N5": 1651445861968 };
+            return {
+              Spanish: 1651445861967,
+              "Japanese::JLPT N5": 1651445861968,
+            };
           }
           if (action === "getDeckStats") {
             return mockDecks.withStats;

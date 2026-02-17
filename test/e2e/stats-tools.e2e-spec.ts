@@ -217,13 +217,9 @@ describe("E2E: Stats Tools (STDIO)", () => {
         deck: `NONEXISTENT_DECK_${uniqueId()}`,
       });
 
-      // AnkiConnect's getDeckStats returns empty stats for non-existent decks
-      expect(result).toHaveProperty("counts");
-      const counts = result.counts as Record<string, number>;
-      expect(counts.total).toBe(0);
-      expect(counts.new).toBe(0);
-      expect(counts.learning).toBe(0);
-      expect(counts.review).toBe(0);
+      expect(result).toHaveProperty("success", false);
+      expect(result).toHaveProperty("error");
+      expect((result as { error: string }).error).toContain("not found");
     });
   });
 
