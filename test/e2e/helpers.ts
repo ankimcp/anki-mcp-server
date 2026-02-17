@@ -161,6 +161,7 @@ export function runInspector(
     if (error instanceof Error && "stderr" in error) {
       throw new Error(
         `Inspector failed: ${(error as { stderr: string }).stderr}`,
+        { cause: error },
       );
     }
     throw error;

@@ -127,7 +127,6 @@ function computeBuckets(
         ? formatLabel(null, boundaries[0])
         : `<${formatNumber(boundaries[0])}${unitSuffix || ""}`;
       buckets[label]++;
-      placed = true;
       continue;
     }
 
