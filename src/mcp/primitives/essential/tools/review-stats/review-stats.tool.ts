@@ -63,6 +63,10 @@ export class ReviewStatsTool {
           path: ["start_date"],
         },
       ),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async execute(
     params: {

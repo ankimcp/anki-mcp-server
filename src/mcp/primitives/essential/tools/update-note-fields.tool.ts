@@ -58,6 +58,10 @@ export class UpdateNoteFieldsTool {
           .describe("Optional images to add to the note"),
       }),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async updateNoteFields(
     {

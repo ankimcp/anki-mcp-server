@@ -63,6 +63,10 @@ export class CollectionStatsTool {
             "Example: [7, 21, 90] creates buckets: <7d, 7-21d, 21-90d, >90d",
         ),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async execute(params: CollectionStatsParams, context: Context) {
     try {

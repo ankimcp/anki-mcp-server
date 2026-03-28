@@ -32,6 +32,10 @@ export class GuiSelectCardTool {
           "Card ID to select in the browser (get from guiBrowse results)",
         ),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async guiSelectCard({ card }: { card: number }, context: Context) {
     try {

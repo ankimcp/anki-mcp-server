@@ -30,6 +30,10 @@ export class GuiEditNoteTool {
         .positive()
         .describe("Note ID to edit (get from findNotes or notesInfo)"),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async guiEditNote({ note }: { note: number }, context: Context) {
     try {

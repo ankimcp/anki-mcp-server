@@ -27,6 +27,10 @@ export class ModelStylingTool {
         .min(1)
         .describe("The name of the model/note type to get styling for"),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async modelStyling({ modelName }: { modelName: string }, context: Context) {
     try {

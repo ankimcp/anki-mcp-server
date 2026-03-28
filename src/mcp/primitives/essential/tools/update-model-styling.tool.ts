@@ -37,6 +37,10 @@ export class UpdateModelStylingTool {
             "This will completely replace the existing CSS.",
         ),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async updateModelStyling(
     { modelName, css }: { modelName: string; css: string },

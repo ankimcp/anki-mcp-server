@@ -25,6 +25,10 @@ export class GuiShowAnswerTool {
       "NEVER use this for conducting review sessions. Use the dedicated review tools (present_card) instead. " +
       "IMPORTANT: Only use when user explicitly requests showing the answer.",
     parameters: z.object({}),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async guiShowAnswer(_args: Record<string, never>, context: Context) {
     try {

@@ -47,6 +47,10 @@ export class GetDueCardsTool {
         .default(false)
         .describe("Include new cards (never seen before). Default: false"),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async getDueCards(
     {

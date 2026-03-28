@@ -38,6 +38,10 @@ export class GuiAddCardsTool {
         tags: z.array(z.string()).optional().describe("Optional tags to add"),
       }),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async guiAddCards(
     {

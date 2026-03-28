@@ -22,6 +22,11 @@ export class SyncTool {
     description:
       "Synchronize local Anki collection with AnkiWeb. IMPORTANT: Always sync at the START of a review session (before getting cards) and at the END when user indicates they are done. This ensures data consistency across devices.",
     parameters: z.object({}),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
   })
   async sync(_args: Record<string, never>, context: Context) {
     try {

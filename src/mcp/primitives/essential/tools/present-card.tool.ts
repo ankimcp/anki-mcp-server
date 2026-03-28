@@ -31,6 +31,10 @@ export class PresentCardTool {
         .default(false)
         .describe("Whether to include the answer/back content in the response"),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async presentCard(
     { card_id, show_answer }: { card_id: number; show_answer?: boolean },

@@ -66,6 +66,10 @@ export class AddNoteTool {
         .optional()
         .describe("Advanced duplicate checking options"),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async addNote(
     {

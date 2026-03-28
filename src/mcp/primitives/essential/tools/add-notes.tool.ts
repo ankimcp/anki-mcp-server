@@ -76,6 +76,10 @@ export class AddNotesTool {
         .max(100)
         .describe("Array of notes to create (1-100)"),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async addNotes(
     {

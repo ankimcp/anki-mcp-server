@@ -25,6 +25,10 @@ export class GuiSelectedNotesTool {
       "This tool is for note editing/creation workflows, NOT for review sessions. " +
       "The Card Browser must be open with cards selected.",
     parameters: z.object({}),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async guiSelectedNotes(_args: Record<string, never>, context: Context) {
     try {

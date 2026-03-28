@@ -71,6 +71,10 @@ export class CreateModelTool {
         .default(false)
         .describe("Create as cloze deletion model (default: false)"),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async createModel(
     {

@@ -45,6 +45,10 @@ export class GuiBrowseTool {
         .optional()
         .describe("Optional reordering of cards in the browser"),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async guiBrowse(
     {

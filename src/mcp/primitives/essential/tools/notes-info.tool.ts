@@ -33,6 +33,10 @@ export class NotesInfoTool {
             "Get these IDs from findNotes tool.",
         ),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async notesInfo({ notes }: { notes: number[] }, context: Context) {
     try {

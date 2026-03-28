@@ -29,6 +29,10 @@ export class GuiDeckOverviewTool {
         .min(1)
         .describe("Deck name to open (get from list_decks)"),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async guiDeckOverview({ name }: { name: string }, context: Context) {
     try {

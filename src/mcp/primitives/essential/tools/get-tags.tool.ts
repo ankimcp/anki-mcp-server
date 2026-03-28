@@ -34,6 +34,10 @@ export class GetTagsTool {
           "Optional filter pattern - returns only tags containing this string (case-insensitive)",
         ),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async getTags({ pattern }: { pattern?: string }, context: Context) {
     try {

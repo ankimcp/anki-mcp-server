@@ -72,6 +72,10 @@ Remember to sync first at the start of a session for latest data.`,
         .optional()
         .describe("[changeDeck] Array of card IDs to move"),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async execute(
     params: {

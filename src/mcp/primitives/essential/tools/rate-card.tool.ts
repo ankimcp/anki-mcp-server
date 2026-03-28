@@ -32,6 +32,10 @@ export class RateCardTool {
           "The rating for the card (use the user's choice, not your suggestion): 1=Again (failed), 2=Hard, 3=Good, 4=Easy",
         ),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async rateCard(
     { card_id, rating }: { card_id: number; rating: number },

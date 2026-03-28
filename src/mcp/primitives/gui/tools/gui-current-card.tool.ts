@@ -26,6 +26,10 @@ export class GuiCurrentCardTool {
       "NEVER use this for conducting review sessions. Use the dedicated review tools (get_due_cards, present_card, rate_card) instead. " +
       "IMPORTANT: Only use when user explicitly requests current card information.",
     parameters: z.object({}),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async guiCurrentCard(_args: Record<string, never>, context: Context) {
     try {

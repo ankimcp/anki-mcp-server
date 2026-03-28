@@ -57,6 +57,10 @@ export class GetCardsTool {
         .default(10)
         .describe("Maximum number of cards to return"),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async getCards(
     {

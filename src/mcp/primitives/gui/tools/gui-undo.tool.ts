@@ -25,6 +25,10 @@ export class GuiUndoTool {
       "This tool is for note editing/creation workflows, NOT for review sessions. " +
       "Use this to undo mistakes in note creation, editing, or card management.",
     parameters: z.object({}),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async guiUndo(_args: Record<string, never>, context: Context) {
     try {

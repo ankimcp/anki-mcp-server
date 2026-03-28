@@ -25,6 +25,10 @@ export class GuiDeckBrowserTool {
       "This tool is for deck management and organization workflows, NOT for review sessions. " +
       "Use this when user wants to see all decks or manage deck structure.",
     parameters: z.object({}),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async guiDeckBrowser(_args: Record<string, never>, context: Context) {
     try {
