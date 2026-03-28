@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
+      id-token: write  # Required for npm OIDC trusted publishing
 
     steps:
       - uses: actions/checkout@v4
@@ -23,8 +23,13 @@ jobs:
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
+      # Trusted publishing requires npm >= 11.5.1.
+      # Node 22 may ship with an older npm, so we upgrade explicitly.
+      - name: Upgrade npm to latest
+        run: npm install -g npm@latest
+
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build
         run: npm run build
@@ -32,6 +37,9 @@ jobs:
       - name: Prepare package for legacy publishing
         run: bash scripts/prepare-legacy-package.sh
 
+      # IMPORTANT: Do NOT set NODE_AUTH_TOKEN here.
+      # With trusted publishing, npm authenticates via OIDC automatically.
+      # Setting NODE_AUTH_TOKEN (even empty) would bypass OIDC and cause 404.
       - name: Publish to npm as anki-mcp-http (legacy)
         run: |
           VERSION=$(node -p "require('./package.json').version")
@@ -41,8 +49,8 @@ jobs:
           if [[ "$VERSION" =~ -([a-zA-Z]+) ]]; then
             NPM_TAG="${BASH_REMATCH[1]}"
             echo "Publishing prerelease to tag: $NPM_TAG"
-            npm publish --tag "$NPM_TAG"
+            npm publish --provenance --tag "$NPM_TAG"
           else
             echo "Publishing stable release to latest"
-            npm publish
+            npm publish --provenance
           fi
