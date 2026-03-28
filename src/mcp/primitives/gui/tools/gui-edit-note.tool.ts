@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for opening the note editor for a specific note
@@ -30,6 +27,12 @@ export class GuiEditNoteTool {
         .positive()
         .describe("Note ID to edit (get from findNotes or notesInfo)"),
     }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      noteId: z.number(),
+      message: z.string(),
+      hint: z.string(),
+    }),
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
@@ -46,12 +49,12 @@ export class GuiEditNoteTool {
       await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(`Note editor opened for note ${note}`);
 
-      return createSuccessResponse({
+      return {
         success: true,
         noteId: note,
         message: `Note editor opened for note ${note}`,
         hint: "The user can now edit the note fields, tags, and cards in the Anki GUI. Changes will be saved when they close the editor.",
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to open note editor", error);
 

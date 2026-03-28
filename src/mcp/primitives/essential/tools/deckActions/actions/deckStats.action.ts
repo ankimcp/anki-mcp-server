@@ -35,6 +35,9 @@ export interface DeckStatsParams {
  * Result structure for deckStats action
  */
 export interface DeckStatsResult {
+  /** Whether the operation succeeded */
+  success: boolean;
+
   /** Deck name */
   deck: string;
 
@@ -120,6 +123,7 @@ export async function deckStats(
   // Handle empty deck case
   if (counts.total === 0) {
     return {
+      success: true,
       deck,
       counts,
       ease: computeDistribution([], { boundaries: easeBuckets }),
@@ -139,6 +143,7 @@ export async function deckStats(
 
   if (!cardIds || cardIds.length === 0) {
     return {
+      success: true,
       deck,
       counts,
       ease: computeDistribution([], { boundaries: easeBuckets }),
@@ -184,6 +189,7 @@ export async function deckStats(
   });
 
   return {
+    success: true,
     deck,
     counts,
     ease,

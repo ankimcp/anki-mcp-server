@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for opening the Add Cards dialog with preset note details
@@ -37,6 +34,14 @@ export class GuiAddCardsTool {
           ),
         tags: z.array(z.string()).optional().describe("Optional tags to add"),
       }),
+    }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      noteId: z.number().nullable(),
+      deckName: z.string(),
+      modelName: z.string(),
+      message: z.string(),
+      hint: z.string(),
     }),
     annotations: {
       readOnlyHint: false,
@@ -88,14 +93,14 @@ export class GuiAddCardsTool {
       await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(`Add Cards dialog opened, potential note ID: ${noteId}`);
 
-      return createSuccessResponse({
+      return {
         success: true,
         noteId,
         deckName: note.deckName,
         modelName: note.modelName,
         message: `Add Cards dialog opened with preset details for deck "${note.deckName}"`,
         hint: "The user can now review and finalize the note in the Anki GUI. The note will be created when they click Add.",
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to open Add Cards dialog", error);
 

@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for opening the Deck Overview dialog for a specific deck
@@ -28,6 +25,12 @@ export class GuiDeckOverviewTool {
         .string()
         .min(1)
         .describe("Deck name to open (get from list_decks)"),
+    }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      deckName: z.string(),
+      message: z.string(),
+      hint: z.string(),
     }),
     annotations: {
       readOnlyHint: true,
@@ -59,12 +62,12 @@ export class GuiDeckOverviewTool {
 
       this.logger.log(`Deck Overview opened for deck "${name}"`);
 
-      return createSuccessResponse({
+      return {
         success: true,
         deckName: name,
         message: `Deck Overview opened for deck "${name}"`,
         hint: "The deck statistics and study options are now visible in the Anki GUI.",
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to open Deck Overview", error);
 

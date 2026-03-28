@@ -7,7 +7,6 @@ import { AnkiCard, CardPresentation } from "@/mcp/types/anki.types";
 import {
   extractCardContent,
   getCardType,
-  createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
 
@@ -30,6 +29,24 @@ export class PresentCardTool {
         .boolean()
         .default(false)
         .describe("Whether to include the answer/back content in the response"),
+    }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      card: z.object({
+        cardId: z.number(),
+        front: z.string(),
+        back: z.string().optional(),
+        deckName: z.string(),
+        modelName: z.string(),
+        tags: z.array(z.string()),
+        currentInterval: z.number(),
+        easeFactor: z.number(),
+        reviews: z.number(),
+        lapses: z.number(),
+        cardType: z.string(),
+        noteId: z.number(),
+      }),
+      instruction: z.string(),
     }),
     annotations: {
       readOnlyHint: true,
@@ -90,20 +107,15 @@ export class PresentCardTool {
       await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(`Retrieved card ${card_id} for presentation`);
 
-      const response: any = {
+      const instruction = !showAnswer
+        ? "Question shown. Wait for user's answer, then use show_answer=true"
+        : "Answer revealed. Evaluate response and suggest rating, then wait for user confirmation";
+
+      return {
         success: true,
         card: presentation,
+        instruction,
       };
-
-      if (!showAnswer) {
-        response.instruction =
-          "Question shown. Wait for user's answer, then use show_answer=true";
-      } else {
-        response.instruction =
-          "Answer revealed. Evaluate response and suggest rating, then wait for user confirmation";
-      }
-
-      return createSuccessResponse(response);
     } catch (error) {
       this.logger.error(`Failed to retrieve card ${card_id}`, error);
       return createErrorResponse(error, { cardId: card_id });

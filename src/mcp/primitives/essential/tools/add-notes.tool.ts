@@ -6,10 +6,7 @@ import {
   AnkiConnectClient,
   ReadOnlyModeError,
 } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /** Per-note result status */
 type NoteResultStatus = "created" | "skipped" | "failed";
@@ -75,6 +72,24 @@ export class AddNotesTool {
         .min(1)
         .max(100)
         .describe("Array of notes to create (1-100)"),
+    }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      deckName: z.string(),
+      modelName: z.string(),
+      totalRequested: z.number(),
+      created: z.number(),
+      skipped: z.number(),
+      failed: z.number(),
+      results: z.array(
+        z.object({
+          index: z.number(),
+          status: z.enum(["created", "skipped", "failed"]),
+          noteId: z.number().optional(),
+          reason: z.string().optional(),
+          error: z.string().optional(),
+        }),
+      ),
     }),
     annotations: {
       readOnlyHint: false,
@@ -265,7 +280,7 @@ export class AddNotesTool {
         `Batch complete: ${createdCount} created, ${skippedCount} skipped, ${failedCount} failed`,
       );
 
-      const response = {
+      return {
         success: createdCount > 0 || (failedCount === 0 && skippedCount > 0),
         deckName,
         modelName,
@@ -275,8 +290,6 @@ export class AddNotesTool {
         failed: failedCount,
         results,
       };
-
-      return createSuccessResponse(response);
     } catch (error) {
       this.logger.error("Failed to add notes batch", error);
 

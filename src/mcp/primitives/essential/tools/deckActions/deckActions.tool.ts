@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { changeDeck, type ChangeDeckResult } from "./actions/changeDeck.action";
 import { listDecks, type ListDecksResult } from "./actions/listDecks.action";
 import { createDeck, type CreateDeckResult } from "./actions/createDeck.action";
@@ -71,6 +68,78 @@ Remember to sync first at the start of a session for latest data.`,
         .array(z.number())
         .optional()
         .describe("[changeDeck] Array of card IDs to move"),
+    }),
+    outputSchema: z.object({
+      // listDecks fields
+      success: z.boolean(),
+      decks: z
+        .array(
+          z.object({
+            name: z.string(),
+            stats: z
+              .object({
+                deck_id: z.number(),
+                name: z.string(),
+                new_count: z.number(),
+                learn_count: z.number(),
+                review_count: z.number(),
+                total_new: z.number(),
+                total_cards: z.number(),
+              })
+              .optional(),
+          }),
+        )
+        .optional(),
+      total: z.number().optional(),
+      summary: z
+        .object({
+          total_cards: z.number(),
+          new_cards: z.number(),
+          learning_cards: z.number(),
+          review_cards: z.number(),
+        })
+        .optional(),
+      message: z.string().optional(),
+      // createDeck fields
+      deckId: z.number().optional(),
+      deckName: z.string().optional(),
+      created: z.boolean().optional(),
+      exists: z.boolean().optional(),
+      parentDeck: z.string().optional(),
+      childDeck: z.string().optional(),
+      // deckStats fields
+      deck: z.string().optional(),
+      counts: z
+        .object({
+          total: z.number(),
+          new: z.number(),
+          learning: z.number(),
+          review: z.number(),
+        })
+        .optional(),
+      ease: z
+        .object({
+          mean: z.number(),
+          median: z.number(),
+          min: z.number(),
+          max: z.number(),
+          count: z.number(),
+          buckets: z.record(z.string(), z.number()),
+        })
+        .optional(),
+      intervals: z
+        .object({
+          mean: z.number(),
+          median: z.number(),
+          min: z.number(),
+          max: z.number(),
+          count: z.number(),
+          buckets: z.record(z.string(), z.number()),
+        })
+        .optional(),
+      // changeDeck fields
+      cardsAffected: z.number().optional(),
+      targetDeck: z.string().optional(),
     }),
     annotations: {
       readOnlyHint: false,
@@ -163,7 +232,7 @@ Remember to sync first at the start of a session for latest data.`,
       }
 
       this.logger.log(`Successfully executed ${params.action}`);
-      return createSuccessResponse(result);
+      return result;
     } catch (error) {
       this.logger.error(`Failed to execute ${params.action}`, error);
       return createErrorResponse(error, {

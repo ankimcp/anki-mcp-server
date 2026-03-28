@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for retrieving field names for a specific model/note type
@@ -26,6 +23,15 @@ export class ModelFieldNamesTool {
         .string()
         .min(1)
         .describe("The name of the model/note type to get fields for"),
+    }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      modelName: z.string(),
+      fieldNames: z.array(z.string()),
+      total: z.number(),
+      message: z.string(),
+      example: z.record(z.string(), z.string()).optional(),
+      hint: z.string().optional(),
     }),
     annotations: {
       readOnlyHint: true,
@@ -65,13 +71,13 @@ export class ModelFieldNamesTool {
       if (fieldNames.length === 0) {
         this.logger.warn(`No fields found for model: ${modelName}`);
         await context.reportProgress({ progress: 100, total: 100 });
-        return createSuccessResponse({
+        return {
           success: true,
           modelName: modelName,
           fieldNames: [],
           total: 0,
           message: `Model "${modelName}" has no fields`,
-        });
+        };
       }
 
       await context.reportProgress({ progress: 100, total: 100 });
@@ -106,7 +112,15 @@ export class ModelFieldNamesTool {
         };
       }
 
-      const response: any = {
+      const response: {
+        success: boolean;
+        modelName: string;
+        fieldNames: string[];
+        total: number;
+        message: string;
+        example?: Record<string, string>;
+        hint?: string;
+      } = {
         success: true,
         modelName: modelName,
         fieldNames: fieldNames,
@@ -120,7 +134,7 @@ export class ModelFieldNamesTool {
           "Use these field names as keys when creating notes with addNote tool";
       }
 
-      return createSuccessResponse(response);
+      return response;
     } catch (error) {
       this.logger.error(
         `Failed to retrieve field names for model ${modelName}`,

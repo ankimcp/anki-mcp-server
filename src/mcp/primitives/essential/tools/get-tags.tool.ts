@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for retrieving all tags from the Anki collection.
@@ -34,6 +31,14 @@ export class GetTagsTool {
           "Optional filter pattern - returns only tags containing this string (case-insensitive)",
         ),
     }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      tags: z.array(z.string()),
+      total: z.number(),
+      message: z.string(),
+      filtered: z.boolean().optional(),
+      totalUnfiltered: z.number().optional(),
+    }),
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
@@ -54,12 +59,12 @@ export class GetTagsTool {
       if (!allTags || allTags.length === 0) {
         this.logger.log("No tags found");
         await context.reportProgress({ progress: 100, total: 100 });
-        return createSuccessResponse({
+        return {
           success: true,
           message: "No tags found in Anki collection",
           tags: [],
           total: 0,
-        });
+        };
       }
 
       // Apply client-side filtering if pattern provided
@@ -76,7 +81,7 @@ export class GetTagsTool {
         `Found ${tags.length} tags${pattern ? ` (filtered from ${allTags.length})` : ""}`,
       );
 
-      return createSuccessResponse({
+      return {
         success: true,
         tags: tags,
         total: tags.length,
@@ -84,7 +89,7 @@ export class GetTagsTool {
         message: pattern
           ? `Found ${tags.length} tags matching "${pattern}" (${allTags.length} total)`
           : `Found ${tags.length} tags`,
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to retrieve tags", error);
       return createErrorResponse(error, {

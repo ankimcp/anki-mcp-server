@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for selecting a specific card in the Card Browser
@@ -31,6 +28,13 @@ export class GuiSelectCardTool {
         .describe(
           "Card ID to select in the browser (get from guiBrowse results)",
         ),
+    }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      cardId: z.number(),
+      browserOpen: z.boolean(),
+      message: z.string(),
+      hint: z.string(),
     }),
     annotations: {
       readOnlyHint: false,
@@ -59,13 +63,13 @@ export class GuiSelectCardTool {
 
       this.logger.log(`Successfully selected card ${card} in Card Browser`);
 
-      return createSuccessResponse({
+      return {
         success: true,
         cardId: card,
         browserOpen: true,
         message: `Successfully selected card ${card} in Card Browser`,
         hint: "The card is now selected. Use guiEditNote to edit the associated note, or guiSelectedNotes to get note IDs.",
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to select card in browser", error);
 

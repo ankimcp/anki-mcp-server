@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for deleting notes and their associated cards
@@ -36,6 +33,17 @@ export class DeleteNotesTool {
         .describe(
           "Must be set to true to confirm you want to permanently delete these notes and their cards",
         ),
+    }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      deletedCount: z.number(),
+      deletedNoteIds: z.array(z.number()).optional(),
+      cardsDeleted: z.number().optional(),
+      notFoundCount: z.number(),
+      requestedIds: z.array(z.number()),
+      message: z.string(),
+      warning: z.string().optional(),
+      hint: z.string().optional(),
     }),
     annotations: {
       readOnlyHint: false,
@@ -74,7 +82,7 @@ export class DeleteNotesTool {
         this.logger.warn("No valid notes found to delete");
         await context.reportProgress({ progress: 100, total: 100 });
 
-        return createSuccessResponse({
+        return {
           success: true,
           deletedCount: 0,
           notFoundCount: notes.length,
@@ -82,7 +90,7 @@ export class DeleteNotesTool {
           message:
             "No notes were deleted (none of the provided IDs were valid)",
           hint: "The notes may have already been deleted or the IDs are invalid",
-        });
+        };
       }
 
       // Count total cards that will be deleted
@@ -108,7 +116,7 @@ export class DeleteNotesTool {
           ? `Successfully deleted ${validNoteIds.length} note(s) and ${totalCards} card(s). ${notFoundCount} note(s) were not found.`
           : `Successfully deleted ${validNoteIds.length} note(s) and ${totalCards} card(s)`;
 
-      return createSuccessResponse({
+      return {
         success: true,
         deletedCount: validNoteIds.length,
         deletedNoteIds: validNoteIds,
@@ -118,7 +126,7 @@ export class DeleteNotesTool {
         message: message,
         warning: "These notes and cards have been permanently deleted",
         hint: "Consider syncing with AnkiWeb to propagate deletions to other devices",
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to delete notes", error);
 

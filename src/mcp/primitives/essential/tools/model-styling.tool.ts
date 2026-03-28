@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for retrieving CSS styling for a specific model/note type
@@ -26,6 +23,20 @@ export class ModelStylingTool {
         .string()
         .min(1)
         .describe("The name of the model/note type to get styling for"),
+    }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      modelName: z.string(),
+      css: z.string(),
+      cssInfo: z.object({
+        length: z.number(),
+        hasCardStyling: z.boolean(),
+        hasFrontStyling: z.boolean(),
+        hasBackStyling: z.boolean(),
+        hasClozeStyling: z.boolean(),
+      }),
+      message: z.string(),
+      hint: z.string(),
     }),
     annotations: {
       readOnlyHint: true,
@@ -73,7 +84,7 @@ export class ModelStylingTool {
         `Retrieved CSS styling for model ${modelName} (${cssLength} chars)`,
       );
 
-      return createSuccessResponse({
+      return {
         success: true,
         modelName: modelName,
         css: css,
@@ -86,7 +97,7 @@ export class ModelStylingTool {
         },
         message: `Retrieved CSS styling for model "${modelName}"`,
         hint: "This CSS is automatically applied when cards of this type are rendered in Anki",
-      });
+      };
     } catch (error) {
       this.logger.error(
         `Failed to retrieve styling for model ${modelName}`,

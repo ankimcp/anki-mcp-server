@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { addTags, type AddTagsResult } from "./actions/addTags.action";
 import { removeTags, type RemoveTagsResult } from "./actions/removeTags.action";
 import {
@@ -64,6 +61,17 @@ Tags in addTags/removeTags are space-separated strings (e.g., "tag1 tag2 tag3").
         .string()
         .optional()
         .describe("[replaceTags] The tag to replace with"),
+    }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      message: z.string(),
+      // addTags / removeTags fields
+      notesAffected: z.number().optional(),
+      tagsAdded: z.array(z.string()).optional(),
+      tagsRemoved: z.array(z.string()).optional(),
+      // replaceTags fields
+      tagToReplace: z.string().optional(),
+      replaceWithTag: z.string().optional(),
     }),
     annotations: {
       readOnlyHint: false,
@@ -159,7 +167,7 @@ Tags in addTags/removeTags are space-separated strings (e.g., "tag1 tag2 tag3").
       }
 
       this.logger.log(`Successfully executed ${params.action}`);
-      return createSuccessResponse(result);
+      return result;
     } catch (error) {
       this.logger.error(`Failed to execute ${params.action}`, error);
       return createErrorResponse(error, {

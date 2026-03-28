@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for opening Anki Card Browser and searching for cards
@@ -44,6 +41,14 @@ export class GuiBrowseTool {
         })
         .optional()
         .describe("Optional reordering of cards in the browser"),
+    }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      cardIds: z.array(z.number()),
+      cardCount: z.number(),
+      query: z.string(),
+      message: z.string(),
+      hint: z.string(),
     }),
     annotations: {
       readOnlyHint: true,
@@ -83,7 +88,7 @@ export class GuiBrowseTool {
         `Card Browser opened with ${cardIds.length} card(s) found`,
       );
 
-      return createSuccessResponse({
+      return {
         success: true,
         cardIds,
         cardCount: cardIds.length,
@@ -93,7 +98,7 @@ export class GuiBrowseTool {
           cardIds.length === 0
             ? "No cards found. Try adjusting your search query."
             : "Use guiSelectCard to select a specific card, or guiSelectedNotes to get selected notes.",
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to open Card Browser", error);
 

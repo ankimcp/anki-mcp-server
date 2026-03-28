@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import {
   storeMediaFile,
   type StoreMediaFileResult,
@@ -81,6 +78,20 @@ Perfect for workflows like ElevenLabs TTS → Anki audio flashcards.`,
         .string()
         .optional()
         .describe('[getMediaFilesNames only] Filter pattern (e.g., "*.mp3")'),
+    }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      filename: z.string().optional(),
+      message: z.string(),
+      // storeMediaFile fields
+      prefixedWithUnderscore: z.boolean().optional(),
+      // retrieveMediaFile fields
+      data: z.string().nullable().optional(),
+      found: z.boolean().optional(),
+      // getMediaFilesNames fields
+      files: z.array(z.string()).optional(),
+      count: z.number().optional(),
+      pattern: z.string().optional(),
     }),
     annotations: {
       readOnlyHint: false,
@@ -175,7 +186,7 @@ Perfect for workflows like ElevenLabs TTS → Anki audio flashcards.`,
       }
 
       this.logger.log(`Successfully executed ${params.action}`);
-      return createSuccessResponse(result);
+      return result;
     } catch (error) {
       this.logger.error(`Failed to execute ${params.action}`, error);
       return createErrorResponse(error, {
