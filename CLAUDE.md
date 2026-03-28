@@ -76,7 +76,7 @@ All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`. 
 
 ### Key Patterns
 
-**Tool response format**: All tools return via `createSuccessResponse(data)` / `createErrorResponse(error, context)` from `anki.utils.ts`. These wrap results in MCP's `CallToolResult` format with JSON-stringified content.
+**Tool response format**: Success paths return raw objects matching the tool's `outputSchema`. The mcp-nest handler validates and wraps them automatically. Error paths use `createErrorResponse(error, context)` from `anki.utils.ts` which returns `CallToolResult` with `isError: true` and bypasses outputSchema validation.
 
 **Action tool pattern**: Complex tools like `deckActions`, `tagActions`, `mediaActions` use a dispatch pattern — a single `@Tool` with an `action` discriminant that switches to handler functions in an `actions/` subdirectory. Each action is a pure function taking `(params, ankiClient)`.
 
@@ -116,10 +116,15 @@ Same as above but in `src/mcp/primitives/gui/`. Must include dual warnings:
 ```typescript
 // 1. Zod schema for input validation
 // 2. @Injectable() class with AnkiConnectClient injected
-// 3. @Tool({ name, description, parameters }) decorator
+// 3. @Tool({ name, description, parameters, outputSchema, annotations }) decorator
 // 4. execute() method calling AnkiConnectClient.invoke()
-// 5. Return via createSuccessResponse() / createErrorResponse()
+// 5. Success: return raw object matching outputSchema (handler wraps it automatically)
+// 6. Error: return createErrorResponse() (bypasses outputSchema validation)
 ```
+
+**outputSchema**: All tools define a Zod `outputSchema` in the `@Tool` decorator. The mcp-nest handler validates success returns via `safeParse()` and wraps them as `structuredContent`. Error returns via `createErrorResponse()` have a `content` array and bypass schema validation.
+
+**annotations**: All tools declare `readOnlyHint`, `destructiveHint`, and optionally `idempotentHint` in the `@Tool` decorator.
 
 See `src/mcp/primitives/essential/tools/sync.tool.ts` for minimal example.
 
@@ -154,7 +159,9 @@ npm run e2e:full:local      # All-in-one: start, test, cleanup
 1. Update version in `package.json` (single source of truth — pre-commit hook syncs to `manifest.json`)
 2. **Add new tools to `manifest.json` tools array**
 3. Commit and tag: `git tag -a v0.x.0 -m "message" && git push origin v0.x.0`
-4. GitHub Actions handles: version sync, build, MCPB bundle, release
+4. GitHub Actions handles: version sync, build, MCPB bundle, npm publish, GitHub release
+
+**npm publishing** uses OIDC Trusted Publishing (no `NPM_TOKEN` needed). The `--provenance` flag triggers OIDC auth and generates cryptographic attestations. Configured in `npm-publish.yml` and `npm-publish-legacy.yml`.
 
 **Don't run `npm run mcpb:bundle` manually** - CI handles it.
 
