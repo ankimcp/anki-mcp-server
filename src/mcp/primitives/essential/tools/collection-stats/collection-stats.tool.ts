@@ -30,7 +30,7 @@ export class CollectionStatsTool {
       "Ease buckets and interval buckets can be customized to focus on specific ranges.",
     parameters: z.object({
       ease_buckets: z
-        .array(z.number().positive())
+        .array(z.number().positive()).max(20)
         .optional()
         .default([2.0, 2.5, 3.0])
         .refine(
@@ -45,7 +45,7 @@ export class CollectionStatsTool {
             "Example: [2.0, 2.5, 3.0] creates buckets: <2.0, 2.0-2.5, 2.5-3.0, >3.0",
         ),
       interval_buckets: z
-        .array(z.number().positive())
+        .array(z.number().positive()).max(20)
         .optional()
         .default([7, 21, 90])
         .refine(

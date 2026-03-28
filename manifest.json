@@ -149,6 +149,28 @@
       "description": "Get review history analysis including temporal patterns, retention metrics, and study streak information"
     }
   ],
+  "prompts": [
+    {
+      "name": "anki_review",
+      "description": "Guided Anki review session workflow with spaced repetition best practices"
+    },
+    {
+      "name": "twenty_rules",
+      "description": "Twenty rules of formulating knowledge for effective Anki flashcard creation"
+    }
+  ],
+  "resources": [
+    {
+      "name": "system-info",
+      "uri": "system://info",
+      "description": "System information including platform, OS, CPU, memory, and Node.js version"
+    },
+    {
+      "name": "environment-variable",
+      "uri_template": "env://{name}",
+      "description": "Read environment variable values by name"
+    }
+  ],
   "prompts_generated": true,
   "server": {
     "type": "node",

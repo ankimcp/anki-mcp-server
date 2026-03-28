@@ -42,7 +42,7 @@ Tags in addTags/removeTags are space-separated strings (e.g., "tag1 tag2 tag3").
         .enum(["addTags", "removeTags", "replaceTags", "clearUnusedTags"])
         .describe("The tag action to perform"),
       notes: z
-        .array(z.number())
+        .array(z.number()).min(1).max(1000)
         .optional()
         .describe(
           "[addTags, removeTags, replaceTags] Array of note IDs to modify",

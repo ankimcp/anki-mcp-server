@@ -52,13 +52,13 @@ Remember to sync first at the start of a session for latest data.`,
           '[deckStats/changeDeck] Deck name (e.g., "Japanese::JLPT N5")',
         ),
       easeBuckets: z
-        .array(z.number().positive())
+        .array(z.number().positive()).max(20)
         .optional()
         .describe(
           "[deckStats] Bucket boundaries for ease factor distribution. Default: [2.0, 2.5, 3.0]",
         ),
       intervalBuckets: z
-        .array(z.number().positive())
+        .array(z.number().positive()).max(20)
         .optional()
         .describe(
           "[deckStats] Bucket boundaries for interval distribution in days. Default: [7, 21, 90]",

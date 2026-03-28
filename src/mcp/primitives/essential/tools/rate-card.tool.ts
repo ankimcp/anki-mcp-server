@@ -3,7 +3,10 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import { getRatingDescription, createErrorResponse } from "@/mcp/utils/anki.utils";
+import {
+  getRatingDescription,
+  createErrorResponse,
+} from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for rating a card and updating Anki's scheduling
