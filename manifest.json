@@ -1,8 +1,8 @@
 {
-  "manifest_version": "0.2",
+  "manifest_version": "0.4",
   "name": "anki-mcp-server",
   "display_name": "Anki MCP Server",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "license": "AGPL-3.0-or-later",
   "description": "Model Context Protocol server for Anki spaced repetition flashcard application",
   "long_description": "Transform your Anki experience with natural language interaction - like having a private tutor. This MCP server enables AI assistants to interact with Anki, allowing them to explain concepts, make learning more engaging, provide context, and adapt to your learning style. Features include review sessions, deck management, note creation and editing, and more.\n\nRequires Anki with the AnkiConnect plugin installed.",
@@ -152,23 +152,13 @@
   "prompts": [
     {
       "name": "anki_review",
-      "description": "Guided Anki review session workflow with spaced repetition best practices"
+      "description": "Guided Anki review session workflow with spaced repetition best practices",
+      "text": "Guidelines for conducting Anki spaced repetition review sessions. Covers sync workflow, card presentation, rating criteria, and session management."
     },
     {
       "name": "twenty_rules",
-      "description": "Twenty rules of formulating knowledge for effective Anki flashcard creation"
-    }
-  ],
-  "resources": [
-    {
-      "name": "system-info",
-      "uri": "system://info",
-      "description": "System information including platform, OS, CPU, memory, and Node.js version"
-    },
-    {
-      "name": "environment-variable",
-      "uri_template": "env://{name}",
-      "description": "Read environment variable values by name"
+      "description": "Twenty rules of formulating knowledge for effective Anki flashcard creation",
+      "text": "Twenty rules of formulating knowledge by Dr. Piotr Wozniak, adapted for effective Anki flashcard creation."
     }
   ],
   "prompts_generated": true,
