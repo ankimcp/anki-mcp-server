@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
 import { ModuleRef, ContextIdFactory } from "@nestjs/core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { McpExecutorService, McpRegistryService } from "@rekog/mcp-nest";
+import { McpExecutorService, McpRegistryDiscoveryService } from "@rekog/mcp-nest";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { InMemoryTransport } from "./in-memory.transport";
 import type { ServerCapabilities } from "@modelcontextprotocol/sdk/types.js";
@@ -14,7 +14,7 @@ import { getVersion } from "../version";
  * Based on StdioService pattern from @rekog/mcp-nest but uses
  * InMemoryTransport instead of StdioServerTransport.
  *
- * Note: MCP_MODULE_ID is retrieved dynamically from McpRegistryService
+ * Note: MCP_MODULE_ID is retrieved dynamically from McpRegistryDiscoveryService
  * because it's not exported by McpModule (only available within McpModule scope).
  */
 @Injectable()
@@ -26,7 +26,7 @@ export class TunnelMcpService implements OnApplicationBootstrap {
 
   constructor(
     private readonly moduleRef: ModuleRef,
-    private readonly registry: McpRegistryService,
+    private readonly registry: McpRegistryDiscoveryService,
   ) {}
 
   async onApplicationBootstrap() {

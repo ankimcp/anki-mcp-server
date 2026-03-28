@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ModuleRef } from "@nestjs/core";
-import { McpRegistryService, McpExecutorService } from "@rekog/mcp-nest";
+import { McpRegistryDiscoveryService, McpExecutorService } from "@rekog/mcp-nest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { TunnelMcpService } from "../tunnel-mcp.service";
@@ -22,7 +22,7 @@ jest.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
 describe("TunnelMcpService", () => {
   let service: TunnelMcpService;
   let moduleRef: ModuleRef;
-  let registry: McpRegistryService;
+  let registry: McpRegistryDiscoveryService;
   let executor: McpExecutorService;
   let mockTransport: jest.Mocked<InMemoryTransport>;
   let mockMcpServer: jest.Mocked<McpServer>;
@@ -60,7 +60,7 @@ describe("TunnelMcpService", () => {
           useValue: mockModuleRef,
         },
         {
-          provide: McpRegistryService,
+          provide: McpRegistryDiscoveryService,
           useValue: mockRegistry,
         },
       ],
@@ -68,7 +68,7 @@ describe("TunnelMcpService", () => {
 
     service = module.get<TunnelMcpService>(TunnelMcpService);
     moduleRef = module.get<ModuleRef>(ModuleRef);
-    registry = module.get<McpRegistryService>(McpRegistryService);
+    registry = module.get<McpRegistryDiscoveryService>(McpRegistryDiscoveryService);
     executor = mockExecutor as unknown as McpExecutorService;
 
     // Create mock transport instance
