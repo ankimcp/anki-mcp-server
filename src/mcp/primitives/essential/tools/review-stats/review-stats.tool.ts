@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { computeRetention, calculateStreak } from "@/mcp/utils/stats.utils";
 import { ReviewStatsResult, CardReviewTuple } from "./review-stats.types";
 
@@ -63,6 +60,50 @@ export class ReviewStatsTool {
           path: ["start_date"],
         },
       ),
+    outputSchema: z.object({
+      period: z.object({
+        start: z.string(),
+        end: z.string(),
+      }),
+      deck: z.string(),
+      reviews_by_day: z.array(
+        z.object({
+          date: z.string(),
+          count: z.number(),
+        }),
+      ),
+      summary: z.object({
+        total_reviews: z.number(),
+        average_per_day: z.number(),
+        days_studied: z.number(),
+        max_day: z
+          .object({
+            date: z.string(),
+            count: z.number(),
+          })
+          .nullable(),
+        min_day: z
+          .object({
+            date: z.string(),
+            count: z.number(),
+          })
+          .nullable(),
+        streak: z.number(),
+      }),
+      retention: z.object({
+        overall: z.number(),
+        by_rating: z.object({
+          again: z.number(),
+          hard: z.number(),
+          good: z.number(),
+          easy: z.number(),
+        }),
+      }),
+    }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async execute(
     params: {
@@ -178,7 +219,7 @@ export class ReviewStatsTool {
           `${streak} day streak`,
       );
 
-      return createSuccessResponse(result);
+      return result;
     } catch (error) {
       this.logger.error(`Failed to get review statistics`, error);
       return createErrorResponse(error, {

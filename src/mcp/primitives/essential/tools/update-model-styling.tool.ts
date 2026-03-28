@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for updating CSS styling of an existing model
@@ -37,6 +34,25 @@ export class UpdateModelStylingTool {
             "This will completely replace the existing CSS.",
         ),
     }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      modelName: z.string(),
+      cssLength: z.number(),
+      cssInfo: z.object({
+        hasRtlSupport: z.boolean(),
+        hasCardStyling: z.boolean(),
+        hasFrontStyling: z.boolean(),
+        hasBackStyling: z.boolean(),
+        hasClozeStyling: z.boolean(),
+      }),
+      message: z.string(),
+      oldCssLength: z.number().optional(),
+      cssLengthChange: z.number().optional(),
+    }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async updateModelStyling(
     { modelName, css }: { modelName: string; css: string },
@@ -85,7 +101,21 @@ export class UpdateModelStylingTool {
       const hasBackClass = css.includes(".back");
       const hasClozeClass = css.includes(".cloze");
 
-      const response: any = {
+      const response: {
+        success: boolean;
+        modelName: string;
+        cssLength: number;
+        cssInfo: {
+          hasRtlSupport: boolean;
+          hasCardStyling: boolean;
+          hasFrontStyling: boolean;
+          hasBackStyling: boolean;
+          hasClozeStyling: boolean;
+        };
+        message: string;
+        oldCssLength?: number;
+        cssLengthChange?: number;
+      } = {
         success: true,
         modelName,
         cssLength,
@@ -104,7 +134,7 @@ export class UpdateModelStylingTool {
         response.cssLengthChange = cssLength - oldStyling.css.length;
       }
 
-      return createSuccessResponse(response);
+      return response;
     } catch (error) {
       this.logger.error(
         `Failed to update styling for model ${modelName}`,

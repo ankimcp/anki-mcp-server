@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for getting selected note IDs from the Card Browser
@@ -25,6 +22,17 @@ export class GuiSelectedNotesTool {
       "This tool is for note editing/creation workflows, NOT for review sessions. " +
       "The Card Browser must be open with cards selected.",
     parameters: z.object({}),
+    outputSchema: z.object({
+      success: z.boolean(),
+      noteIds: z.array(z.number()),
+      noteCount: z.number(),
+      message: z.string(),
+      hint: z.string(),
+    }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async guiSelectedNotes(_args: Record<string, never>, context: Context) {
     try {
@@ -41,22 +49,22 @@ export class GuiSelectedNotesTool {
       );
 
       if (noteIds.length === 0) {
-        return createSuccessResponse({
+        return {
           success: true,
           noteIds: [],
           noteCount: 0,
           message: "No notes are currently selected in the Card Browser",
           hint: "Open the Card Browser (guiBrowse) and select some cards/notes first.",
-        });
+        };
       }
 
-      return createSuccessResponse({
+      return {
         success: true,
         noteIds,
         noteCount: noteIds.length,
         message: `Retrieved ${noteIds.length} selected note ID(s) from Card Browser`,
         hint: "Use notesInfo to get details about these notes, or updateNoteFields/deleteNotes to modify them.",
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to get selected notes", error);
 

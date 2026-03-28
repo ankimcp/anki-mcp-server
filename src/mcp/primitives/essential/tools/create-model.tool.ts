@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import type { CardTemplate } from "@/mcp/types/anki.types";
 
 /**
@@ -71,6 +68,21 @@ export class CreateModelTool {
         .default(false)
         .describe("Create as cloze deletion model (default: false)"),
     }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      modelName: z.string(),
+      modelId: z.number().nullable(),
+      fields: z.array(z.string()),
+      templateCount: z.number(),
+      hasCss: z.boolean(),
+      isCloze: z.boolean(),
+      message: z.string(),
+      warnings: z.array(z.string()).optional(),
+    }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async createModel(
     {
@@ -144,7 +156,17 @@ export class CreateModelTool {
 
       await context.reportProgress({ progress: 100, total: 100 });
 
-      const response: any = {
+      const response: {
+        success: boolean;
+        modelName: string;
+        modelId: number | null;
+        fields: string[];
+        templateCount: number;
+        hasCss: boolean;
+        isCloze: boolean;
+        message: string;
+        warnings?: string[];
+      } = {
         success: true,
         modelName,
         modelId: result.id || null,
@@ -161,7 +183,7 @@ export class CreateModelTool {
           ". Note: Some warnings were detected (see warnings field).";
       }
 
-      return createSuccessResponse(response);
+      return response;
     } catch (error) {
       this.logger.error(`Failed to create model ${modelName}`, error);
 

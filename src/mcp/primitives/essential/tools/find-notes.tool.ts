@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for searching notes using Anki's query syntax
@@ -33,6 +30,18 @@ export class FindNotesTool {
             "OR for alternatives. Empty string returns all notes.",
         ),
     }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      noteIds: z.array(z.number()),
+      count: z.number(),
+      query: z.string(),
+      message: z.string(),
+      hint: z.string().optional(),
+    }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async findNotes({ query }: { query: string }, context: Context) {
     try {
@@ -50,20 +59,20 @@ export class FindNotesTool {
         this.logger.log("No notes found matching the query");
         await context.reportProgress({ progress: 100, total: 100 });
 
-        return createSuccessResponse({
+        return {
           success: true,
           noteIds: [],
           count: 0,
           query: query,
           message: "No notes found matching the search criteria",
           hint: "Try a broader search query or check your deck/tag names",
-        });
+        };
       }
 
       await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(`Found ${noteIds.length} notes matching the query`);
 
-      return createSuccessResponse({
+      return {
         success: true,
         noteIds: noteIds,
         count: noteIds.length,
@@ -73,7 +82,7 @@ export class FindNotesTool {
           noteIds.length > 100
             ? "Large result set. Consider using notesInfo with smaller batches for detailed information."
             : "Use notesInfo tool to get detailed information about these notes",
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to search for notes", error);
 

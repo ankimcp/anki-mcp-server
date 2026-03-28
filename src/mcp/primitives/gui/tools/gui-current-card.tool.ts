@@ -4,10 +4,7 @@ import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { GuiCurrentCardInfo } from "@/mcp/types/anki.types";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for getting information about the current card in review mode
@@ -26,6 +23,33 @@ export class GuiCurrentCardTool {
       "NEVER use this for conducting review sessions. Use the dedicated review tools (get_due_cards, present_card, rate_card) instead. " +
       "IMPORTANT: Only use when user explicitly requests current card information.",
     parameters: z.object({}),
+    outputSchema: z.object({
+      success: z.boolean(),
+      cardInfo: z
+        .object({
+          answer: z.string(),
+          question: z.string(),
+          deckName: z.string(),
+          modelName: z.string(),
+          cardId: z.number(),
+          buttons: z.array(z.number()),
+          nextReviews: z.array(z.string()),
+          fields: z
+            .record(
+              z.string(),
+              z.object({ value: z.string(), order: z.number() }),
+            )
+            .optional(),
+        })
+        .nullable(),
+      inReview: z.boolean(),
+      message: z.string(),
+      hint: z.string(),
+    }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async guiCurrentCard(_args: Record<string, never>, context: Context) {
     try {
@@ -41,26 +65,26 @@ export class GuiCurrentCardTool {
 
       if (!cardInfo) {
         this.logger.log("Not currently in review mode");
-        return createSuccessResponse({
+        return {
           success: true,
           cardInfo: null,
           inReview: false,
           message: "Not currently in review mode",
           hint: "Open a deck in Anki and start reviewing to see current card information.",
-        });
+        };
       }
 
       this.logger.log(
         `Retrieved current card: ${cardInfo.cardId} from deck "${cardInfo.deckName}"`,
       );
 
-      return createSuccessResponse({
+      return {
         success: true,
         cardInfo,
         inReview: true,
         message: `Current card: ${cardInfo.cardId} from deck "${cardInfo.deckName}"`,
         hint: "Use guiEditNote to edit the note associated with this card.",
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to get current card information", error);
 

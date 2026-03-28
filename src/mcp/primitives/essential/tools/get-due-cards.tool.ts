@@ -6,7 +6,6 @@ import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, SimplifiedCard } from "@/mcp/types/anki.types";
 import {
   extractCardContent,
-  createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
 
@@ -47,6 +46,28 @@ export class GetDueCardsTool {
         .default(false)
         .describe("Include new cards (never seen before). Default: false"),
     }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      cards: z.array(
+        z.object({
+          cardId: z.number(),
+          front: z.string(),
+          back: z.string(),
+          deckName: z.string(),
+          modelName: z.string(),
+          due: z.number(),
+          interval: z.number(),
+          factor: z.number(),
+        }),
+      ),
+      total: z.number(),
+      returned: z.number().optional(),
+      message: z.string(),
+    }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async getDueCards(
     {
@@ -95,12 +116,12 @@ export class GetDueCardsTool {
       if (cardIds.length === 0) {
         this.logger.log("No due cards found");
         await context.reportProgress({ progress: 100, total: 100 });
-        return createSuccessResponse({
+        return {
           success: true,
           message: "No cards are due for review",
           cards: [],
           total: 0,
-        });
+        };
       }
 
       await context.reportProgress({ progress: 50, total: 100 });
@@ -134,13 +155,13 @@ export class GetDueCardsTool {
         `Retrieved ${dueCards.length} due cards out of ${cardIds.length} total`,
       );
 
-      return createSuccessResponse({
+      return {
         success: true,
         cards: dueCards,
         total: cardIds.length,
         returned: dueCards.length,
         message: `Found ${cardIds.length} due cards, returning ${dueCards.length}`,
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to get due cards", error);
       return createErrorResponse(error);

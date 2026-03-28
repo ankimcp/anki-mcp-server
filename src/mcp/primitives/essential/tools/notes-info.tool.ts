@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { NoteInfo } from "@/mcp/types/anki.types";
 
 /**
@@ -33,6 +30,33 @@ export class NotesInfoTool {
             "Get these IDs from findNotes tool.",
         ),
     }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      notes: z.array(
+        z.object({
+          noteId: z.number(),
+          modelName: z.string(),
+          tags: z.array(z.string()),
+          fields: z.record(
+            z.string(),
+            z.object({ value: z.string(), order: z.number() }),
+          ),
+          cards: z.array(z.number()),
+          mod: z.number(),
+        }),
+      ),
+      count: z.number(),
+      notFound: z.number(),
+      requestedIds: z.array(z.number()),
+      message: z.string(),
+      models: z.array(z.string()),
+      cssNote: z.string(),
+      hint: z.string(),
+    }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async notesInfo({ notes }: { notes: number[] }, context: Context) {
     try {
@@ -82,7 +106,7 @@ export class NotesInfoTool {
       // Get unique model names for CSS awareness info
       const uniqueModels = [...new Set(validNotes.map((n) => n.modelName))];
 
-      return createSuccessResponse({
+      return {
         success: true,
         notes: validNotes,
         count: validNotes.length,
@@ -96,7 +120,7 @@ export class NotesInfoTool {
           validNotes.length > 0
             ? "Fields may contain HTML. Use updateNoteFields to modify content. Do not view notes in Anki browser while updating."
             : "No valid notes found. They may have been deleted.",
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to get notes information", error);
 

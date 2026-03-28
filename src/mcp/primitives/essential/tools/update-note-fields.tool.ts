@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for updating fields of existing notes
@@ -58,6 +55,21 @@ export class UpdateNoteFieldsTool {
           .describe("Optional images to add to the note"),
       }),
     }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      noteId: z.number(),
+      updatedFields: z.array(z.string()),
+      fieldCount: z.number(),
+      modelName: z.string(),
+      message: z.string(),
+      cssNote: z.string(),
+      warning: z.string(),
+      hint: z.string(),
+    }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async updateNoteFields(
     {
@@ -157,7 +169,7 @@ export class UpdateNoteFieldsTool {
       // Get the list of updated fields for the response
       const updatedFields = Object.keys(note.fields);
 
-      return createSuccessResponse({
+      return {
         success: true,
         noteId: note.id,
         updatedFields,
@@ -169,7 +181,7 @@ export class UpdateNoteFieldsTool {
         warning:
           "If changes don't appear, ensure the note wasn't open in Anki browser during update.",
         hint: "Use notesInfo to verify the changes or findNotes to locate other notes to update.",
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to update note fields", error);
 

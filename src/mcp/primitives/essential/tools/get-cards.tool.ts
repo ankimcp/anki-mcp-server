@@ -6,7 +6,6 @@ import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, SimplifiedCard } from "@/mcp/types/anki.types";
 import {
   extractCardContent,
-  createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
 
@@ -57,6 +56,28 @@ export class GetCardsTool {
         .default(10)
         .describe("Maximum number of cards to return"),
     }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      cards: z.array(
+        z.object({
+          cardId: z.number(),
+          front: z.string(),
+          back: z.string(),
+          deckName: z.string(),
+          modelName: z.string(),
+          due: z.number(),
+          interval: z.number(),
+          factor: z.number(),
+        }),
+      ),
+      total: z.number(),
+      returned: z.number().optional(),
+      message: z.string(),
+    }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async getCards(
     {
@@ -95,12 +116,12 @@ export class GetCardsTool {
       if (cardIds.length === 0) {
         this.logger.log(`No ${card_state} cards found`);
         await context.reportProgress({ progress: 100, total: 100 });
-        return createSuccessResponse({
+        return {
           success: true,
           message: `No ${card_state} cards found`,
           cards: [],
           total: 0,
-        });
+        };
       }
 
       await context.reportProgress({ progress: 50, total: 100 });
@@ -134,13 +155,13 @@ export class GetCardsTool {
         `Retrieved ${cards.length} ${card_state} cards out of ${cardIds.length} total`,
       );
 
-      return createSuccessResponse({
+      return {
         success: true,
         cards,
         total: cardIds.length,
         returned: cards.length,
         message: `Found ${cardIds.length} ${card_state} cards, returning ${cards.length}`,
-      });
+      };
     } catch (error) {
       this.logger.error(`Failed to get ${card_state || "due"} cards`, error);
       return createErrorResponse(error);

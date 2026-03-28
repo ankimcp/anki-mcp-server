@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for undoing the last action in Anki
@@ -25,6 +22,16 @@ export class GuiUndoTool {
       "This tool is for note editing/creation workflows, NOT for review sessions. " +
       "Use this to undo mistakes in note creation, editing, or card management.",
     parameters: z.object({}),
+    outputSchema: z.object({
+      success: z.boolean(),
+      undone: z.boolean(),
+      message: z.string(),
+      hint: z.string(),
+    }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async guiUndo(_args: Record<string, never>, context: Context) {
     try {
@@ -38,22 +45,22 @@ export class GuiUndoTool {
 
       if (!success) {
         this.logger.warn("Nothing to undo");
-        return createSuccessResponse({
+        return {
           success: true,
           undone: false,
           message: "Nothing to undo",
           hint: "There are no recent actions to undo in Anki.",
-        });
+        };
       }
 
       this.logger.log("Last action undone successfully");
 
-      return createSuccessResponse({
+      return {
         success: true,
         undone: true,
         message: "Last action undone successfully",
         hint: "The previous action has been reversed. Check Anki GUI to verify.",
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to undo action", error);
 

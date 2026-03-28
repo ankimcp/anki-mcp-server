@@ -5,7 +5,6 @@ import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import {
   getRatingDescription,
-  createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
 
@@ -32,6 +31,24 @@ export class RateCardTool {
           "The rating for the card (use the user's choice, not your suggestion): 1=Again (failed), 2=Hard, 3=Good, 4=Easy",
         ),
     }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      cardId: z.number(),
+      rating: z.number(),
+      ratingDescription: z.string(),
+      message: z.string(),
+      nextReview: z
+        .object({
+          interval: z.number(),
+          due: z.number(),
+          factor: z.number(),
+        })
+        .nullable(),
+    }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async rateCard(
     { card_id, rating }: { card_id: number; rating: number },
@@ -91,14 +108,14 @@ export class RateCardTool {
 
       await context.reportProgress({ progress: 100, total: 100 });
 
-      return createSuccessResponse({
+      return {
         success: true,
         cardId: card_id,
         rating: rating,
         ratingDescription: ratingDesc,
         message: `Card successfully rated as ${ratingDesc}`,
         nextReview,
-      });
+      };
     } catch (error) {
       this.logger.error(`Failed to rate card ${card_id}`, error);
 

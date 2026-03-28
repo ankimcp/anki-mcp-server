@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { computeDistribution } from "@/mcp/utils/stats.utils";
 import type {
   CollectionStatsResult,
@@ -33,7 +30,7 @@ export class CollectionStatsTool {
       "Ease buckets and interval buckets can be customized to focus on specific ranges.",
     parameters: z.object({
       ease_buckets: z
-        .array(z.number().positive())
+        .array(z.number().positive()).max(20)
         .optional()
         .default([2.0, 2.5, 3.0])
         .refine(
@@ -48,7 +45,7 @@ export class CollectionStatsTool {
             "Example: [2.0, 2.5, 3.0] creates buckets: <2.0, 2.0-2.5, 2.5-3.0, >3.0",
         ),
       interval_buckets: z
-        .array(z.number().positive())
+        .array(z.number().positive()).max(20)
         .optional()
         .default([7, 21, 90])
         .refine(
@@ -63,6 +60,44 @@ export class CollectionStatsTool {
             "Example: [7, 21, 90] creates buckets: <7d, 7-21d, 21-90d, >90d",
         ),
     }),
+    outputSchema: z.object({
+      total_decks: z.number(),
+      counts: z.object({
+        total: z.number(),
+        new: z.number(),
+        learning: z.number(),
+        review: z.number(),
+      }),
+      ease: z.object({
+        mean: z.number(),
+        median: z.number(),
+        min: z.number(),
+        max: z.number(),
+        count: z.number(),
+        buckets: z.record(z.string(), z.number()),
+      }),
+      intervals: z.object({
+        mean: z.number(),
+        median: z.number(),
+        min: z.number(),
+        max: z.number(),
+        count: z.number(),
+        buckets: z.record(z.string(), z.number()),
+      }),
+      per_deck: z.array(
+        z.object({
+          deck: z.string(),
+          total: z.number(),
+          new: z.number(),
+          learning: z.number(),
+          review: z.number(),
+        }),
+      ),
+    }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async execute(params: CollectionStatsParams, context: Context) {
     try {
@@ -95,7 +130,7 @@ export class CollectionStatsTool {
         };
 
         await context.reportProgress({ progress: 100, total: 100 });
-        return createSuccessResponse(result);
+        return result;
       }
 
       this.logger.log(`Found ${deckNames.length} decks in collection`);
@@ -165,7 +200,7 @@ export class CollectionStatsTool {
         };
 
         await context.reportProgress({ progress: 100, total: 100 });
-        return createSuccessResponse(result);
+        return result;
       }
 
       // Step 3: Get all card IDs across the entire collection
@@ -190,7 +225,7 @@ export class CollectionStatsTool {
         };
 
         await context.reportProgress({ progress: 100, total: 100 });
-        return createSuccessResponse(result);
+        return result;
       }
 
       this.logger.log(`Found ${cardIds.length} cards in collection`);
@@ -262,7 +297,7 @@ export class CollectionStatsTool {
           `${intervals.count} review cards`,
       );
 
-      return createSuccessResponse(result);
+      return result;
     } catch (error) {
       this.logger.error("Failed to get collection statistics", error);
       return createErrorResponse(error, {

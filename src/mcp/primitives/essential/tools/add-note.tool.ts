@@ -4,10 +4,7 @@ import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { NoteOptions } from "@/mcp/types/anki.types";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for adding new notes to Anki
@@ -66,6 +63,22 @@ export class AddNoteTool {
         .optional()
         .describe("Advanced duplicate checking options"),
     }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      noteId: z.number(),
+      deckName: z.string(),
+      modelName: z.string(),
+      message: z.string(),
+      details: z.object({
+        fieldsAdded: z.number(),
+        tagsAdded: z.number(),
+        duplicateCheckScope: z.string(),
+      }),
+    }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
   })
   async addNote(
     {
@@ -203,7 +216,7 @@ export class AddNoteTool {
       const fieldCount = Object.keys(fields).length;
       const tagCount = tags ? tags.length : 0;
 
-      return createSuccessResponse({
+      return {
         success: true,
         noteId: noteId,
         deckName: deckName,
@@ -214,7 +227,7 @@ export class AddNoteTool {
           tagsAdded: tagCount,
           duplicateCheckScope: duplicateScope || "default",
         },
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to add note", error);
 

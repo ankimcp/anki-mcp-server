@@ -267,8 +267,12 @@ describe("ModelNamesTool", () => {
       expect(result.modelNames).toEqual([]);
       expect(result.total).toBe(0);
       expect(result.message).toBe("No note types found in Anki");
-      // commonTypes is not included in response when list is empty
-      expect(result.commonTypes).toBeUndefined();
+      // commonTypes is always included (required by outputSchema) with null values
+      expect(result.commonTypes).toEqual({
+        basic: null,
+        basicReversed: null,
+        cloze: null,
+      });
     });
 
     it("should handle null response from AnkiConnect", async () => {

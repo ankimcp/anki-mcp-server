@@ -3,10 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from "@/mcp/utils/anki.utils";
+import { createErrorResponse } from "@/mcp/utils/anki.utils";
 
 /**
  * Tool for retrieving all available model/note type names from Anki
@@ -22,6 +19,21 @@ export class ModelNamesTool {
     description:
       "Get a list of all available note type (model) names in Anki. Use this to see what note types are available before creating notes.",
     parameters: z.object({}),
+    outputSchema: z.object({
+      success: z.boolean(),
+      modelNames: z.array(z.string()),
+      total: z.number(),
+      message: z.string(),
+      commonTypes: z.object({
+        basic: z.string().nullable(),
+        basicReversed: z.string().nullable(),
+        cloze: z.string().nullable(),
+      }),
+    }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
   })
   async modelNames(_args: Record<string, never>, context: Context) {
     try {
@@ -36,18 +48,23 @@ export class ModelNamesTool {
       if (!modelNames || modelNames.length === 0) {
         this.logger.log("No models found");
         await context.reportProgress({ progress: 100, total: 100 });
-        return createSuccessResponse({
+        return {
           success: true,
           message: "No note types found in Anki",
           modelNames: [],
           total: 0,
-        });
+          commonTypes: {
+            basic: null,
+            basicReversed: null,
+            cloze: null,
+          },
+        };
       }
 
       await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(`Found ${modelNames.length} models`);
 
-      return createSuccessResponse({
+      return {
         success: true,
         modelNames: modelNames,
         total: modelNames.length,
@@ -59,7 +76,7 @@ export class ModelNamesTool {
             : null,
           cloze: modelNames.includes("Cloze") ? "Cloze" : null,
         },
-      });
+      };
     } catch (error) {
       this.logger.error("Failed to retrieve model names", error);
       return createErrorResponse(error, {
