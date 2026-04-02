@@ -30,6 +30,9 @@ export const configSchema = z.object({
     serverUrl: z.string().url().default("wss://tunnel.ankimcp.ai"),
   }),
 
+  // Read-only mode
+  readOnly: z.coerce.boolean().default(false),
+
   // Logging
   logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
@@ -62,6 +65,7 @@ export function transformEnvToConfig(env: Record<string, any>): any {
     tunnel: {
       serverUrl: env.TUNNEL_SERVER_URL,
     },
+    readOnly: env.READ_ONLY,
     logLevel: env.LOG_LEVEL,
   };
 }

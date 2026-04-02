@@ -56,6 +56,12 @@ export class AppConfigService implements IAnkiConfig {
     return this.config.ankiConnect.timeout;
   }
 
+  // ===== Read-Only Mode =====
+
+  get readOnly(): boolean {
+    return this.config.readOnly;
+  }
+
   // ===== Auth Configuration =====
 
   get authUrl(): string {

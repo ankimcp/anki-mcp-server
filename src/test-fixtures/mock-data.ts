@@ -75,6 +75,10 @@ export const mockCards = {
     type: 2,
     queue: 2,
     modelName: "Basic",
+    fieldOrder: 0,
+    ord: 0,
+    css: "",
+    note: 1502298033753,
   },
   newCard: {
     cardId: 1502298033758,
@@ -90,6 +94,10 @@ export const mockCards = {
     type: 0,
     queue: 0,
     modelName: "Basic (and reversed card)",
+    fieldOrder: 0,
+    ord: 0,
+    css: "",
+    note: 1502298033757,
   },
 };
 

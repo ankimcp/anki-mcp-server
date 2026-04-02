@@ -21,6 +21,7 @@ describe("AppConfigService", () => {
     tunnel: {
       serverUrl: "wss://tunnel.ankimcp.ai",
     },
+    readOnly: false,
     logLevel: "info",
   };
 

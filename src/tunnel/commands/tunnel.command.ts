@@ -105,17 +105,19 @@ function formatConnectionError(error: unknown, tunnelUrl?: string): string {
  *
  * @param tunnelUrl - Optional custom tunnel URL (defaults to production)
  * @param debug - Optional debug mode flag
+ * @param readOnly - Optional read-only mode flag
  * @throws {Error} If not logged in or connection fails
  */
 export async function handleTunnel(
   tunnelUrl?: string,
   debug?: boolean,
+  readOnly?: boolean,
 ): Promise<void> {
   // Set debug mode early so all error handlers can show stack traces
   setDebugMode(debug || false);
 
   const credentialsService = new CredentialsService();
-  const validatedConfig = loadValidatedConfig({ debug });
+  const validatedConfig = loadValidatedConfig({ debug, readOnly });
   const appConfigService = new AppConfigService(validatedConfig);
   const deviceFlowService = new DeviceFlowService(appConfigService);
 
@@ -150,7 +152,7 @@ export async function handleTunnel(
 
     try {
       app = await NestFactory.createApplicationContext(
-        AppModule.forTunnel({ debug }),
+        AppModule.forTunnel({ debug, readOnly }),
         {
           logger: loggerService,
         },

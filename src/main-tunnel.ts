@@ -28,7 +28,7 @@ async function bootstrap() {
   // The --tunnel flag is optional here, only used to override the URL
   const tunnelUrl =
     typeof options.tunnel === "string" ? options.tunnel : undefined;
-  await handleTunnel(tunnelUrl, options.debug);
+  await handleTunnel(tunnelUrl, options.debug, options.readOnly);
 }
 
 bootstrap().catch((err) => {
