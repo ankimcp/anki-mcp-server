@@ -12,6 +12,7 @@ export interface CliOverrides {
   port?: number;
   host?: string;
   ankiConnect?: string;
+  readOnly?: boolean;
   tunnel?: string | boolean;
   ngrok?: boolean;
   debug?: boolean;
@@ -39,6 +40,9 @@ export function buildConfigInput(cliOverrides: CliOverrides = {}): ConfigInput {
   }
   if (cliOverrides.ankiConnect !== undefined) {
     input.ANKI_CONNECT_URL = cliOverrides.ankiConnect;
+  }
+  if (cliOverrides.readOnly !== undefined) {
+    input.READ_ONLY = cliOverrides.readOnly ? "true" : "false";
   }
   if (typeof cliOverrides.tunnel === "string") {
     input.TUNNEL_SERVER_URL = cliOverrides.tunnel;

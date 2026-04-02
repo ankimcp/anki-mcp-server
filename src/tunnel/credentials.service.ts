@@ -81,6 +81,7 @@ export class CredentialsService {
     } catch (error) {
       throw new Error(
         `Failed to save credentials to ${CredentialsService.CREDENTIALS_FILE}: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
       );
     }
   }
@@ -143,6 +144,7 @@ export class CredentialsService {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
         throw new Error(
           `Failed to delete credentials file: ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
         );
       }
       // File doesn't exist - that's fine, nothing to clear

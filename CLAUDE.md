@@ -37,7 +37,7 @@ npm run inspector:stdio:debug    # With debugger on port 9229
 
 ### Entry Points
 
-Two entry points compiled in a single build:
+Three entry points compiled in a single build:
 
 | Mode | Entry | Use Case | Logging |
 |------|-------|----------|---------|
@@ -47,7 +47,6 @@ Two entry points compiled in a single build:
 
 ### Core Files
 
-<<<<<<< HEAD
 ```
 src/
 ├── main-stdio.ts            # STDIO bootstrap: NestFactory.createApplicationContext()
@@ -76,13 +75,15 @@ src/
 ### Module System
 
 ```
-AppModule.forStdio()/forHttp()
-  → McpModule.forRoot()           # STDIO or STREAMABLE_HTTP transport
+AppModule.forStdio()/forHttp()/forTunnel()
+  → McpModule.forRoot()           # STDIO, STREAMABLE_HTTP, or empty transport (tunnel)
   → McpPrimitivesAnkiEssentialModule.forRoot()
   → McpPrimitivesAnkiGuiModule.forRoot()
 ```
 
 All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`. MCP-Nest 1.9.0+ requires tools to also be listed in `AppModule.providers` (see `ESSENTIAL_MCP_TOOLS` and `GUI_MCP_TOOLS` arrays).
+
+**Tunnel mode** uses `McpModule.forRoot({ transport: [] })` -- no built-in transport. Instead, `TunnelMcpService` connects an `InMemoryTransport` to the MCP server, and `TunnelClient` bridges it to the remote tunnel server over WebSocket.
 
 ### Key Patterns
 
@@ -227,7 +228,9 @@ Check `.claude-draft/` for implementation plans and analysis.
 
 Node.js requirement: `>=20.19.0 <21.0.0 || >=22.12.0` (Node 21 not supported — `require(esm)` was never backported)
 
-Key environment variables (all have defaults):
+Key environment variables (all have defaults, see `src/config/config.schema.ts`):
 - `ANKI_CONNECT_URL` — AnkiConnect URL (default: `http://localhost:8765`)
 - `ANKI_CONNECT_API_KEY` — Optional AnkiConnect API key
+- `TUNNEL_SERVER_URL` — Tunnel server WebSocket URL (default: `wss://tunnel.ankimcp.ai`)
+- `TUNNEL_AUTH_URL`, `TUNNEL_AUTH_REALM`, `TUNNEL_AUTH_CLIENT_ID` — OAuth/OIDC settings for tunnel auth
 - `LOG_LEVEL` — `debug|info|warn|error` (default: `info`)

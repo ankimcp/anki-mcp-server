@@ -213,6 +213,9 @@ export class AppModule {
         AppConfigService,
         // Custom tunnel MCP service (instead of StdioModule)
         TunnelMcpService,
+        // MCP-Nest requires tools in root module providers for discovery
+        ...ESSENTIAL_MCP_TOOLS,
+        ...GUI_MCP_TOOLS,
       ],
       exports: [APP_CONFIG, AppConfigService, TunnelMcpService],
     };
