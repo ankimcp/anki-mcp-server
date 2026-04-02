@@ -32,14 +32,12 @@ export const configSchema = z.object({
 
   // Read-only mode
   readOnly: z
-    .preprocess(
-      (val) => {
-        if (val === "true" || val === "1") return true;
-        if (val === "false" || val === "0" || val === undefined) return false;
-        return val;
-      },
-      z.boolean(),
-    )
+    .preprocess((val) => {
+      if (val === "true" || val === "1") return true;
+      if (val === "false" || val === "0" || val === undefined || val === "")
+        return false;
+      return val;
+    }, z.boolean())
     .default(false),
 
   // Logging
