@@ -177,6 +177,55 @@ describe("Config Schema", () => {
       });
     });
 
+    describe("readOnly config", () => {
+      const base = { ankiConnect: {}, auth: {}, tunnel: {} };
+
+      it("should default to false when not set", () => {
+        const config = configSchema.parse(base);
+        expect(config.readOnly).toBe(false);
+      });
+
+      it("should accept boolean true", () => {
+        const config = configSchema.parse({ ...base, readOnly: true });
+        expect(config.readOnly).toBe(true);
+      });
+
+      it("should accept boolean false", () => {
+        const config = configSchema.parse({ ...base, readOnly: false });
+        expect(config.readOnly).toBe(false);
+      });
+
+      it('should coerce string "true" to true', () => {
+        const config = configSchema.parse({ ...base, readOnly: "true" });
+        expect(config.readOnly).toBe(true);
+      });
+
+      it('should coerce string "false" to false (not truthy)', () => {
+        const config = configSchema.parse({ ...base, readOnly: "false" });
+        expect(config.readOnly).toBe(false);
+      });
+
+      it('should coerce "1" to true', () => {
+        const config = configSchema.parse({ ...base, readOnly: "1" });
+        expect(config.readOnly).toBe(true);
+      });
+
+      it('should coerce "0" to false', () => {
+        const config = configSchema.parse({ ...base, readOnly: "0" });
+        expect(config.readOnly).toBe(false);
+      });
+
+      it("should treat empty string as false", () => {
+        const config = configSchema.parse({ ...base, readOnly: "" });
+        expect(config.readOnly).toBe(false);
+      });
+
+      it("should treat undefined as false", () => {
+        const config = configSchema.parse({ ...base, readOnly: undefined });
+        expect(config.readOnly).toBe(false);
+      });
+    });
+
     describe("ankiConnect config", () => {
       it("should accept valid AnkiConnect config", () => {
         const config = configSchema.parse({
