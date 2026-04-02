@@ -31,7 +31,16 @@ export const configSchema = z.object({
   }),
 
   // Read-only mode
-  readOnly: z.coerce.boolean().default(false),
+  readOnly: z
+    .preprocess(
+      (val) => {
+        if (val === "true" || val === "1") return true;
+        if (val === "false" || val === "0" || val === undefined) return false;
+        return val;
+      },
+      z.boolean(),
+    )
+    .default(false),
 
   // Logging
   logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
