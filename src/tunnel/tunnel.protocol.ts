@@ -85,16 +85,31 @@ export type ClientMessage = TunnelResponseMessage | TunnelPongMessage;
 // WebSocket Close Codes
 // ============================================================================
 
+/**
+ * WebSocket Close Codes
+ * Aligned with SaaS WS_CLOSE_CODES (packages/shared-types/src/websocket.ts)
+ */
 export const TunnelCloseCodes = {
-  NORMAL: 1000, // Normal closure
-  GOING_AWAY: 1001, // Server shutdown
-  UNAUTHORIZED: 4001, // Invalid token
-  TOKEN_EXPIRED: 4002, // Token expired
-  TUNNEL_LIMIT: 4003, // Tunnel limit exceeded
-  TUNNEL_EXPIRED: 4004, // Free tier 24h limit
-  ACCOUNT_SUSPENDED: 4005, // Account suspended
-  SESSION_REPLACED: 4006, // Same token connected elsewhere
-  CONNECTION_IN_PROGRESS: 4007, // Another connection is establishing
+  /** Normal closure */
+  NORMAL: 1000,
+  /** Server shutting down */
+  GOING_AWAY: 1001,
+  /** Authentication failed or token invalid */
+  AUTH_FAILED: 4001,
+  /** User token was revoked (e.g., user clicked "Revoke Token" in dashboard) */
+  TOKEN_REVOKED: 4002,
+  /** Authentication failed during tunnel connection */
+  TUNNEL_AUTH_FAILED: 4003,
+  /** User account was deleted */
+  ACCOUNT_DELETED: 4004,
+  /** Another device/tab connected, this session is kicked */
+  SESSION_REPLACED: 4005,
+  /** Tunnel URL was regenerated */
+  URL_REGENERATED: 4006,
+  /** Service unavailable (e.g., SaaS API down) */
+  SERVICE_UNAVAILABLE: 4008,
+  /** Server shutting down gracefully */
+  SHUTDOWN: 4009,
 } as const;
 
 export type TunnelCloseCode =

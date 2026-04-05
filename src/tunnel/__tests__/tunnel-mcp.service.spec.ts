@@ -1,6 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ModuleRef } from "@nestjs/core";
-import { McpRegistryDiscoveryService, McpExecutorService } from "@rekog/mcp-nest";
+import {
+  McpRegistryDiscoveryService,
+  McpExecutorService,
+} from "@rekog/mcp-nest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { TunnelMcpService } from "../tunnel-mcp.service";
@@ -68,7 +71,9 @@ describe("TunnelMcpService", () => {
 
     service = module.get<TunnelMcpService>(TunnelMcpService);
     moduleRef = module.get<ModuleRef>(ModuleRef);
-    registry = module.get<McpRegistryDiscoveryService>(McpRegistryDiscoveryService);
+    registry = module.get<McpRegistryDiscoveryService>(
+      McpRegistryDiscoveryService,
+    );
     executor = mockExecutor as unknown as McpExecutorService;
 
     // Create mock transport instance
