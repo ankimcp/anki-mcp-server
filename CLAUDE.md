@@ -14,7 +14,7 @@ MCP server enabling AI assistants to interact with Anki via AnkiConnect. Built w
 
 ```bash
 # Build & Run
-npm run build                    # Build → dist/ (both entry points)
+npm run build                    # Build → dist/ (all three entry points)
 npm run start:dev:stdio          # STDIO mode with watch
 npm run start:dev:http           # HTTP mode with watch
 
@@ -54,7 +54,7 @@ src/
 ├── main-tunnel.ts           # Tunnel bootstrap: auth commands + WebSocket tunnel
 ├── app.module.ts            # Root module with forStdio()/forHttp()/forTunnel() factories
 ├── bootstrap.ts             # Shared logger setup (pino → NestJS LoggerService)
-├── cli.ts                   # Commander CLI (--port, --host, --anki-connect, --ngrok, --tunnel, --login, --logout, --debug)
+├── cli.ts                   # Commander CLI with subcommands: default (server), --tunnel, --login, --logout
 ├── app-config.service.ts    # IAnkiConfig implementation (reads from validated AppConfig)
 ├── config/                  # Zod-validated config system (schema, factory, APP_CONFIG token)
 ├── tunnel/                  # Tunnel mode: WebSocket client, OAuth device flow, credentials
@@ -98,6 +98,13 @@ All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`. 
 - `ANKI_CONFIG` — AnkiConnect-specific config interface. Provided via `useClass: AppConfigService` in each module's `forRoot()`. Modules can swap the config provider for testing.
 
 **Environment Configuration**: All `process.env.*` reads go through `buildConfigInput()` in `src/config/config.factory.ts`. CLI args override env vars in memory (no `process.env` mutation). Services inject `AppConfigService` for type-safe access.
+
+### Build & Tooling Notes
+
+- **NestJS CLI** builds the project (`nest build`). Asset copying is configured in `nest-cli.json` — all `**/*.md` files in `src/` are copied to `dist/`. This matters for prompt templates that reference markdown files.
+- **ESLint flat config** (`eslint.config.mjs`) — not legacy `.eslintrc`. Uses `typescript-eslint` + Prettier integration.
+- **TypeScript**: `strict: true`, target ES2023, `nodenext` module resolution. Path aliases are resolved by both `tsconfig.json` and Jest's `moduleNameMapper`.
+- **Zod 4** (`^4.3.6`) — not Zod 3. Some patterns like `z.preprocess` in `config.schema.ts` are Zod 3 holdovers that still work but may need migration.
 
 ### Path Aliases
 

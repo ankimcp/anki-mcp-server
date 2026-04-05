@@ -431,15 +431,39 @@ export class TunnelClient extends EventEmitter {
    * Implements exponential backoff with token refresh for auth errors
    */
   private handleReconnection(closeCode: number): void {
-    // Check if we should attempt reconnection
-    if (
-      closeCode === TunnelCloseCodes.ACCOUNT_SUSPENDED ||
-      closeCode === TunnelCloseCodes.TUNNEL_EXPIRED
-    ) {
-      this.logger.warn(`Not reconnecting: permanent close code ${closeCode}`);
+    this.clearReconnectTimer();
+
+    // Permanent close codes — do not reconnect
+    if (closeCode === TunnelCloseCodes.NORMAL) {
+      this.logger.log("Normal closure, not reconnecting");
       return;
     }
 
+    if (closeCode === TunnelCloseCodes.ACCOUNT_DELETED) {
+      this.logger.warn("Account deleted, not reconnecting");
+      return;
+    }
+
+    if (closeCode === TunnelCloseCodes.SESSION_REPLACED) {
+      this.logger.warn(
+        "Disconnected: another device connected. Run `ankimcp --tunnel` to reconnect.",
+      );
+      return;
+    }
+
+    // Token revoked — user deliberately revoked, require re-login
+    if (closeCode === TunnelCloseCodes.TOKEN_REVOKED) {
+      this.emit(
+        "error",
+        new TunnelClientError(
+          "Token was revoked. Please run `ankimcp --login` to re-authenticate.",
+          "session_expired",
+        ),
+      );
+      return;
+    }
+
+    // Max attempts check
     if (this.reconnectAttempts >= TUNNEL_DEFAULTS.RECONNECT_MAX_ATTEMPTS) {
       this.logger.error(
         `Max reconnection attempts (${TUNNEL_DEFAULTS.RECONNECT_MAX_ATTEMPTS}) reached, giving up`,
@@ -458,7 +482,7 @@ export class TunnelClient extends EventEmitter {
     const baseDelay = TUNNEL_DEFAULTS.RECONNECT_INITIAL_DELAY;
     const maxDelay = TUNNEL_DEFAULTS.RECONNECT_MAX_DELAY;
     const exponentialDelay = baseDelay * Math.pow(2, this.reconnectAttempts);
-    const jitter = Math.random() * 0.3 * exponentialDelay; // 30% jitter
+    const jitter = Math.random() * 0.3 * exponentialDelay;
     const delay = Math.min(exponentialDelay + jitter, maxDelay);
 
     this.reconnectAttempts++;
@@ -466,10 +490,10 @@ export class TunnelClient extends EventEmitter {
       `Reconnecting in ${Math.round(delay / 1000)}s (attempt ${this.reconnectAttempts}/${TUNNEL_DEFAULTS.RECONNECT_MAX_ATTEMPTS})`,
     );
 
-    // Handle auth errors - refresh token before reconnecting
+    // Auth errors — refresh token before reconnecting
     const isAuthError =
-      closeCode === TunnelCloseCodes.UNAUTHORIZED ||
-      closeCode === TunnelCloseCodes.TOKEN_EXPIRED;
+      closeCode === TunnelCloseCodes.AUTH_FAILED ||
+      closeCode === TunnelCloseCodes.TUNNEL_AUTH_FAILED;
 
     this.reconnectTimer = setTimeout(async () => {
       try {

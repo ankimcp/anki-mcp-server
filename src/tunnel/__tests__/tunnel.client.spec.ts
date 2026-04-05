@@ -2,7 +2,11 @@ import { EventEmitter } from "events";
 import WebSocket from "ws";
 import { TunnelClient, McpRequestHandler } from "../tunnel.client";
 import { CredentialsService, TunnelCredentials } from "../credentials.service";
-import { DeviceFlowService, TokenResponse } from "../device-flow.service";
+import {
+  DeviceFlowService,
+  DeviceFlowError,
+  TokenResponse,
+} from "../device-flow.service";
 import { TunnelCloseCodes, TUNNEL_DEFAULTS } from "../tunnel.protocol";
 
 // Mock WebSocket
@@ -25,6 +29,28 @@ describe("TunnelClient", () => {
       tier: "free",
     },
   };
+
+  const mockTokenResponse: TokenResponse = {
+    user: { id: "user123", email: "test@example.com", tier: "free" },
+    access_token: "new_access_token",
+    refresh_token: "new_refresh_token",
+    expires_in: 3600,
+    token_type: "Bearer",
+  };
+
+  function createMockWs(): jest.Mocked<WebSocket> {
+    const ws = new EventEmitter() as any;
+    Object.defineProperty(ws, "readyState", {
+      value: WebSocket.CONNECTING,
+      writable: true,
+      configurable: true,
+    });
+    ws.send = jest.fn();
+    ws.close = jest.fn();
+    ws.terminate = jest.fn();
+    ws.ping = jest.fn();
+    return ws;
+  }
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -51,25 +77,11 @@ describe("TunnelClient", () => {
 
     // Mock DeviceFlowService
     mockDeviceFlowService = {
-      refreshToken: jest.fn().mockResolvedValue({
-        access_token: "new_access_token",
-        refresh_token: "new_refresh_token",
-        expires_in: 3600,
-        token_type: "Bearer",
-      } as TokenResponse),
+      refreshToken: jest.fn().mockResolvedValue(mockTokenResponse),
     } as any;
 
     // Mock WebSocket instance
-    mockWs = new EventEmitter() as any;
-    Object.defineProperty(mockWs, "readyState", {
-      value: WebSocket.CONNECTING,
-      writable: true,
-      configurable: true,
-    });
-    mockWs.send = jest.fn();
-    mockWs.close = jest.fn();
-    mockWs.terminate = jest.fn();
-    mockWs.ping = jest.fn();
+    mockWs = createMockWs();
 
     // Mock WebSocket constructor
     (WebSocket as any).mockImplementation(() => mockWs);
@@ -431,7 +443,7 @@ describe("TunnelClient", () => {
     });
   });
 
-  describe("token refresh on auth errors", () => {
+  describe("reconnection behavior", () => {
     beforeEach(async () => {
       const connectPromise = client.connect();
       await Promise.resolve();
@@ -447,32 +459,265 @@ describe("TunnelClient", () => {
       );
       await connectPromise;
       jest.clearAllMocks();
+
+      // Re-setup mocks cleared by jest.clearAllMocks()
+      mockCredentialsService.loadCredentials.mockResolvedValue(mockCredentials);
+      mockCredentialsService.saveCredentials.mockResolvedValue(undefined);
+      mockCredentialsService.isTokenExpired.mockReturnValue(false);
+      mockDeviceFlowService.refreshToken.mockResolvedValue(mockTokenResponse);
     });
 
-    it("should not reconnect on account suspended", () => {
+    /**
+     * Helper: simulate a close event on the current mockWs.
+     * Sets readyState to CLOSED before emitting so the client
+     * sees the socket as closed and can attempt reconnection.
+     */
+    function emitClose(code: number, reason: string): void {
+      Object.defineProperty(mockWs, "readyState", {
+        value: WebSocket.CLOSED,
+      });
+      mockWs.emit("close", code, Buffer.from(reason));
+    }
+
+    it("should not reconnect on normal close (1000)", () => {
+      emitClose(TunnelCloseCodes.NORMAL, "Normal closure");
+
+      expect(WebSocket).not.toHaveBeenCalled();
+    });
+
+    it("should not reconnect on account deleted (4004)", () => {
+      emitClose(TunnelCloseCodes.ACCOUNT_DELETED, "Account deleted");
+
+      expect(WebSocket).not.toHaveBeenCalled();
+    });
+
+    it("should not reconnect on session replaced (4005)", () => {
+      emitClose(TunnelCloseCodes.SESSION_REPLACED, "Session replaced");
+
+      expect(WebSocket).not.toHaveBeenCalled();
+    });
+
+    it("should emit session_expired on token revoked (4002)", () => {
       const errorSpy = jest.fn();
       client.on("error", errorSpy);
 
-      mockWs.emit(
-        "close",
-        TunnelCloseCodes.ACCOUNT_SUSPENDED,
-        Buffer.from("Account suspended"),
-      );
+      emitClose(TunnelCloseCodes.TOKEN_REVOKED, "Token revoked");
 
-      // Check that no new WebSocket was created (no reconnection attempt)
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: "session_expired",
+          message:
+            "Token was revoked. Please run `ankimcp --login` to re-authenticate.",
+        }),
+      );
       expect(WebSocket).not.toHaveBeenCalled();
+    });
+
+    it("should refresh token on auth failed (4001) before reconnect", async () => {
+      jest.useFakeTimers();
+
+      try {
+        // Prepare a fresh mock ws for the reconnect attempt
+        const reconnectMockWs = createMockWs();
+        (WebSocket as any).mockImplementation(() => reconnectMockWs);
+
+        // Suppress unhandled error events from reconnect
+        client.on("error", () => {});
+
+        emitClose(TunnelCloseCodes.AUTH_FAILED, "Auth failed");
+
+        // Advance past the reconnect delay
+        await jest.advanceTimersByTimeAsync(
+          TUNNEL_DEFAULTS.RECONNECT_INITIAL_DELAY + 500,
+        );
+
+        expect(mockDeviceFlowService.refreshToken).toHaveBeenCalledWith(
+          "mock_refresh_token",
+        );
+        expect(WebSocket).toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it("should refresh token on tunnel auth failed (4003) before reconnect", async () => {
+      jest.useFakeTimers();
+
+      try {
+        const reconnectMockWs = createMockWs();
+        (WebSocket as any).mockImplementation(() => reconnectMockWs);
+
+        client.on("error", () => {});
+
+        emitClose(TunnelCloseCodes.TUNNEL_AUTH_FAILED, "Tunnel auth failed");
+
+        await jest.advanceTimersByTimeAsync(
+          TUNNEL_DEFAULTS.RECONNECT_INITIAL_DELAY + 500,
+        );
+
+        expect(mockDeviceFlowService.refreshToken).toHaveBeenCalledWith(
+          "mock_refresh_token",
+        );
+        expect(WebSocket).toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it("should reconnect with backoff on URL regenerated (4006)", async () => {
+      jest.useFakeTimers();
+
+      try {
+        const reconnectMockWs = createMockWs();
+        (WebSocket as any).mockImplementation(() => reconnectMockWs);
+
+        client.on("error", () => {});
+
+        emitClose(TunnelCloseCodes.URL_REGENERATED, "URL regenerated");
+
+        await jest.advanceTimersByTimeAsync(
+          TUNNEL_DEFAULTS.RECONNECT_INITIAL_DELAY + 500,
+        );
+
+        expect(mockDeviceFlowService.refreshToken).not.toHaveBeenCalled();
+        expect(WebSocket).toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it("should reconnect with backoff on service unavailable (4008)", async () => {
+      jest.useFakeTimers();
+
+      try {
+        const reconnectMockWs = createMockWs();
+        (WebSocket as any).mockImplementation(() => reconnectMockWs);
+
+        client.on("error", () => {});
+
+        emitClose(
+          TunnelCloseCodes.SERVICE_UNAVAILABLE,
+          "Service unavailable",
+        );
+
+        await jest.advanceTimersByTimeAsync(
+          TUNNEL_DEFAULTS.RECONNECT_INITIAL_DELAY + 500,
+        );
+
+        expect(mockDeviceFlowService.refreshToken).not.toHaveBeenCalled();
+        expect(WebSocket).toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it("should reconnect with backoff on unknown close code", async () => {
+      jest.useFakeTimers();
+
+      try {
+        const reconnectMockWs = createMockWs();
+        (WebSocket as any).mockImplementation(() => reconnectMockWs);
+
+        client.on("error", () => {});
+
+        emitClose(4999, "Unknown code");
+
+        await jest.advanceTimersByTimeAsync(
+          TUNNEL_DEFAULTS.RECONNECT_INITIAL_DELAY + 500,
+        );
+
+        expect(mockDeviceFlowService.refreshToken).not.toHaveBeenCalled();
+        expect(WebSocket).toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it("should emit disconnected event on close", () => {
       const disconnectedSpy = jest.fn();
       client.on("disconnected", disconnectedSpy);
 
-      mockWs.emit("close", TunnelCloseCodes.NORMAL, Buffer.from("Test close"));
+      emitClose(TunnelCloseCodes.NORMAL, "Test close");
 
       expect(disconnectedSpy).toHaveBeenCalledWith(
         TunnelCloseCodes.NORMAL,
         "Test close",
       );
+    });
+
+    it("should reconnect with backoff on going away (1001)", async () => {
+      jest.useFakeTimers();
+      try {
+        client.on("error", () => {});
+        emitClose(TunnelCloseCodes.GOING_AWAY, "Server shutting down");
+        await jest.advanceTimersByTimeAsync(
+          TUNNEL_DEFAULTS.RECONNECT_INITIAL_DELAY + 500,
+        );
+        expect(mockCredentialsService.loadCredentials).toHaveBeenCalled();
+        expect(mockDeviceFlowService.refreshToken).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it("should reconnect with backoff on shutdown (4009)", async () => {
+      jest.useFakeTimers();
+      try {
+        client.on("error", () => {});
+        emitClose(TunnelCloseCodes.SHUTDOWN, "Server shutdown");
+        await jest.advanceTimersByTimeAsync(
+          TUNNEL_DEFAULTS.RECONNECT_INITIAL_DELAY + 500,
+        );
+        expect(mockCredentialsService.loadCredentials).toHaveBeenCalled();
+        expect(mockDeviceFlowService.refreshToken).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it("should stop reconnecting after max attempts", () => {
+      const errorSpy = jest.fn();
+      client.on("error", errorSpy);
+      (client as any).reconnectAttempts = TUNNEL_DEFAULTS.RECONNECT_MAX_ATTEMPTS;
+      emitClose(TunnelCloseCodes.SERVICE_UNAVAILABLE, "Service unavailable");
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: "max_reconnect_attempts",
+        }),
+      );
+      expect(WebSocket).not.toHaveBeenCalled();
+    });
+
+    it("should emit session_expired when token refresh fails during auth reconnect", async () => {
+      jest.useFakeTimers();
+      try {
+        const errorSpy = jest.fn();
+        client.on("error", errorSpy);
+        mockDeviceFlowService.refreshToken.mockRejectedValue(
+          new DeviceFlowError("invalid_grant", "Token expired"),
+        );
+        emitClose(TunnelCloseCodes.AUTH_FAILED, "Auth failed");
+        await jest.advanceTimersByTimeAsync(
+          TUNNEL_DEFAULTS.RECONNECT_INITIAL_DELAY + 500,
+        );
+        // Wait for async operations
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(errorSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            code: "session_expired",
+          }),
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it("should not reconnect after manual disconnect", () => {
+      client.disconnect();
+      jest.clearAllMocks();
+      mockWs.emit("close", TunnelCloseCodes.GOING_AWAY, Buffer.from("Server shutting down"));
+      expect(WebSocket).not.toHaveBeenCalled();
     });
   });
 });

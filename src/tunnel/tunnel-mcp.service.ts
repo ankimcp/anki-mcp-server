@@ -1,7 +1,10 @@
 import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
 import { ModuleRef, ContextIdFactory } from "@nestjs/core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { McpExecutorService, McpRegistryDiscoveryService } from "@rekog/mcp-nest";
+import {
+  McpExecutorService,
+  McpRegistryDiscoveryService,
+} from "@rekog/mcp-nest";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { InMemoryTransport } from "./in-memory.transport";
 import type { ServerCapabilities } from "@modelcontextprotocol/sdk/types.js";
