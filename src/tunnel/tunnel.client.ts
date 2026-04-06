@@ -401,13 +401,10 @@ export class TunnelClient extends EventEmitter {
 
   /**
    * Send response message to server
-   * Wraps in NestJS WebSocket format: { event, data }
    */
   private sendResponse(message: TunnelResponseMessage): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      const wrapped = { event: "response", data: message };
-      const payload = JSON.stringify(wrapped);
-      this.ws.send(payload);
+      this.ws.send(JSON.stringify(message));
     } else {
       this.logger.error("Cannot send response: WebSocket not open");
     }
@@ -415,12 +412,10 @@ export class TunnelClient extends EventEmitter {
 
   /**
    * Send pong message to server (heartbeat)
-   * Wraps in NestJS WebSocket format: { event, data }
    */
   private sendPong(message: TunnelPongMessage): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      const wrapped = { event: "pong", data: message };
-      this.ws.send(JSON.stringify(wrapped));
+      this.ws.send(JSON.stringify(message));
     } else {
       this.logger.error("Cannot send pong: WebSocket not open");
     }
