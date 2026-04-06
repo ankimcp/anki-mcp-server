@@ -24,13 +24,9 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       # Trusted publishing requires npm >= 11.5.1.
-      # Node 22 ships with npm 10.9.7 which crashes on direct upgrade to 11.x (npm/cli#9151).
-      # Two-step workaround: first upgrade to 11.11.1, then to latest.
-      # Remove when Node 22.23.0+ ships with npm >= 10.9.8.
-      - name: Upgrade npm to latest
-        run: |
-          npm install -g npm@11.11.1
-          npm install -g npm@latest
+      # Pin to specific version to avoid broken npm@latest installations on runners.
+      - name: Upgrade npm
+        run: npm install -g npm@11.12.1
 
       - name: Install dependencies
         run: npm ci
