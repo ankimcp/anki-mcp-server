@@ -299,14 +299,11 @@ describe("TunnelClient", () => {
 
       expect(mockWs.send).toHaveBeenCalledWith(
         JSON.stringify({
-          event: "response",
-          data: {
-            type: "response",
-            requestId: "req123",
-            statusCode: 200,
-            headers: {},
-            body: JSON.stringify({ result: "ok" }),
-          },
+          type: "response",
+          requestId: "req123",
+          statusCode: 200,
+          headers: {},
+          body: JSON.stringify({ result: "ok" }),
         }),
       );
     });
@@ -330,11 +327,11 @@ describe("TunnelClient", () => {
       await Promise.resolve();
 
       const sentData = (mockWs.send as jest.Mock).mock.calls[0][0];
-      const wrapped = JSON.parse(sentData);
+      const parsed = JSON.parse(sentData);
 
-      expect(wrapped.event).toBe("response");
-      expect(wrapped.data.statusCode).toBe(500);
-      expect(wrapped.data.requestId).toBe("req123");
+      expect(parsed.type).toBe("response");
+      expect(parsed.statusCode).toBe(500);
+      expect(parsed.requestId).toBe("req123");
     });
 
     it("should respond to ping with pong", () => {
@@ -349,11 +346,8 @@ describe("TunnelClient", () => {
 
       expect(mockWs.send).toHaveBeenCalledWith(
         JSON.stringify({
-          event: "pong",
-          data: {
-            type: "pong",
-            timestamp,
-          },
+          type: "pong",
+          timestamp,
         }),
       );
     });

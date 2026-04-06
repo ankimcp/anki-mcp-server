@@ -203,7 +203,8 @@ export async function handleTunnel(
         error instanceof TunnelClientError &&
         error.code === "session_expired"
       ) {
-        console.error("\n❌ " + error.message);
+        cli.blank();
+        cli.error(error.message);
         tunnelClient.disconnect();
         process.exit(1);
       }
@@ -231,7 +232,8 @@ export async function handleTunnel(
         error instanceof TunnelClientError &&
         error.code === "session_expired"
       ) {
-        console.error("\n❌ " + error.message);
+        cli.blank();
+        cli.error(error.message);
         await app.close();
         process.exit(1);
       }
@@ -251,10 +253,10 @@ export async function handleTunnel(
     cli.blank();
 
     // Step 6: Listen for events (error listener already set up above)
+    const logger = new Logger("TunnelCommand");
     tunnelClient.on("request", (requestId: string, request) => {
-      const timestamp = new Date().toISOString();
-      console.log(
-        `[${timestamp}] Request ${requestId}: ${request.method} ${request.path}`,
+      logger.log(
+        `Request ${requestId}: ${request.method} ${request.path}`,
       );
     });
 
