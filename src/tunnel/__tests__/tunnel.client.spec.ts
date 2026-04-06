@@ -595,10 +595,7 @@ describe("TunnelClient", () => {
 
         client.on("error", () => {});
 
-        emitClose(
-          TunnelCloseCodes.SERVICE_UNAVAILABLE,
-          "Service unavailable",
-        );
+        emitClose(TunnelCloseCodes.SERVICE_UNAVAILABLE, "Service unavailable");
 
         await jest.advanceTimersByTimeAsync(
           TUNNEL_DEFAULTS.RECONNECT_INITIAL_DELAY + 500,
@@ -678,7 +675,8 @@ describe("TunnelClient", () => {
     it("should stop reconnecting after max attempts", () => {
       const errorSpy = jest.fn();
       client.on("error", errorSpy);
-      (client as any).reconnectAttempts = TUNNEL_DEFAULTS.RECONNECT_MAX_ATTEMPTS;
+      (client as any).reconnectAttempts =
+        TUNNEL_DEFAULTS.RECONNECT_MAX_ATTEMPTS;
       emitClose(TunnelCloseCodes.SERVICE_UNAVAILABLE, "Service unavailable");
       expect(errorSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -716,7 +714,11 @@ describe("TunnelClient", () => {
     it("should not reconnect after manual disconnect", () => {
       client.disconnect();
       jest.clearAllMocks();
-      mockWs.emit("close", TunnelCloseCodes.GOING_AWAY, Buffer.from("Server shutting down"));
+      mockWs.emit(
+        "close",
+        TunnelCloseCodes.GOING_AWAY,
+        Buffer.from("Server shutting down"),
+      );
       expect(WebSocket).not.toHaveBeenCalled();
     });
   });
