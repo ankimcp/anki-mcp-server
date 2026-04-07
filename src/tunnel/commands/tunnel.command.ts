@@ -255,9 +255,7 @@ export async function handleTunnel(
     // Step 6: Listen for events (error listener already set up above)
     const logger = new Logger("TunnelCommand");
     tunnelClient.on("request", (requestId: string, request) => {
-      logger.log(
-        `Request ${requestId}: ${request.method} ${request.path}`,
-      );
+      logger.log(`Request ${requestId}: ${request.method} ${request.path}`);
     });
 
     tunnelClient.on("url_changed", (oldUrl: string, newUrl: string) => {

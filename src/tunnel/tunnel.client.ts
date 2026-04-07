@@ -329,13 +329,8 @@ export class TunnelClient extends EventEmitter {
     this.emit("request", message.requestId, message);
 
     try {
-      // Convert body to string for handler (protocol allows unknown)
-      const bodyStr =
-        message.body === undefined
-          ? ""
-          : typeof message.body === "string"
-            ? message.body
-            : JSON.stringify(message.body);
+      // Body is always a string per protocol (z.string().optional())
+      const bodyStr = message.body ?? "";
 
       // Call MCP handler
       const response = await this.mcpHandler.handle({
