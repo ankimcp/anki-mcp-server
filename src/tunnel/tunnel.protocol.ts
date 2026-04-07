@@ -27,7 +27,7 @@ export interface TunnelRequestMessage extends TunnelMessage {
   method: string;
   path: string;
   headers: Record<string, string>;
-  body?: unknown;
+  body?: string;
 }
 
 /** Heartbeat ping - client must respond with pong */
@@ -69,7 +69,7 @@ export interface TunnelResponseMessage extends TunnelMessage {
   requestId: string;
   statusCode: number;
   headers: Record<string, string>;
-  body?: unknown;
+  body?: string;
 }
 
 /** Response to ping (heartbeat) */
