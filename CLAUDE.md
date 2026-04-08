@@ -91,6 +91,13 @@ All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`. 
 - `@/*` → `src/*`
 - `@test/*` → `test/*`
 
+### Key Dependencies
+
+- **Zod v4** (`zod@^4.x`) — NOT v3. Zod 4 has different APIs (e.g., `z.interface()`, changed error handling). Don't use v3 patterns.
+- **`@modelcontextprotocol/sdk`** — Pinned to exact version (`1.28.0`). Don't bump without testing MCP protocol compatibility.
+- **TypeScript** — `strict: true`, `module: "nodenext"`, target `ES2023`. Path aliases (`@/`, `@test/`) handle most imports.
+- **ESLint** — Flat config (`eslint.config.mjs`), not legacy `.eslintrc`.
+
 ## Adding New Tools
 
 ### Essential Tools (general Anki operations)
@@ -104,6 +111,8 @@ All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`. 
 **Note**: `ESSENTIAL_MCP_TOOLS` contains tools, prompts, and resources that MCP-Nest discovers. The separate `ESSENTIAL_MCP_PRIMITIVES` array adds infrastructure like `AnkiConnectClient`.
 
 For multi-action tools, use the action tool pattern: create a directory with `index.ts`, `yourTool.tool.ts`, and `actions/*.action.ts` files. See `deckActions/` for reference.
+
+For tools with complex output schemas, extract Zod types into a `*.types.ts` file alongside the tool (see `collection-stats/collection-stats.types.ts` and `review-stats/review-stats.types.ts`).
 
 ### GUI Tools (interface operations)
 

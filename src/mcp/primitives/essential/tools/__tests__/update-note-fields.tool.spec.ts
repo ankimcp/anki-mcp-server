@@ -9,8 +9,25 @@ import {
   parseToolResult,
   createMockContext,
 } from "../../../../../test-fixtures/test-helpers";
+import * as dns from "node:dns";
 
 jest.mock("../../../../clients/anki-connect.client");
+
+// Mock dns.promises.lookup for URL validation tests
+jest.mock("node:dns", () => {
+  const actual = jest.requireActual("node:dns");
+  return {
+    ...actual,
+    promises: {
+      ...actual.promises,
+      lookup: jest.fn(),
+    },
+  };
+});
+
+const mockLookup = dns.promises.lookup as jest.MockedFunction<
+  typeof dns.promises.lookup
+>;
 
 describe("UpdateNoteFieldsTool", () => {
   let tool: UpdateNoteFieldsTool;
@@ -30,6 +47,12 @@ describe("UpdateNoteFieldsTool", () => {
     mockContext = createMockContext();
 
     jest.clearAllMocks();
+
+    // Default: resolve to a public IP so non-security tests aren't affected
+    mockLookup.mockResolvedValue({
+      address: "93.184.216.34",
+      family: 4,
+    } as any);
   });
 
   describe("updateNoteFields", () => {
@@ -37,7 +60,7 @@ describe("UpdateNoteFieldsTool", () => {
       // Arrange
       const noteId = mockNotes.spanish.noteId;
       const updatedFields = {
-        Front: "¿Qué tal?",
+        Front: "Que tal?",
         Back: "How are you doing?",
       };
 
@@ -390,6 +413,317 @@ describe("UpdateNoteFieldsTool", () => {
 
       // Assert
       expect(result.modelName).toBe("Basic (and reversed card)");
+    });
+  });
+
+  // ── Security guards ────────────────────────────────────────────────────────
+  // These tests verify that validateMediaUrl from media-validation.utils
+  // is actually called for audio and picture URL fields during note updates.
+
+  describe("security guards", () => {
+    describe("audio URL validation", () => {
+      it("should reject file:// URLs in audio[].url", async () => {
+        const rawResult = await tool.updateNoteFields(
+          {
+            note: {
+              id: mockNotes.spanish.noteId,
+              fields: { Front: "Test" },
+              audio: [
+                {
+                  url: "file:///etc/passwd",
+                  filename: "evil.mp3",
+                  fields: ["Front"],
+                },
+              ],
+            },
+          },
+          mockContext,
+        );
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('URL scheme "file" is not allowed');
+        // Should fail before reaching AnkiConnect
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+
+      it("should reject private IP URLs in audio[].url", async () => {
+        mockLookup.mockResolvedValueOnce({
+          address: "192.168.1.50",
+          family: 4,
+        } as any);
+
+        const rawResult = await tool.updateNoteFields(
+          {
+            note: {
+              id: mockNotes.spanish.noteId,
+              fields: { Front: "Test" },
+              audio: [
+                {
+                  url: "https://internal.corp/secret.mp3",
+                  filename: "audio.mp3",
+                  fields: ["Front"],
+                },
+              ],
+            },
+          },
+          mockContext,
+        );
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain(
+          "requests to private/internal networks are not allowed",
+        );
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+
+      it("should allow public URLs in audio[].url", async () => {
+        mockLookup.mockResolvedValueOnce({
+          address: "93.184.216.34",
+          family: 4,
+        } as any);
+
+        ankiClient.invoke
+          .mockResolvedValueOnce([mockNotes.spanish]) // notesInfo
+          .mockResolvedValueOnce(null); // updateNoteFields
+
+        const rawResult = await tool.updateNoteFields(
+          {
+            note: {
+              id: mockNotes.spanish.noteId,
+              fields: { Front: "Test" },
+              audio: [
+                {
+                  url: "https://cdn.example.com/pronunciation.mp3",
+                  filename: "pronunciation.mp3",
+                  fields: ["Front"],
+                },
+              ],
+            },
+          },
+          mockContext,
+        );
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(true);
+        expect(ankiClient.invoke).toHaveBeenCalledTimes(2);
+      });
+
+      it("rejects if any audio URL in array is malicious", async () => {
+        // First lookup returns public IP, second returns private
+        mockLookup
+          .mockResolvedValueOnce({ address: "93.184.216.34", family: 4 })
+          .mockResolvedValueOnce({ address: "192.168.1.1", family: 4 });
+
+        const result = await tool.updateNoteFields(
+          {
+            note: {
+              id: 1234567890,
+              fields: { Front: "test" },
+              audio: [
+                {
+                  url: "https://safe.com/audio1.mp3",
+                  filename: "safe.mp3",
+                  fields: ["Front"],
+                },
+                {
+                  url: "http://evil.internal/steal.mp3",
+                  filename: "evil.mp3",
+                  fields: ["Back"],
+                },
+              ],
+            },
+          },
+          mockContext,
+        );
+
+        expect(result).toHaveProperty("isError", true);
+        expect(ankiClient.invoke).not.toHaveBeenCalledWith(
+          "updateNoteFields",
+          expect.anything(),
+        );
+      });
+    });
+
+    describe("picture URL validation", () => {
+      it("should reject file:// URLs in picture[].url", async () => {
+        const rawResult = await tool.updateNoteFields(
+          {
+            note: {
+              id: mockNotes.spanish.noteId,
+              fields: { Front: "Test" },
+              picture: [
+                {
+                  url: "file:///etc/shadow",
+                  filename: "evil.jpg",
+                  fields: ["Back"],
+                },
+              ],
+            },
+          },
+          mockContext,
+        );
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('URL scheme "file" is not allowed');
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+
+      it("should reject private IP URLs in picture[].url", async () => {
+        mockLookup.mockResolvedValueOnce({
+          address: "10.0.0.1",
+          family: 4,
+        } as any);
+
+        const rawResult = await tool.updateNoteFields(
+          {
+            note: {
+              id: mockNotes.spanish.noteId,
+              fields: { Front: "Test" },
+              picture: [
+                {
+                  url: "https://admin-panel.internal/logo.png",
+                  filename: "image.jpg",
+                  fields: ["Back"],
+                },
+              ],
+            },
+          },
+          mockContext,
+        );
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain(
+          "requests to private/internal networks are not allowed",
+        );
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+
+      it("should allow public URLs in picture[].url", async () => {
+        mockLookup.mockResolvedValueOnce({
+          address: "151.101.1.67",
+          family: 4,
+        } as any);
+
+        ankiClient.invoke
+          .mockResolvedValueOnce([mockNotes.spanish]) // notesInfo
+          .mockResolvedValueOnce(null); // updateNoteFields
+
+        const rawResult = await tool.updateNoteFields(
+          {
+            note: {
+              id: mockNotes.spanish.noteId,
+              fields: { Front: "Test" },
+              picture: [
+                {
+                  url: "https://images.example.com/photo.jpg",
+                  filename: "photo.jpg",
+                  fields: ["Back"],
+                },
+              ],
+            },
+          },
+          mockContext,
+        );
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(true);
+        expect(ankiClient.invoke).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    describe("mixed media URL validation", () => {
+      it("validates both audio and picture URLs in same request", async () => {
+        // Audio URL is fine, picture URL resolves to private IP
+        mockLookup
+          .mockResolvedValueOnce({ address: "93.184.216.34", family: 4 })
+          .mockResolvedValueOnce({ address: "10.0.0.1", family: 4 });
+
+        const result = await tool.updateNoteFields(
+          {
+            note: {
+              id: 1234567890,
+              fields: { Front: "test" },
+              audio: [
+                {
+                  url: "https://safe.com/audio.mp3",
+                  filename: "audio.mp3",
+                  fields: ["Front"],
+                },
+              ],
+              picture: [
+                {
+                  url: "http://internal-server/secret.png",
+                  filename: "secret.png",
+                  fields: ["Back"],
+                },
+              ],
+            },
+          },
+          mockContext,
+        );
+
+        expect(result).toHaveProperty("isError", true);
+        expect(ankiClient.invoke).not.toHaveBeenCalledWith(
+          "updateNoteFields",
+          expect.anything(),
+        );
+      });
+    });
+
+    describe("media filename sanitization", () => {
+      it("sanitizes audio filename path traversal", async () => {
+        mockLookup.mockResolvedValue({
+          address: "93.184.216.34",
+          family: 4,
+        } as any);
+
+        // Mock the notesInfo call that happens before updateNoteFields
+        ankiClient.invoke.mockImplementation(async (action: string) => {
+          if (action === "notesInfo") {
+            return [
+              {
+                noteId: 1234567890,
+                modelName: "Basic",
+                fields: {
+                  Front: { value: "test" },
+                  Back: { value: "answer" },
+                },
+                tags: [],
+              },
+            ];
+          }
+          return null;
+        });
+
+        await tool.updateNoteFields(
+          {
+            note: {
+              id: 1234567890,
+              fields: { Front: "test" },
+              audio: [
+                {
+                  url: "https://safe.com/audio.mp3",
+                  filename: "../../evil.mp3",
+                  fields: ["Front"],
+                },
+              ],
+            },
+          },
+          mockContext,
+        );
+
+        // Verify the filename was sanitized in the AnkiConnect call
+        const updateCall = ankiClient.invoke.mock.calls.find(
+          (call: any[]) => call[0] === "updateNoteFields",
+        );
+        if (updateCall) {
+          expect(updateCall[1].note.audio[0].filename).toBe("evil.mp3");
+        }
+      });
     });
   });
 });

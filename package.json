@@ -60,8 +60,10 @@
     "@nestjs/platform-express": "^11.1.17",
     "@rekog/mcp-nest": "^1.9.8",
     "commander": "^14.0.3",
+    "ipaddr.js": "^2.3.0",
     "jsonwebtoken": "^9.0.3",
     "ky": "^1.14.3",
+    "mime": "^4.1.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pino": "^10.3.1",
@@ -148,7 +150,7 @@
       "^@test/(.*)$": "<rootDir>/test/$1"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!(ky|unified|remark-parse|unist-util-visit|mdast-util-to-string|micromark.*|decode-named-character-reference|character-entities|unist-.*|vfile.*|bail|is-plain-obj|trough|devlop|mdast.*|hast.*)/)"
+      "node_modules/(?!(ky|mime|unified|remark-parse|unist-util-visit|mdast-util-to-string|micromark.*|decode-named-character-reference|character-entities|unist-.*|vfile.*|bail|is-plain-obj|trough|devlop|mdast.*|hast.*)/)"
     ],
     "forceExit": true
   },

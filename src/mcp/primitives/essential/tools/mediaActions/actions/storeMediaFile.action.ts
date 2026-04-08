@@ -1,4 +1,14 @@
+import { Logger } from "@nestjs/common";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
+import {
+  validateMediaFilePath,
+  validateMediaUrl,
+  sanitizeMediaFilename,
+  getMediaFilePathConfigFromEnv,
+  getMediaUrlConfigFromEnv,
+} from "@/mcp/utils/media-validation.utils";
+
+const logger = new Logger("storeMediaFile");
 
 /**
  * Parameters for storeMediaFile action
@@ -38,7 +48,7 @@ export async function storeMediaFile(
   params: StoreMediaFileParams,
   client: AnkiConnectClient,
 ): Promise<StoreMediaFileResult> {
-  const { filename, data, path, url, deleteExisting = true } = params;
+  const { data, path, url, deleteExisting = true } = params;
 
   // Validate that at least one source is provided
   if (!data && !path && !url) {
@@ -54,8 +64,36 @@ export async function storeMediaFile(
   }
 
   // Validate filename
-  if (!filename || filename.trim() === "") {
+  if (!params.filename || params.filename.trim() === "") {
     throw new Error("Filename cannot be empty");
+  }
+
+  // Sanitize filename to prevent path traversal in output
+  const filename = sanitizeMediaFilename(params.filename);
+
+  // Validate file path if provided (MIME type allowlist + optional directory restriction)
+  // Store the resolved path to send to AnkiConnect instead of the original unsanitized path
+  let validatedPath: string | undefined;
+  if (path) {
+    const { resolvedPath, mimeType } = validateMediaFilePath(
+      path,
+      getMediaFilePathConfigFromEnv(),
+    );
+    validatedPath = resolvedPath;
+    logger.warn(
+      `storeMediaFile path validation: resolved="${resolvedPath}", mime="${mimeType}"`,
+    );
+  }
+
+  // Validate URL if provided (SSRF prevention)
+  if (url) {
+    const { hostname, resolvedIp } = await validateMediaUrl(
+      url,
+      getMediaUrlConfigFromEnv(),
+    );
+    logger.warn(
+      `storeMediaFile URL validation: hostname="${hostname}", resolvedIp="${resolvedIp}"`,
+    );
   }
 
   // Check if filename starts with underscore (prevents Anki from removing unused media)
@@ -69,8 +107,8 @@ export async function storeMediaFile(
 
   if (data) {
     ankiParams.data = data;
-  } else if (path) {
-    ankiParams.path = path;
+  } else if (validatedPath) {
+    ankiParams.path = validatedPath;
   } else if (url) {
     ankiParams.url = url;
   }
