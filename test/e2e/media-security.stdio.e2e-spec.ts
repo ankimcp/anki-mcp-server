@@ -59,15 +59,9 @@ describe("E2E: Media Security Guards (STDIO)", () => {
       expect(result.error).toContain("File type not allowed");
     });
 
-    it("should block null byte injection attempts", () => {
-      const result = callTool("mediaActions", {
-        action: "storeMediaFile",
-        filename: "exploit",
-        path: "/etc/passwd\0.jpg",
-      });
-      expect(result).toHaveProperty("success", false);
-      expect(result.error).toContain("File type not allowed");
-    });
+    // Null byte injection is tested at unit level (media-validation.utils.spec.ts).
+    // Node.js rejects null bytes in execFileSync args before they reach the MCP transport,
+    // so this vector cannot be tested E2E.
   });
 
   describe("SSRF protection", () => {
