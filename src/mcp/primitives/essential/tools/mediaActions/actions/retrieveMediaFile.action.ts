@@ -1,4 +1,5 @@
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
+import { sanitizeMediaFilename } from "@/mcp/utils/media-validation.utils";
 
 /**
  * Parameters for retrieveMediaFile action
@@ -27,12 +28,13 @@ export async function retrieveMediaFile(
   params: RetrieveMediaFileParams,
   client: AnkiConnectClient,
 ): Promise<RetrieveMediaFileResult> {
-  const { filename } = params;
-
   // Validate filename
-  if (!filename || filename.trim() === "") {
+  if (!params.filename || params.filename.trim() === "") {
     throw new Error("Filename cannot be empty");
   }
+
+  // Sanitize filename to prevent path traversal
+  const filename = sanitizeMediaFilename(params.filename);
 
   // Call AnkiConnect
   const result = await client.invoke<string | false>("retrieveMediaFile", {

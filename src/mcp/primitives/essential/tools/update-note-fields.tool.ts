@@ -4,6 +4,11 @@ import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
+import {
+  validateMediaUrl,
+  sanitizeMediaFilename,
+  getMediaUrlConfigFromEnv,
+} from "@/mcp/utils/media-validation.utils";
 
 /**
  * Tool for updating fields of existing notes
@@ -104,6 +109,36 @@ export class UpdateNoteFieldsTool {
           noteId: note.id,
           hint: "Provide at least one field to update",
         });
+      }
+
+      // Validate audio URLs for SSRF and sanitize filenames
+      if (note.audio) {
+        const urlConfig = getMediaUrlConfigFromEnv();
+        for (const audioItem of note.audio) {
+          const { hostname, resolvedIp } = await validateMediaUrl(
+            audioItem.url,
+            urlConfig,
+          );
+          this.logger.warn(
+            `updateNoteFields audio URL validation: hostname="${hostname}", resolvedIp="${resolvedIp}"`,
+          );
+          audioItem.filename = sanitizeMediaFilename(audioItem.filename);
+        }
+      }
+
+      // Validate picture URLs for SSRF and sanitize filenames
+      if (note.picture) {
+        const urlConfig = getMediaUrlConfigFromEnv();
+        for (const pictureItem of note.picture) {
+          const { hostname, resolvedIp } = await validateMediaUrl(
+            pictureItem.url,
+            urlConfig,
+          );
+          this.logger.warn(
+            `updateNoteFields picture URL validation: hostname="${hostname}", resolvedIp="${resolvedIp}"`,
+          );
+          pictureItem.filename = sanitizeMediaFilename(pictureItem.filename);
+        }
       }
 
       await context.reportProgress({ progress: 25, total: 100 });

@@ -62,7 +62,9 @@ Perfect for workflows like ElevenLabs TTS → Anki audio flashcards.`,
       path: z
         .string()
         .optional()
-        .describe("[storeMediaFile only] Absolute file path"),
+        .describe(
+          "[storeMediaFile only] Absolute path to a local media file (images, audio, video only)",
+        ),
       url: z
         .string()
         .optional()

@@ -368,6 +368,9 @@ For more details, see the [official MCP documentation](https://modelcontextproto
 | `ANKI_CONNECT_API_KEY` | API key if configured in AnkiConnect | - |
 | `ANKI_CONNECT_TIMEOUT` | Request timeout in ms | `5000` |
 | `READ_ONLY` | Enable read-only mode (`true` or `1`) | `false` |
+| `MEDIA_ALLOWED_TYPES` | Extra MIME types to allow for file path imports (comma-separated, e.g., `application/pdf`) | - |
+| `MEDIA_IMPORT_DIR` | Restrict file path imports to this directory | - |
+| `MEDIA_ALLOWED_HOSTS` | Allow specific private network hosts for URL imports (comma-separated, e.g., `192.168.1.50,my-nas`) | - |
 
 ## Usage Examples
 
@@ -420,6 +423,20 @@ The `findNotes` tool supports Anki's powerful query syntax:
 
 #### Deletion Safety
 The `deleteNotes` tool requires explicit confirmation (`confirmDeletion: true`) to prevent accidental deletions. Deleting a note removes ALL associated cards permanently.
+
+## Security
+
+### Media File Path and URL Validation
+
+The `mediaActions` tool and `updateNoteFields` audio/picture fields include security validation to prevent misuse via prompt injection:
+
+- **File path imports** are restricted to media file types only (images, audio, video). Non-media files (e.g., SSH keys, credentials, shell configs) are rejected based on MIME type. Configure `MEDIA_ALLOWED_TYPES` to allow additional file types, or `MEDIA_IMPORT_DIR` to restrict imports to a specific directory.
+- **URL imports** are validated against SSRF attacks. Requests to private networks (10.x, 172.16.x, 192.168.x), loopback (127.x), link-local (169.254.x), and non-HTTP(S) schemes are blocked. Configure `MEDIA_ALLOWED_HOSTS` to allow specific private network hosts.
+- **Filenames** are sanitized to prevent path traversal (e.g., `../../` sequences are stripped).
+
+These protections apply to `storeMediaFile`, `retrieveMediaFile`, `deleteMediaFile`, and `updateNoteFields` audio/picture fields.
+
+> Path traversal vulnerability reported by [Hideaki Takahashi](https://github.com/Koukyosyumei).
 
 ## Known Issues
 

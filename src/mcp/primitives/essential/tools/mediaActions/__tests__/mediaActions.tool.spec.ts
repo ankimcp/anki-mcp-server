@@ -5,9 +5,26 @@ import {
   parseToolResult,
   createMockContext,
 } from "@/test-fixtures/test-helpers";
+import * as dns from "node:dns";
 
 // Mock the AnkiConnectClient
 jest.mock("@/mcp/clients/anki-connect.client");
+
+// Mock dns.promises.lookup for URL validation tests
+jest.mock("node:dns", () => {
+  const actual = jest.requireActual("node:dns");
+  return {
+    ...actual,
+    promises: {
+      ...actual.promises,
+      lookup: jest.fn(),
+    },
+  };
+});
+
+const mockLookup = dns.promises.lookup as jest.MockedFunction<
+  typeof dns.promises.lookup
+>;
 
 describe("MediaActionsTool", () => {
   let tool: MediaActionsTool;
@@ -27,8 +44,20 @@ describe("MediaActionsTool", () => {
     // Setup mock context
     mockContext = createMockContext();
 
+    // Default: resolve to a public IP so existing URL tests pass
+    mockLookup.mockResolvedValue({
+      address: "93.184.216.34",
+      family: 4,
+    } as any);
+
     // Clear all mocks before each test
     jest.clearAllMocks();
+
+    // Re-apply default after clearAllMocks
+    mockLookup.mockResolvedValue({
+      address: "93.184.216.34",
+      family: 4,
+    } as any);
   });
 
   describe("storeMediaFile action", () => {
@@ -328,6 +357,352 @@ describe("MediaActionsTool", () => {
       expect(mockContext.reportProgress).toHaveBeenCalledWith({
         progress: 100,
         total: 100,
+      });
+    });
+  });
+
+  // ── Security guards ────────────────────────────────────────────────────────
+  // These tests verify that the validation utilities from media-validation.utils
+  // are actually wired into the tool execution paths, not just tested in isolation.
+
+  describe("security guards", () => {
+    describe("storeMediaFile path validation", () => {
+      it("should reject non-media file paths (e.g., .ssh/id_rsa)", async () => {
+        const params = {
+          action: "storeMediaFile" as const,
+          filename: "stolen.txt",
+          path: "/home/user/.ssh/id_rsa",
+        };
+
+        const rawResult = await tool.execute(params, mockContext);
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("Only media files");
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+
+      it("should reject .env files", async () => {
+        const params = {
+          action: "storeMediaFile" as const,
+          filename: "secrets.txt",
+          path: "/home/user/.env",
+        };
+
+        const rawResult = await tool.execute(params, mockContext);
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("Only media files");
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+
+      it("should allow media file paths (e.g., /photos/cat.jpg)", async () => {
+        const params = {
+          action: "storeMediaFile" as const,
+          filename: "cat.jpg",
+          path: "/photos/cat.jpg",
+        };
+        ankiClient.invoke.mockResolvedValueOnce("cat.jpg");
+
+        const rawResult = await tool.execute(params, mockContext);
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(true);
+        expect(ankiClient.invoke).toHaveBeenCalledWith(
+          "storeMediaFile",
+          expect.objectContaining({ path: "/photos/cat.jpg" }),
+        );
+      });
+
+      it("should respect MEDIA_ALLOWED_TYPES env var", async () => {
+        const originalEnv = process.env.MEDIA_ALLOWED_TYPES;
+        try {
+          // PDF is not allowed by default
+          const params = {
+            action: "storeMediaFile" as const,
+            filename: "doc.pdf",
+            path: "/docs/manual.pdf",
+          };
+
+          // First: without env var, PDF should be rejected
+          const rawResultBlocked = await tool.execute(params, mockContext);
+          const resultBlocked = parseToolResult(rawResultBlocked);
+          expect(resultBlocked.success).toBe(false);
+          expect(resultBlocked.error).toContain("Only media files");
+
+          // Now allow PDF via env var
+          process.env.MEDIA_ALLOWED_TYPES = "application/pdf";
+          ankiClient.invoke.mockResolvedValueOnce("doc.pdf");
+
+          const rawResultAllowed = await tool.execute(params, mockContext);
+          const resultAllowed = parseToolResult(rawResultAllowed);
+          expect(resultAllowed.success).toBe(true);
+          expect(ankiClient.invoke).toHaveBeenCalled();
+        } finally {
+          if (originalEnv === undefined) {
+            delete process.env.MEDIA_ALLOWED_TYPES;
+          } else {
+            process.env.MEDIA_ALLOWED_TYPES = originalEnv;
+          }
+        }
+      });
+
+      it("should respect MEDIA_IMPORT_DIR env var", async () => {
+        const originalEnv = process.env.MEDIA_IMPORT_DIR;
+        try {
+          process.env.MEDIA_IMPORT_DIR = "/allowed/media";
+
+          // A file outside the allowed directory should be rejected
+          const params = {
+            action: "storeMediaFile" as const,
+            filename: "cat.jpg",
+            path: "/other/directory/cat.jpg",
+          };
+
+          const rawResult = await tool.execute(params, mockContext);
+          const result = parseToolResult(rawResult);
+
+          expect(result.success).toBe(false);
+          expect(result.error).toContain(
+            "outside the allowed import directory",
+          );
+          expect(ankiClient.invoke).not.toHaveBeenCalled();
+        } finally {
+          if (originalEnv === undefined) {
+            delete process.env.MEDIA_IMPORT_DIR;
+          } else {
+            process.env.MEDIA_IMPORT_DIR = originalEnv;
+          }
+        }
+      });
+    });
+
+    describe("storeMediaFile URL validation", () => {
+      it("should reject file:// URLs", async () => {
+        const params = {
+          action: "storeMediaFile" as const,
+          filename: "stolen.mp3",
+          url: "file:///etc/passwd",
+        };
+
+        const rawResult = await tool.execute(params, mockContext);
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('URL scheme "file" is not allowed');
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+
+      it("should reject URLs resolving to private IPs", async () => {
+        mockLookup.mockResolvedValueOnce({
+          address: "192.168.1.100",
+          family: 4,
+        } as any);
+
+        const params = {
+          action: "storeMediaFile" as const,
+          filename: "internal.mp3",
+          url: "https://internal-server.local/audio.mp3",
+        };
+
+        const rawResult = await tool.execute(params, mockContext);
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain(
+          "requests to private/internal networks are not allowed",
+        );
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+
+      it("should allow URLs resolving to public IPs", async () => {
+        mockLookup.mockResolvedValueOnce({
+          address: "93.184.216.34",
+          family: 4,
+        } as any);
+
+        const params = {
+          action: "storeMediaFile" as const,
+          filename: "public.mp3",
+          url: "https://cdn.example.com/audio.mp3",
+        };
+        ankiClient.invoke.mockResolvedValueOnce("public.mp3");
+
+        const rawResult = await tool.execute(params, mockContext);
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(true);
+        expect(ankiClient.invoke).toHaveBeenCalledWith(
+          "storeMediaFile",
+          expect.objectContaining({ url: "https://cdn.example.com/audio.mp3" }),
+        );
+      });
+
+      it("should respect MEDIA_ALLOWED_HOSTS env var", async () => {
+        const originalEnv = process.env.MEDIA_ALLOWED_HOSTS;
+        try {
+          // Resolve to a private IP — normally blocked
+          mockLookup.mockResolvedValue({
+            address: "192.168.1.100",
+            family: 4,
+          } as any);
+
+          const params = {
+            action: "storeMediaFile" as const,
+            filename: "internal.mp3",
+            url: "https://my-nas.local/audio.mp3",
+          };
+
+          // First: without MEDIA_ALLOWED_HOSTS, should be blocked
+          const rawResultBlocked = await tool.execute(params, mockContext);
+          const resultBlocked = parseToolResult(rawResultBlocked);
+          expect(resultBlocked.success).toBe(false);
+          expect(resultBlocked.error).toContain("private/internal networks");
+
+          // Now allow the host
+          process.env.MEDIA_ALLOWED_HOSTS = "my-nas.local";
+          ankiClient.invoke.mockResolvedValueOnce("internal.mp3");
+
+          const rawResultAllowed = await tool.execute(params, mockContext);
+          const resultAllowed = parseToolResult(rawResultAllowed);
+          expect(resultAllowed.success).toBe(true);
+        } finally {
+          if (originalEnv === undefined) {
+            delete process.env.MEDIA_ALLOWED_HOSTS;
+          } else {
+            process.env.MEDIA_ALLOWED_HOSTS = originalEnv;
+          }
+        }
+      });
+    });
+
+    describe("storeMediaFile filename sanitization", () => {
+      it("sanitizes path traversal in filename for storeMediaFile", async () => {
+        const tool = new MediaActionsTool(ankiClient as any);
+        ankiClient.invoke.mockResolvedValue("safe_name.jpg");
+
+        await tool.execute(
+          {
+            action: "storeMediaFile",
+            filename: "../../evil.jpg",
+            data: "base64data",
+          },
+          mockContext,
+        );
+
+        expect(ankiClient.invoke).toHaveBeenCalledWith(
+          "storeMediaFile",
+          expect.objectContaining({ filename: "evil.jpg" }),
+        );
+      });
+
+      it("sends resolved path to AnkiConnect, not original path", async () => {
+        const tool = new MediaActionsTool(ankiClient as any);
+        ankiClient.invoke.mockResolvedValue("image.jpg");
+
+        await tool.execute(
+          {
+            action: "storeMediaFile",
+            filename: "image.jpg",
+            path: "/photos/../photos/image.jpg",
+          },
+          mockContext,
+        );
+
+        // The resolved path should not contain ../
+        const invokeCall = ankiClient.invoke.mock.calls[0];
+        expect(invokeCall[1].path).not.toContain("..");
+      });
+    });
+
+    describe("storeMediaFile cloud metadata protection", () => {
+      it("blocks cloud metadata endpoint (169.254.169.254)", async () => {
+        mockLookup.mockResolvedValue({
+          address: "169.254.169.254",
+          family: 4,
+        } as any);
+        const tool = new MediaActionsTool(ankiClient as any);
+
+        const result = await tool.execute(
+          {
+            action: "storeMediaFile",
+            filename: "metadata.txt",
+            url: "http://169.254.169.254/latest/meta-data/",
+          },
+          mockContext,
+        );
+
+        expect(result).toHaveProperty("isError", true);
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("retrieveMediaFile filename sanitization", () => {
+      it("should sanitize path traversal in filename", async () => {
+        const params = {
+          action: "retrieveMediaFile" as const,
+          filename: "../../.bashrc",
+        };
+        ankiClient.invoke.mockResolvedValueOnce("file-contents-base64");
+
+        const rawResult = await tool.execute(params, mockContext);
+        const result = parseToolResult(rawResult);
+
+        // The sanitized filename should have traversal sequences stripped
+        expect(ankiClient.invoke).toHaveBeenCalledWith("retrieveMediaFile", {
+          filename: ".bashrc",
+        });
+        expect(result.success).toBe(true);
+        expect(result.filename).toBe(".bashrc");
+      });
+
+      it("should pass normal filenames through unchanged", async () => {
+        const params = {
+          action: "retrieveMediaFile" as const,
+          filename: "pronunciation.mp3",
+        };
+        ankiClient.invoke.mockResolvedValueOnce("base64data");
+
+        await tool.execute(params, mockContext);
+
+        expect(ankiClient.invoke).toHaveBeenCalledWith("retrieveMediaFile", {
+          filename: "pronunciation.mp3",
+        });
+      });
+    });
+
+    describe("deleteMediaFile filename sanitization", () => {
+      it("should sanitize path traversal in filename", async () => {
+        const params = {
+          action: "deleteMediaFile" as const,
+          filename: "../../etc/passwd",
+        };
+        ankiClient.invoke.mockResolvedValueOnce(undefined);
+
+        const rawResult = await tool.execute(params, mockContext);
+        const result = parseToolResult(rawResult);
+
+        // Path traversal sequences and separators are stripped
+        expect(ankiClient.invoke).toHaveBeenCalledWith("deleteMediaFile", {
+          filename: "etcpasswd",
+        });
+        expect(result.success).toBe(true);
+        expect(result.filename).toBe("etcpasswd");
+      });
+
+      it("should pass normal filenames through unchanged", async () => {
+        const params = {
+          action: "deleteMediaFile" as const,
+          filename: "old_recording.mp3",
+        };
+        ankiClient.invoke.mockResolvedValueOnce(undefined);
+
+        await tool.execute(params, mockContext);
+
+        expect(ankiClient.invoke).toHaveBeenCalledWith("deleteMediaFile", {
+          filename: "old_recording.mp3",
+        });
       });
     });
   });
