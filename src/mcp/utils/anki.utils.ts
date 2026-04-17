@@ -10,7 +10,11 @@ import { AnkiConnectError } from "../clients/anki-connect.client";
  * Helper function to clean HTML from card content
  */
 export function cleanHtml(html: string): string {
+  if (!html) return "";
   return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "") // Remove style tags and content
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "") // Remove script tags and content
+    .replace(/<!--[\s\S]*?-->/g, "") // Remove comments
     .replace(/<[^>]*>/g, "") // Remove HTML tags
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")

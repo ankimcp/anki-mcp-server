@@ -9,6 +9,7 @@ import {
   getCardType,
   createSuccessResponse,
   createErrorResponse,
+  cleanHtml,
 } from "@/mcp/utils/anki.utils";
 
 /**
@@ -66,7 +67,7 @@ export class PresentCardTool {
       // Build the presentation object
       const presentation: CardPresentation = {
         cardId: card.cardId,
-        front: front || card.question || "",
+        front: front !== "" ? front : cleanHtml(card.question || ""),
         deckName: card.deckName,
         modelName: card.modelName,
         tags: card.tags || [],
@@ -80,7 +81,7 @@ export class PresentCardTool {
 
       // Only include answer if requested
       if (showAnswer) {
-        presentation.back = back || card.answer || "";
+        presentation.back = back !== "" ? back : cleanHtml(card.answer || "");
       }
 
       await context.reportProgress({ progress: 100, total: 100 });

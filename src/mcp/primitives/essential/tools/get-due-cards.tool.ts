@@ -8,6 +8,7 @@ import {
   extractCardContent,
   createSuccessResponse,
   createErrorResponse,
+  cleanHtml,
 } from "@/mcp/utils/anki.utils";
 
 /**
@@ -128,8 +129,8 @@ export class GetDueCardsTool {
 
         return {
           cardId: card.cardId,
-          front: front || card.question || "",
-          back: back || card.answer || "",
+          front: front !== "" ? front : cleanHtml(card.question || ""),
+          back: back !== "" ? back : cleanHtml(card.answer || ""),
           deckName: card.deckName,
           modelName: card.modelName,
           due: card.due || 0,
