@@ -21,14 +21,18 @@ npm run start:dev:http           # HTTP mode with watch
 # Testing
 npm test                         # All tests
 npm test -- path/to/file.spec.ts # Single test file
+npm run test:tools               # Tool unit tests only
+npm run test:workflows           # Multi-tool workflow scenarios (mocked)
 npm run test:cov                 # With coverage (70% threshold)
+npm run e2e:full:local           # One-shot E2E: up → test → down
 
 # Quality
-npm run lint && npm run type-check   # Pre-commit checks (also runs via Husky pre-push)
+npm run lint && npm run type-check   # Pre-push checks (also runs via Husky)
 
 # Debugging
 npm run inspector:stdio          # MCP Inspector UI for testing tools
 npm run inspector:stdio:debug    # With debugger on port 9229
+npm run inspector:http           # Inspector against HTTP transport
 ```
 
 ## Architecture
@@ -86,6 +90,15 @@ All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`. 
 - `ANKI_CONFIG` — Symbol token for AnkiConnect-specific config (IAnkiConfig interface). Provided via `useClass: AnkiConfigService` in each module's `forRoot()`. Modules can swap the config provider for testing.
 - `ConfigModule` — NestJS config module reads environment variables. `AnkiConfigService` reads from it and sanitizes MCPB config values.
 
+### Upstream AnkiConnect Quirks
+
+These are upstream behaviors that shape tool design — surface them in tool descriptions so the AI can avoid them:
+
+- **`updateNoteFields` silently fails** if the target note is open in Anki's Browse window. The request returns 200 but fields don't persist. Warn users in the tool description.
+- **Model CSS is per-note-type, not per-note.** Use `modelStyling` to fetch CSS for a model; `notesInfo` tells you which model each note uses. `updateNoteFields` should preserve inline styles.
+- **`sync` relies on the desktop app being logged into AnkiWeb.** There's no API path to authenticate — surface a helpful error hint.
+- **`deleteNotes` is irreversible and cascades to all cards** of the note. The tool requires explicit `confirmDeletion: true`.
+
 ### Path Aliases
 
 - `@/*` → `src/*`
@@ -139,23 +152,35 @@ See `src/mcp/primitives/essential/tools/sync.tool.ts` for minimal example.
 
 ## Testing
 
+### Test Organization
+
+Three distinct tiers — pick the right one for the change:
+
+- **Unit** — `src/**/__tests__/*.spec.ts`, colocated with source. Mock `AnkiConnectClient`. Fast, run on every push.
+- **Workflows** — `test/workflows/*.spec.ts` (e.g., `note-management.spec.ts`, `review-session.spec.ts`). Multi-tool scenarios still against a mocked client. Use for cross-tool invariants.
+- **E2E** — `test/e2e/*.e2e-spec.ts`. Hits a real Anki + AnkiConnect running in Docker. Covers both STDIO and HTTP transports.
+
+Shared test infra:
+
+- `src/test-fixtures/test-helpers.ts` — `parseToolResult()`, `createMockContext()`
+- `src/test-fixtures/mock-data.ts` — `mockNotes`, `mockDecks`, `mockCards`, `mockErrors`
+
 ```bash
+# Single test file
 npm test -- src/mcp/primitives/essential/tools/__tests__/sync.tool.spec.ts
 ```
 
-- Mock `AnkiConnectClient` in unit tests (see existing tests)
-- Use `test/workflows/*.spec.ts` for multi-tool scenarios
-- Test helpers: `src/test-fixtures/test-helpers.ts` (`parseToolResult()`, `createMockContext()`)
-- Mock data: `src/test-fixtures/mock-data.ts` (`mockNotes`, `mockDecks`, `mockCards`, `mockErrors`)
-- **ESM packages gotcha**: `ky`, `unified`, `remark-parse`, and other ESM-only deps require `transformIgnorePatterns` in jest config (see `package.json`). If adding new ESM deps, add them to the pattern.
+**ESM packages gotcha**: `ky`, `unified`, `remark-parse`, and other ESM-only deps require `transformIgnorePatterns` in jest config (see `package.json`). If adding new ESM deps, add them to the pattern.
 
 ### E2E Tests (requires Docker)
 
 ```bash
 npm run e2e:up              # Start Anki + AnkiConnect containers
-npm run e2e:test            # Run E2E tests
+npm run e2e:test            # Run all E2E tests
+npm run e2e:test:stdio      # STDIO transport only
+npm run e2e:test:http       # HTTP transport only
 npm run e2e:down            # Stop containers
-npm run e2e:full:local      # All-in-one: start, test, cleanup
+npm run e2e:full:local      # All-in-one: up → test → down
 ```
 
 ## Git Hooks (Husky)
@@ -195,3 +220,17 @@ Key environment variables (all have defaults):
 - `ANKI_CONNECT_URL` — AnkiConnect URL (default: `http://localhost:8765`)
 - `ANKI_CONNECT_API_KEY` — Optional AnkiConnect API key
 - `LOG_LEVEL` — `debug|info|warn|error` (default: `info`)
+- `READ_ONLY` — `true|1` to block write operations (enforced in `AnkiConnectClient`)
+
+### Media Security
+
+`mediaActions` and `updateNoteFields` audio/picture/video fields validate inputs against prompt-injection and SSRF attacks:
+
+- **File paths** — MIME-type allowlist (media only). Non-media files (SSH keys, creds, shell configs) are rejected.
+  - `MEDIA_ALLOWED_TYPES` — extra MIME types (comma-separated)
+  - `MEDIA_IMPORT_DIR` — restrict imports to a specific directory
+- **URLs** — SSRF guard blocks loopback (127.x), RFC1918 (10/8, 172.16/12, 192.168/16), link-local (169.254.x), and non-HTTP(S) schemes.
+  - `MEDIA_ALLOWED_HOSTS` — allowlist specific private hosts (e.g., `192.168.1.50,my-nas`)
+- **Filenames** — path-traversal sanitization (`../`, absolute paths stripped).
+
+Guards live in `src/mcp/primitives/essential/tools/mediaActions/`. E2E coverage in `test/e2e/media-security.stdio.e2e-spec.ts`. When touching these, always add a test — the recent path-traversal fix (commit f94cfb8) was reported externally.
