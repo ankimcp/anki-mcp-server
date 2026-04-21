@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Icon } from "@rekog/mcp-nest";
+import type { Icon } from "@modelcontextprotocol/sdk/types.js";
 
 /**
  * MCP-protocol icons advertised via the server's `Implementation.icons` field.
