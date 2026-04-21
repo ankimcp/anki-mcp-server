@@ -8,6 +8,10 @@
       {
         "include": "**/*.md",
         "watchAssets": true
+      },
+      {
+        "include": "assets/**/*",
+        "watchAssets": false
       }
     ]
   }
