@@ -12,7 +12,6 @@ import {
 } from "./mcp/primitives/gui";
 import { AnkiConfigService } from "./anki-config.service";
 import { MCP_ICONS } from "./mcp/mcp-icons";
-import { FaviconController } from "./http/controllers/favicon.controller";
 
 @Module({})
 export class AppModule {
@@ -98,8 +97,6 @@ export class AppModule {
           },
         }),
       ],
-      // HTTP-only: serve browser favicons at the site root.
-      controllers: [FaviconController],
       // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured.
       providers: [AnkiConfigService, ...ESSENTIAL_MCP_TOOLS, ...GUI_MCP_TOOLS],
     };

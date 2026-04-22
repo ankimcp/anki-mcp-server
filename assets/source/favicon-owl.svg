@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <rect width="120" height="120" rx="22" fill="#1a2550"/>
+  <!-- Heart-shaped barn owl face -->
+  <path d="M 60 104
+           C 52 104 20 84 18 52
+           C 17 34 28 24 40 28
+           C 48 31 55 38 60 44
+           C 65 38 72 31 80 28
+           C 92 24 103 34 102 52
+           C 100 84 68 104 60 104 Z"
+        fill="#f0e4c5" stroke="#d4a84a" stroke-width="3" stroke-linejoin="round"/>
+  <!-- Eyes: almond-shaped, dark -->
+  <ellipse cx="44" cy="58" rx="7" ry="10" fill="#1a2550"/>
+  <ellipse cx="76" cy="58" rx="7" ry="10" fill="#1a2550"/>
+  <!-- Beak: simple gold triangle -->
+  <path d="M 60 74 L 54 88 L 66 88 Z" fill="#d4a84a"/>
+</svg>
