@@ -107,7 +107,7 @@ These are upstream behaviors that shape tool design — surface them in tool des
 ### Key Dependencies
 
 - **Zod v4** (`zod@^4.x`) — NOT v3. Zod 4 has different APIs (e.g., `z.interface()`, changed error handling). Don't use v3 patterns.
-- **`@modelcontextprotocol/sdk`** — Pinned to exact version (`1.28.0`). Don't bump without testing MCP protocol compatibility.
+- **`@modelcontextprotocol/sdk`** — Pinned to exact version (`1.29.0`). Don't bump without testing MCP protocol compatibility.
 - **TypeScript** — `strict: true`, `module: "nodenext"`, target `ES2023`. Path aliases (`@/`, `@test/`) handle most imports.
 - **ESLint** — Flat config (`eslint.config.mjs`), not legacy `.eslintrc`.
 
@@ -197,6 +197,8 @@ npm run e2e:full:local      # All-in-one: up → test → down
 
 **npm publishing** uses OIDC Trusted Publishing (no `NPM_TOKEN` needed). The `--provenance` flag triggers OIDC auth and generates cryptographic attestations. Configured in `npm-publish.yml` and `npm-publish-legacy.yml`.
 
+**MCP Registry publishing** is handled by `mcp-registry-publish.yml`, which publishes `server.json` to the official MCP registry on tagged releases (wired in v0.18.4).
+
 **Don't run `npm run mcpb:bundle` manually** - CI handles it.
 
 ## MCPB Bundle Notes
@@ -207,10 +209,6 @@ Bundle uses STDIO entry point. Key gotchas:
 - Peer dependencies of `@rekog/mcp-nest` must stay as direct deps (JWT, passport modules)
 - `mcpb clean` removes devDeps to optimize size (47MB → ~10MB)
 - Use **npm** (not pnpm) - `mcpb clean` doesn't work with pnpm's node_modules
-
-## Planning Documents
-
-Check `.claude-draft/` for implementation plans and analysis.
 
 ## Environment
 
