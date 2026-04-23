@@ -32,10 +32,22 @@ export { FindNotesTool } from "./tools/find-notes.tool";
 export { NotesInfoTool } from "./tools/notes-info.tool";
 export { UpdateNoteFieldsTool } from "./tools/update-note-fields.tool";
 export { DeleteNotesTool } from "./tools/delete-notes.tool";
-export { MediaActionsTool } from "./tools/mediaActions";
 export { GetTagsTool } from "./tools/get-tags.tool";
-export { TagActionsTool } from "./tools/tagActions";
-export { DeckActionsTool } from "./tools/deckActions";
+// Deck tools (split from former deckActions aggregate)
+export { ListDecksTool } from "./tools/list-decks.tool";
+export { DeckStatsTool } from "./tools/deck-stats.tool";
+export { CreateDeckTool } from "./tools/create-deck.tool";
+export { ChangeDeckTool } from "./tools/change-deck.tool";
+// Media tools (split from former mediaActions aggregate)
+export { RetrieveMediaFileTool } from "./tools/retrieve-media-file.tool";
+export { GetMediaFilesNamesTool } from "./tools/get-media-files-names.tool";
+export { StoreMediaFileTool } from "./tools/store-media-file.tool";
+export { DeleteMediaFileTool } from "./tools/delete-media-file.tool";
+// Tag tools (split from former tagActions aggregate)
+export { AddTagsTool } from "./tools/add-tags.tool";
+export { RemoveTagsTool } from "./tools/remove-tags.tool";
+export { ReplaceTagsTool } from "./tools/replace-tags.tool";
+export { ClearUnusedTagsTool } from "./tools/clear-unused-tags.tool";
 export { CollectionStatsTool } from "./tools/collection-stats";
 export { ReviewStatsTool } from "./tools/review-stats";
 
@@ -65,10 +77,19 @@ import { FindNotesTool } from "./tools/find-notes.tool";
 import { NotesInfoTool } from "./tools/notes-info.tool";
 import { UpdateNoteFieldsTool } from "./tools/update-note-fields.tool";
 import { DeleteNotesTool } from "./tools/delete-notes.tool";
-import { MediaActionsTool } from "./tools/mediaActions";
 import { GetTagsTool } from "./tools/get-tags.tool";
-import { TagActionsTool } from "./tools/tagActions";
-import { DeckActionsTool } from "./tools/deckActions";
+import { ListDecksTool } from "./tools/list-decks.tool";
+import { DeckStatsTool } from "./tools/deck-stats.tool";
+import { CreateDeckTool } from "./tools/create-deck.tool";
+import { ChangeDeckTool } from "./tools/change-deck.tool";
+import { RetrieveMediaFileTool } from "./tools/retrieve-media-file.tool";
+import { GetMediaFilesNamesTool } from "./tools/get-media-files-names.tool";
+import { StoreMediaFileTool } from "./tools/store-media-file.tool";
+import { DeleteMediaFileTool } from "./tools/delete-media-file.tool";
+import { AddTagsTool } from "./tools/add-tags.tool";
+import { RemoveTagsTool } from "./tools/remove-tags.tool";
+import { ReplaceTagsTool } from "./tools/replace-tags.tool";
+import { ClearUnusedTagsTool } from "./tools/clear-unused-tags.tool";
 import { CollectionStatsTool } from "./tools/collection-stats";
 import { ReviewStatsTool } from "./tools/review-stats";
 import { ReviewSessionPrompt } from "./prompts/review-session.prompt";
@@ -94,10 +115,22 @@ export const ESSENTIAL_MCP_TOOLS = [
   NotesInfoTool,
   UpdateNoteFieldsTool,
   DeleteNotesTool,
-  MediaActionsTool,
   GetTagsTool,
-  TagActionsTool,
-  DeckActionsTool,
+  // Deck tools
+  ListDecksTool,
+  DeckStatsTool,
+  CreateDeckTool,
+  ChangeDeckTool,
+  // Media tools
+  RetrieveMediaFileTool,
+  GetMediaFilesNamesTool,
+  StoreMediaFileTool,
+  DeleteMediaFileTool,
+  // Tag tools
+  AddTagsTool,
+  RemoveTagsTool,
+  ReplaceTagsTool,
+  ClearUnusedTagsTool,
   CollectionStatsTool,
   ReviewStatsTool,
   // Prompts

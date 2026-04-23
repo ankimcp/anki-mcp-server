@@ -25,10 +25,10 @@ describe("E2E: MCP Tools (STDIO)", () => {
       expect(tools.length).toBeGreaterThan(0);
     });
 
-    it("should have deckActions tool", () => {
+    it("should have listDecks tool", () => {
       const tools = listTools();
       const toolNames = tools.map((t) => t.name);
-      expect(toolNames).toContain("deckActions");
+      expect(toolNames).toContain("listDecks");
     });
 
     it("should have sync tool", () => {
@@ -52,7 +52,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
 
   describe("Deck Tools", () => {
     it("should list decks via deckActions", () => {
-      const result = callTool("deckActions", { action: "listDecks" });
+      const result = callTool("listDecks");
       expect(result).toHaveProperty("decks");
       expect(Array.isArray(result.decks)).toBe(true);
       // Default deck should always exist
@@ -61,10 +61,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
 
     it("should create a simple deck via deckActions", () => {
       const deckName = `STDIO_E2E_${uniqueId()}`;
-      const result = callTool("deckActions", {
-        action: "createDeck",
-        deckName: deckName,
-      });
+      const result = callTool("createDeck", { deckName: deckName });
       expect(result).toHaveProperty("deckId");
       expect(typeof result.deckId).toBe("number");
       expect((result.deckId as number) > 0).toBe(true);
@@ -72,26 +69,17 @@ describe("E2E: MCP Tools (STDIO)", () => {
 
     it("should create a nested deck (2 levels) via deckActions", () => {
       const deckName = `STDIO::Nested${uniqueId()}`;
-      const result = callTool("deckActions", {
-        action: "createDeck",
-        deckName: deckName,
-      });
+      const result = callTool("createDeck", { deckName: deckName });
       expect(result).toHaveProperty("deckId");
       expect((result.deckId as number) > 0).toBe(true);
     });
 
     it("should return existing deck ID when creating duplicate via deckActions", () => {
       const deckName = `STDIO::Exist${uniqueId()}`;
-      const result1 = callTool("deckActions", {
-        action: "createDeck",
-        deckName: deckName,
-      });
+      const result1 = callTool("createDeck", { deckName: deckName });
       const deckId = result1.deckId;
 
-      const result2 = callTool("deckActions", {
-        action: "createDeck",
-        deckName: deckName,
-      });
+      const result2 = callTool("createDeck", { deckName: deckName });
       expect(result2.deckId).toBe(deckId);
     });
   });
@@ -138,7 +126,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
       const uniqueTag = `stdio-e2e-tag-${uid}`;
 
       // Create deck and note with unique tag
-      callTool("deckActions", { action: "createDeck", deckName: deckName });
+      callTool("createDeck", { deckName: deckName });
       callTool("addNote", {
         deckName: deckName,
         modelName: "Basic",
@@ -162,7 +150,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
       const filterableTag = `stdio-filter-${uid}`;
 
       // Create note with filterable tag
-      callTool("deckActions", { action: "createDeck", deckName: deckName });
+      callTool("createDeck", { deckName: deckName });
       callTool("addNote", {
         deckName: deckName,
         modelName: "Basic",
@@ -181,14 +169,14 @@ describe("E2E: MCP Tools (STDIO)", () => {
       expect((result.tags as string[]).length).toBeGreaterThanOrEqual(1);
     });
 
-    describe("tagActions", () => {
+    describe("tag tools", () => {
       it("should add tags to notes", () => {
         const uid = uniqueId();
         const deckName = `STDIO::AddTags${uid}`;
         const newTag = `stdio-added-${uid}`;
 
         // Create deck and note without tags
-        callTool("deckActions", { action: "createDeck", deckName: deckName });
+        callTool("createDeck", { deckName: deckName });
         const addResult = callTool("addNote", {
           deckName: deckName,
           modelName: "Basic",
@@ -200,11 +188,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
         const noteId = addResult.noteId as number;
 
         // Add tags using tagActions
-        const result = callTool("tagActions", {
-          action: "addTags",
-          notes: [noteId],
-          tags: newTag,
-        });
+        const result = callTool("addTags", { notes: [noteId], tags: newTag });
 
         expect(result.success).toBe(true);
         expect(result.notesAffected).toBe(1);
@@ -223,7 +207,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
         const tag2 = `stdio-multi2-${uid}`;
 
         // Create deck and note
-        callTool("deckActions", { action: "createDeck", deckName: deckName });
+        callTool("createDeck", { deckName: deckName });
         const addResult = callTool("addNote", {
           deckName: deckName,
           modelName: "Basic",
@@ -235,8 +219,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
         const noteId = addResult.noteId as number;
 
         // Add multiple tags (space-separated)
-        const result = callTool("tagActions", {
-          action: "addTags",
+        const result = callTool("addTags", {
           notes: [noteId],
           tags: `${tag1} ${tag2}`,
         });
@@ -258,7 +241,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
         const tagToRemove = `stdio-remove-${uid}`;
 
         // Create deck and note with tag
-        callTool("deckActions", { action: "createDeck", deckName: deckName });
+        callTool("createDeck", { deckName: deckName });
         const addResult = callTool("addNote", {
           deckName: deckName,
           modelName: "Basic",
@@ -276,8 +259,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
         expect(notes[0].tags).toContain(tagToRemove);
 
         // Remove tag using tagActions
-        const result = callTool("tagActions", {
-          action: "removeTags",
+        const result = callTool("removeTags", {
           notes: [noteId],
           tags: tagToRemove,
         });
@@ -299,7 +281,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
         const newTag = `stdio-new-${uid}`;
 
         // Create deck and note with old tag
-        callTool("deckActions", { action: "createDeck", deckName: deckName });
+        callTool("createDeck", { deckName: deckName });
         const addResult = callTool("addNote", {
           deckName: deckName,
           modelName: "Basic",
@@ -312,8 +294,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
         const noteId = addResult.noteId as number;
 
         // Replace tag using tagActions
-        const result = callTool("tagActions", {
-          action: "replaceTags",
+        const result = callTool("replaceTags", {
           notes: [noteId],
           tagToReplace: oldTag,
           replaceWithTag: newTag,
@@ -334,29 +315,21 @@ describe("E2E: MCP Tools (STDIO)", () => {
       it("should clear unused tags", () => {
         // clearUnusedTags removes orphaned tags from the collection
         // We can't easily verify this in E2E, but we can ensure it executes
-        const result = callTool("tagActions", {
-          action: "clearUnusedTags",
-        });
+        const result = callTool("clearUnusedTags");
 
         expect(result.success).toBe(true);
         expect(result.message).toContain("Successfully cleared unused tags");
       });
 
       it("should fail when notes array is missing for addTags", () => {
-        const result = callTool("tagActions", {
-          action: "addTags",
-          tags: "test-tag",
-        });
+        const result = callTool("addTags", { tags: "test-tag" });
 
         expect(result.success).toBe(false);
         expect(result.error).toContain("notes array is required");
       });
 
       it("should fail when tags string is missing for removeTags", () => {
-        const result = callTool("tagActions", {
-          action: "removeTags",
-          notes: [12345],
-        });
+        const result = callTool("removeTags", { notes: [12345] });
 
         expect(result.success).toBe(false);
         expect(result.error).toContain("tags string is required");
@@ -368,7 +341,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
     it("should create a basic note", () => {
       const uid = uniqueId();
       const deckName = `STDIO::Notes${uid}`;
-      callTool("deckActions", { action: "createDeck", deckName: deckName });
+      callTool("createDeck", { deckName: deckName });
 
       const result = callTool("addNote", {
         deckName: deckName,
@@ -386,7 +359,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
     it("should create a note with tags", () => {
       const uid = uniqueId();
       const deckName = `STDIO::Tags${uid}`;
-      callTool("deckActions", { action: "createDeck", deckName: deckName });
+      callTool("createDeck", { deckName: deckName });
 
       const result = callTool("addNote", {
         deckName: deckName,
@@ -407,7 +380,7 @@ describe("E2E: MCP Tools (STDIO)", () => {
     it("should get note information", () => {
       const uid = uniqueId();
       const deckName = `STDIO::Info${uid}`;
-      callTool("deckActions", { action: "createDeck", deckName: deckName });
+      callTool("createDeck", { deckName: deckName });
 
       const addResult = callTool("addNote", {
         deckName: deckName,

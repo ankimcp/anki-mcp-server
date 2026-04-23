@@ -31,10 +31,7 @@ async function createStatsTestDeck(uid: string): Promise<StatsTestFixture> {
   const deckName = `STATS_HTTP_E2E_${uid}`;
 
   // Create test deck
-  const deckResult = callTool("deckActions", {
-    action: "createDeck",
-    deckName: deckName,
-  });
+  const deckResult = callTool("createDeck", { deckName: deckName });
   expect(deckResult).toHaveProperty("deckId");
 
   const noteIds: number[] = [];
@@ -89,12 +86,9 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
 
   // No cleanup needed - Docker container is one-time use
 
-  describe("deckActions - deckStats", () => {
+  describe("deckStats", () => {
     it("should return correct structure for test deck", () => {
-      const result = callTool("deckActions", {
-        action: "deckStats",
-        deck: testDeck1.deckName,
-      });
+      const result = callTool("deckStats", { deck: testDeck1.deckName });
 
       // Verify structure
       expect(result).toHaveProperty("deck", testDeck1.deckName);
@@ -128,10 +122,7 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     });
 
     it("should return correct card counts for test deck", () => {
-      const result = callTool("deckActions", {
-        action: "deckStats",
-        deck: testDeck1.deckName,
-      });
+      const result = callTool("deckStats", { deck: testDeck1.deckName });
 
       const counts = result.counts as Record<string, number>;
 
@@ -145,10 +136,7 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     });
 
     it("should handle new cards with no ease data", () => {
-      const result = callTool("deckActions", {
-        action: "deckStats",
-        deck: testDeck1.deckName,
-      });
+      const result = callTool("deckStats", { deck: testDeck1.deckName });
 
       const ease = result.ease as Record<string, unknown>;
 
@@ -165,10 +153,7 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     });
 
     it("should handle new cards with no interval data", () => {
-      const result = callTool("deckActions", {
-        action: "deckStats",
-        deck: testDeck1.deckName,
-      });
+      const result = callTool("deckStats", { deck: testDeck1.deckName });
 
       const intervals = result.intervals as Record<string, unknown>;
 
@@ -185,8 +170,7 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     });
 
     it("should accept custom ease buckets", () => {
-      const result = callTool("deckActions", {
-        action: "deckStats",
+      const result = callTool("deckStats", {
         deck: testDeck1.deckName,
         easeBuckets: [2.0, 3.0],
       });
@@ -201,8 +185,7 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     });
 
     it("should accept custom interval buckets", () => {
-      const result = callTool("deckActions", {
-        action: "deckStats",
+      const result = callTool("deckStats", {
         deck: testDeck1.deckName,
         intervalBuckets: [14, 30, 60],
       });
@@ -217,8 +200,7 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
     });
 
     it("should return error for non-existent deck", () => {
-      const result = callTool("deckActions", {
-        action: "deckStats",
+      const result = callTool("deckStats", {
         deck: `NONEXISTENT_DECK_${uniqueId()}`,
       });
 
@@ -465,10 +447,7 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
 
   describe("Integration: Stats Tools Working Together", () => {
     it("deckStats and collection_stats should have consistent counts", () => {
-      const deckStats = callTool("deckActions", {
-        action: "deckStats",
-        deck: testDeck1.deckName,
-      });
+      const deckStats = callTool("deckStats", { deck: testDeck1.deckName });
       const collectionStats = callTool("collection_stats");
 
       // Find test deck in collection stats

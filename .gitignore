@@ -96,7 +96,7 @@ tsconfig.build.tsbuildinfo
 *.sqlite
 
 # Claude draft files
-.claude-draft/
+.docs/
 
 # Standardized on npm
 pnpm-lock.yaml

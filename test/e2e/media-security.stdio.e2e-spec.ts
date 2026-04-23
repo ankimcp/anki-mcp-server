@@ -18,8 +18,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
 
   describe("Path traversal protection", () => {
     it("should block non-media file paths (SSH key)", () => {
-      const result = callTool("mediaActions", {
-        action: "storeMediaFile",
+      const result = callTool("storeMediaFile", {
         filename: "stolen_key",
         path: "/home/user/.ssh/id_rsa",
       });
@@ -30,8 +29,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
     });
 
     it("should block .env files", () => {
-      const result = callTool("mediaActions", {
-        action: "storeMediaFile",
+      const result = callTool("storeMediaFile", {
         filename: "stolen_env",
         path: "/home/user/.env",
       });
@@ -40,8 +38,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
     });
 
     it("should block /etc/passwd", () => {
-      const result = callTool("mediaActions", {
-        action: "storeMediaFile",
+      const result = callTool("storeMediaFile", {
         filename: "passwd",
         path: "/etc/passwd",
       });
@@ -50,8 +47,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
     });
 
     it("should block files with no extension", () => {
-      const result = callTool("mediaActions", {
-        action: "storeMediaFile",
+      const result = callTool("storeMediaFile", {
         filename: "credentials",
         path: "/home/user/.aws/credentials",
       });
@@ -66,8 +62,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
 
   describe("SSRF protection", () => {
     it("should block file:// URLs", () => {
-      const result = callTool("mediaActions", {
-        action: "storeMediaFile",
+      const result = callTool("storeMediaFile", {
         filename: "ssrf_test",
         url: "file:///etc/passwd",
       });
@@ -78,8 +73,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
     });
 
     it("should block ftp:// URLs", () => {
-      const result = callTool("mediaActions", {
-        action: "storeMediaFile",
+      const result = callTool("storeMediaFile", {
         filename: "ftp_test",
         url: "ftp://evil.com/file.txt",
       });
@@ -88,8 +82,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
     });
 
     it("should block cloud metadata endpoint (169.254.169.254)", () => {
-      const result = callTool("mediaActions", {
-        action: "storeMediaFile",
+      const result = callTool("storeMediaFile", {
         filename: "metadata",
         url: "http://169.254.169.254/latest/meta-data/",
       });
@@ -99,8 +92,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
     });
 
     it("should block localhost URLs", () => {
-      const result = callTool("mediaActions", {
-        action: "storeMediaFile",
+      const result = callTool("storeMediaFile", {
         filename: "localhost_test",
         url: "http://127.0.0.1:6379/",
       });
@@ -111,9 +103,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
 
   describe("Legitimate operations still work", () => {
     it("should allow listing media files", () => {
-      const result = callTool("mediaActions", {
-        action: "getMediaFilesNames",
-      });
+      const result = callTool("getMediaFilesNames");
       expect(result).toHaveProperty("success", true);
       expect(result).toHaveProperty("files");
       expect(Array.isArray(result.files)).toBe(true);
@@ -124,8 +114,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
       const tinyPng =
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
-      const result = callTool("mediaActions", {
-        action: "storeMediaFile",
+      const result = callTool("storeMediaFile", {
         filename: "_e2e_security_test.png",
         data: tinyPng,
       });
@@ -134,8 +123,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
     });
 
     it("should allow retrieving stored media", () => {
-      const result = callTool("mediaActions", {
-        action: "retrieveMediaFile",
+      const result = callTool("retrieveMediaFile", {
         filename: "_e2e_security_test.png",
       });
       expect(result).toHaveProperty("success", true);
@@ -144,8 +132,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
     });
 
     it("should clean up test media file", () => {
-      const result = callTool("mediaActions", {
-        action: "deleteMediaFile",
+      const result = callTool("deleteMediaFile", {
         filename: "_e2e_security_test.png",
       });
       expect(result).toHaveProperty("success", true);
@@ -157,8 +144,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
       const tinyPng =
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
-      const result = callTool("mediaActions", {
-        action: "storeMediaFile",
+      const result = callTool("storeMediaFile", {
         filename: "../../evil.png",
         data: tinyPng,
       });
@@ -169,10 +155,7 @@ describe("E2E: Media Security Guards (STDIO)", () => {
     });
 
     it("should clean up sanitized test file", () => {
-      const result = callTool("mediaActions", {
-        action: "deleteMediaFile",
-        filename: "evil.png",
-      });
+      const result = callTool("deleteMediaFile", { filename: "evil.png" });
       expect(result).toHaveProperty("success", true);
     });
   });

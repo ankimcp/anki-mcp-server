@@ -49,7 +49,7 @@ You are helping a user create effective Anki flashcards based on Dr. Piotr Wozni
   - Geography, anatomy, architecture
   - Historical figures, artworks
   - Diagrams for abstract concepts
-- Use the mediaActions tool to help users add images
+- Use the storeMediaFile tool to help users add images
 
 ### 7. Use Mnemonic Techniques
 **Memory aids make retention easier.**
@@ -185,7 +185,7 @@ A: [Text description]
 ✅ **With Image**:
 Q: [Image of heart with blank labels]
 A: [Same image with labels visible]
-(Use mediaActions to help user add the image)
+(Use storeMediaFile to help user add the image)
 
 ## Remember
 

@@ -23,7 +23,7 @@ describe("E2E: Read-Only Mode (STDIO)", () => {
       expect(tools.length).toBeGreaterThan(0);
 
       const toolNames = tools.map((t) => t.name);
-      expect(toolNames).toContain("deckActions");
+      expect(toolNames).toContain("listDecks");
       expect(toolNames).toContain("addNote");
       expect(toolNames).toContain("sync");
     });
@@ -31,7 +31,7 @@ describe("E2E: Read-Only Mode (STDIO)", () => {
 
   describe("Read Operations (should be allowed)", () => {
     it("should allow listing decks", () => {
-      const result = callTool("deckActions", { action: "listDecks" });
+      const result = callTool("listDecks");
       expect(result).toHaveProperty("decks");
       expect(Array.isArray(result.decks)).toBe(true);
     });
@@ -70,8 +70,7 @@ describe("E2E: Read-Only Mode (STDIO)", () => {
 
   describe("Write Operations (should be blocked)", () => {
     it("should block createDeck", () => {
-      const result = callTool("deckActions", {
-        action: "createDeck",
+      const result = callTool("createDeck", {
         deckName: "ReadOnlyTest_ShouldFail",
       });
       expect(result).toHaveProperty("success", false);
@@ -91,19 +90,14 @@ describe("E2E: Read-Only Mode (STDIO)", () => {
     });
 
     it("should block addTags via tagActions", () => {
-      const result = callTool("tagActions", {
-        action: "addTags",
-        notes: [1],
-        tags: "test-tag",
-      });
+      const result = callTool("addTags", { notes: [1], tags: "test-tag" });
       expect(result).toHaveProperty("success", false);
       expect(result).toHaveProperty("error");
       expect(result.error).toContain("read-only mode");
     });
 
     it("should block storeMediaFile via mediaActions", () => {
-      const result = callTool("mediaActions", {
-        action: "storeMediaFile",
+      const result = callTool("storeMediaFile", {
         filename: "test.txt",
         data: "dGVzdA==", // base64 "test"
       });

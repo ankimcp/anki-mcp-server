@@ -41,11 +41,10 @@ For comprehensive guides, real-world examples, and step-by-step tutorials on usi
 - `rate_card` - Rate card performance
 
 ### Deck Management
-- `deckActions` - Unified deck operations:
-  - `listDecks` - List all decks with optional statistics
-  - `createDeck` - Create new decks (max 2 levels: "Parent::Child")
-  - `deckStats` - Get comprehensive deck statistics
-  - `changeDeck` - Move cards to a different deck
+- `listDecks` - List all decks with optional statistics
+- `deckStats` - Get comprehensive deck statistics (counts, ease/interval distributions)
+- `createDeck` - Create a new empty deck (max 2 levels: "Parent::Child")
+- `changeDeck` - Move cards to a different deck
 
 ### Note Management
 - `addNote` - Create a single note
@@ -55,12 +54,18 @@ For comprehensive guides, real-world examples, and step-by-step tutorials on usi
 - `updateNoteFields` - Update existing note fields (CSS-aware, supports HTML)
 - `deleteNotes` - Delete notes and their cards
 
+### Tag Management
+- `getTags` - Discover all tags in the collection (use first to avoid duplication)
+- `addTags` - Add space-separated tags to notes
+- `removeTags` - Remove space-separated tags from notes
+- `replaceTags` - Rename a tag across notes
+- `clearUnusedTags` - Remove orphaned tags from the collection (destructive)
+
 ### Media Management
-- `mediaActions` - Manage media files (audio/images)
-  - `storeMediaFile` - Upload media from base64 data, file paths, or URLs
-  - `retrieveMediaFile` - Download media as base64
-  - `getMediaFilesNames` - List media files with optional pattern filtering
-  - `deleteMediaFile` - Remove media files
+- `getMediaFilesNames` - List media files with optional pattern filtering
+- `retrieveMediaFile` - Download media as base64
+- `storeMediaFile` - Upload media from base64 data, file paths, or URLs
+- `deleteMediaFile` - Remove media files (destructive)
 
 **💡 Best Practice for Images:**
 - ✅ **Use file paths** (e.g., `/Users/you/image.png`) - Fast and efficient
@@ -428,7 +433,7 @@ The `deleteNotes` tool requires explicit confirmation (`confirmDeletion: true`) 
 
 ### Media File Path and URL Validation
 
-The `mediaActions` tool and `updateNoteFields` audio/picture fields include security validation to prevent misuse via prompt injection:
+The media tools (`storeMediaFile`, `retrieveMediaFile`, `deleteMediaFile`) and `updateNoteFields` audio/picture fields include security validation to prevent misuse via prompt injection:
 
 - **File path imports** are restricted to media file types only (images, audio, video). Non-media files (e.g., SSH keys, credentials, shell configs) are rejected based on MIME type. Configure `MEDIA_ALLOWED_TYPES` to allow additional file types, or `MEDIA_IMPORT_DIR` to restrict imports to a specific directory.
 - **URL imports** are validated against SSRF attacks. Requests to private networks (10.x, 172.16.x, 192.168.x), loopback (127.x), link-local (169.254.x), and non-HTTP(S) schemes are blocked. Configure `MEDIA_ALLOWED_HOSTS` to allow specific private network hosts.

@@ -21,7 +21,7 @@ describe("E2E: addNotes (STDIO)", () => {
   it("should create a batch of notes and verify they exist", () => {
     const uid = uniqueId();
     const deckName = `STDIO::BulkAdd${uid}`;
-    callTool("deckActions", { action: "createDeck", deckName });
+    callTool("createDeck", { deckName });
 
     const result = callTool("addNotes", {
       deckName,
@@ -94,7 +94,7 @@ describe("E2E: addNotes (STDIO)", () => {
   it("should handle batch with duplicates (partial success)", () => {
     const uid = uniqueId();
     const deckName = `STDIO::BulkDup${uid}`;
-    callTool("deckActions", { action: "createDeck", deckName });
+    callTool("createDeck", { deckName });
 
     // First, create a note that will be a duplicate
     callTool("addNote", {

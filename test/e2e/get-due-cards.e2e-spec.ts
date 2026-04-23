@@ -123,7 +123,7 @@ describe("E2E: get_due_cards Tool", () => {
       const deckName = `DueTest::${uid}`;
 
       // Create a test deck
-      callTool("deckActions", { action: "createDeck", deckName: deckName });
+      callTool("createDeck", { deckName: deckName });
 
       // Add a note to the deck
       callTool("addNote", {
@@ -157,7 +157,7 @@ describe("E2E: get_due_cards Tool", () => {
       const deckName = `DueStruct::${uid}`;
 
       // Create deck and note
-      callTool("deckActions", { action: "createDeck", deckName: deckName });
+      callTool("createDeck", { deckName: deckName });
       callTool("addNote", {
         deckName: deckName,
         modelName: "Basic",
