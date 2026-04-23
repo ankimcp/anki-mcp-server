@@ -110,7 +110,7 @@ export class ModelFieldNamesTool {
       } else if (lowerModelName.includes("cloze")) {
         exampleFields = {
           Text: "The {{c1::hidden}} text will be replaced with [...] on the card",
-          Extra: "Additional information or hints",
+          "Back Extra": "Additional information or hints",
         };
       }
 

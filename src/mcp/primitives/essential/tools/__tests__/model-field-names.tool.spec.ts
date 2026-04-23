@@ -111,7 +111,7 @@ describe("ModelFieldNamesTool", () => {
       expect(result.total).toBe(2);
       expect(result.example).toEqual({
         Text: "The {{c1::hidden}} text will be replaced with [...] on the card",
-        Extra: "Additional information or hints",
+        "Back Extra": "Additional information or hints",
       });
     });
   });
@@ -415,7 +415,7 @@ describe("ModelFieldNamesTool", () => {
 
       expect(result.example).toEqual({
         Text: "The {{c1::hidden}} text will be replaced with [...] on the card",
-        Extra: "Additional information or hints",
+        "Back Extra": "Additional information or hints",
       });
     });
 
