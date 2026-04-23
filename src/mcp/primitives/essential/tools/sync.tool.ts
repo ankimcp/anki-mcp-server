@@ -29,6 +29,7 @@ export class SyncTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: true,
     },
   })
   async sync(_args: Record<string, never>, context: Context) {

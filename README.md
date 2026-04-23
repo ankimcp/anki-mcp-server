@@ -34,6 +34,16 @@ For comprehensive guides, real-world examples, and step-by-step tutorials on usi
 
 See [`docs/`](./docs/README.md) for supplementary documentation, including the [reviewer setup guide](./docs/reviewer-setup.md) and the sample Anki deck.
 
+## Example Use Cases
+
+Three representative prompts showing the tool flows this server enables:
+
+1. **"Help me review my Spanish deck."** — The assistant syncs with AnkiWeb (`sync`), fetches due cards (`get_due_cards` with deck filter), presents each card (`present_card`), and records your rating (`rate_card`). Natural study conversation with explanations tailored to you.
+
+2. **"Create 10 Arabic vocab cards with RTL styling."** — The assistant lists note types (`modelNames`), creates a custom RTL model if needed (`createModel` + `updateModelStyling` for right-to-left CSS), then batch-creates the cards (`addNotes`).
+
+3. **"Import this image from my Downloads folder into the front of the selected note."** — The assistant uploads the local file (`storeMediaFile` with a file path), reads the currently-selected note from the browser (`guiSelectedNotes` + `notesInfo`), and updates the front field with an `<img>` tag (`updateNoteFields`).
+
 ## Available Tools
 
 ### Review & Study
@@ -575,7 +585,7 @@ The output file will be named `anki-mcp-server-X.X.X.mcpb` and can be distribute
 
 #### What Gets Bundled
 
-The MCPB package includes:
+The MCPB bundle includes:
 - Compiled JavaScript (`dist/` directory - includes both entry points)
 - Production dependencies only (`node_modules/` - devDependencies removed by `mcpb clean`)
 - Package metadata (`package.json`)
@@ -828,6 +838,10 @@ This project follows [Semantic Versioning](https://semver.org/) with a pre-1.0 d
   - Breaking changes will require major version bumps (2.0.0, etc.)
 
 **Current Status**: `0.15.1` - Active beta development. Recent features include batch note creation (`addNotes`), integrated ngrok tunneling (`--ngrok` flag), media file management, model/template management, and comprehensive deck statistics. APIs may change based on feedback and testing.
+
+### MCPB spec evolution
+
+This project targets Anthropic's MCPB bundle specification, which is still evolving. We track the spec at [https://github.com/modelcontextprotocol/mcpb](https://github.com/modelcontextprotocol/mcpb) and may introduce breaking changes to stay compliant. Breaking changes are permitted under the 0.x.x versioning scheme.
 
 ## Similar Projects
 

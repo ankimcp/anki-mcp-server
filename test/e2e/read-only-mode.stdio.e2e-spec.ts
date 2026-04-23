@@ -89,14 +89,14 @@ describe("E2E: Read-Only Mode (STDIO)", () => {
       expect(result.error).toContain("read-only mode");
     });
 
-    it("should block addTags via tagActions", () => {
+    it("should block addTags", () => {
       const result = callTool("addTags", { notes: [1], tags: "test-tag" });
       expect(result).toHaveProperty("success", false);
       expect(result).toHaveProperty("error");
       expect(result.error).toContain("read-only mode");
     });
 
-    it("should block storeMediaFile via mediaActions", () => {
+    it("should block storeMediaFile", () => {
       const result = callTool("storeMediaFile", {
         filename: "test.txt",
         data: "dGVzdA==", // base64 "test"

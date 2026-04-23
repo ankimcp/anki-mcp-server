@@ -87,6 +87,10 @@ Three flows that cover breadth:
 - **`localhost:8765` unreachable**: AnkiConnect didn't load. Re-check the add-on install (step 2) and confirm Anki is running.
 - **Node.js version errors (`ERR_REQUIRE_ESM`, etc.)**: see the [Troubleshooting section](../README.md#err_require_esm-error) of the root README.
 
+## Privacy
+
+The MCP server itself collects nothing; no telemetry, analytics, or crash reports are shipped off-device. The only third-party network reach is optional: if you run HTTP mode with the `--ngrok` flag, ngrok (operated by Ngrok Inc.) tunnels traffic and applies its own data handling. See the root [README's Privacy Policy section](../README.md#privacy-policy) for full detail and [https://ankimcp.ai/privacy/](https://ankimcp.ai/privacy/) for the hosted policy.
+
 ## Questions
 
 - **Security issues**: report via [`SECURITY.md`](../SECURITY.md).

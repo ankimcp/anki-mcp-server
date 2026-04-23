@@ -125,7 +125,7 @@ export class GuiAddCardsTool {
         if (errorMessage.includes("deck")) {
           return createErrorResponse(error, {
             deckName: note.deckName,
-            hint: "Deck not found. Use list_decks tool to see available decks.",
+            hint: "Deck not found. Use listDecks tool to see available decks.",
           });
         }
       }

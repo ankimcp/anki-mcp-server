@@ -49,7 +49,7 @@ export class DeleteNotesTool {
       title: "Delete Notes",
       readOnlyHint: false,
       destructiveHint: true,
-      idempotentHint: false,
+      idempotentHint: true,
     },
   })
   async deleteNotes(

@@ -47,6 +47,7 @@ export class StoreMediaFileTool {
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: false,
+      openWorldHint: true,
     },
   })
   async execute(

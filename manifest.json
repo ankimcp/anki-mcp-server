@@ -172,7 +172,7 @@
     },
     {
       "name": "storeMediaFile",
-      "description": "Upload a media file to Anki from base64 data, an absolute file path, or a URL. Perfect for workflows like ElevenLabs TTS → Anki audio flashcards"
+      "description": "Upload a media file to Anki from base64 data, an absolute file path, or a URL. Perfect for workflows like ElevenLabs TTS -> Anki audio flashcards"
     },
     {
       "name": "deleteMediaFile",
@@ -188,7 +188,7 @@
     },
     {
       "name": "replaceTags",
-      "description": "Rename a tag across specified notes (e.g., \"RomanEmpire\" → \"roman-empire\")"
+      "description": "Rename a tag across specified notes (e.g., \"RomanEmpire\" -> \"roman-empire\")"
     },
     {
       "name": "clearUnusedTags",

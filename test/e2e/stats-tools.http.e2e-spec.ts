@@ -1,7 +1,7 @@
 /**
  * E2E tests for Stats Tools - HTTP Streamable transport
  *
- * Tests deckActions (deckStats action), collection_stats, and review_stats tools against
+ * Tests deckStats, collection_stats, and review_stats tools against
  * a real Anki instance via Docker.
  *
  * Requires:

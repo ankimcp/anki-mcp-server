@@ -62,7 +62,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
   });
 
   describe("Deck Tools", () => {
-    it("should list decks via deckActions", () => {
+    it("should list decks via listDecks", () => {
       const result = callTool("listDecks");
       expect(result).toHaveProperty("decks");
       expect(Array.isArray(result.decks)).toBe(true);
@@ -70,7 +70,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
       expect((result.decks as unknown[]).length).toBeGreaterThanOrEqual(1);
     });
 
-    it("should create a simple deck via deckActions", () => {
+    it("should create a simple deck via createDeck", () => {
       const deckName = `HTTP_E2E_${uniqueId()}`;
       const result = callTool("createDeck", { deckName: deckName });
       expect(result).toHaveProperty("deckId");
@@ -78,14 +78,14 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
       expect((result.deckId as number) > 0).toBe(true);
     });
 
-    it("should create a nested deck (2 levels) via deckActions", () => {
+    it("should create a nested deck (2 levels) via createDeck", () => {
       const deckName = `HTTP::Nested${uniqueId()}`;
       const result = callTool("createDeck", { deckName: deckName });
       expect(result).toHaveProperty("deckId");
       expect((result.deckId as number) > 0).toBe(true);
     });
 
-    it("should return existing deck ID when creating duplicate via deckActions", () => {
+    it("should return existing deck ID when creating duplicate via createDeck", () => {
       const deckName = `HTTP::Exist${uniqueId()}`;
       const result1 = callTool("createDeck", { deckName: deckName });
       const deckId = result1.deckId;
@@ -198,7 +198,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
         });
         const noteId = addResult.noteId as number;
 
-        // Add tags using tagActions
+        // Add tags using addTags
         const result = callTool("addTags", { notes: [noteId], tags: newTag });
 
         expect(result.success).toBe(true);
@@ -269,7 +269,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
         let notes = infoResult.notes as Array<{ tags: string[] }>;
         expect(notes[0].tags).toContain(tagToRemove);
 
-        // Remove tag using tagActions
+        // Remove tag using removeTags
         const result = callTool("removeTags", {
           notes: [noteId],
           tags: tagToRemove,
@@ -304,7 +304,7 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
         });
         const noteId = addResult.noteId as number;
 
-        // Replace tag using tagActions
+        // Replace tag using replaceTags
         const result = callTool("replaceTags", {
           notes: [noteId],
           tagToReplace: oldTag,

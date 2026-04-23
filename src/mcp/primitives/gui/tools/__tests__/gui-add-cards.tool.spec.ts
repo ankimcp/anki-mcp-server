@@ -110,7 +110,7 @@ describe("GuiAddCardsTool", () => {
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
-      expect(result.hint).toContain("Use list_decks");
+      expect(result.hint).toContain("Use listDecks");
     });
 
     it("should handle field mismatch error", async () => {
