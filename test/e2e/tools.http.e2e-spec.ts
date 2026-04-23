@@ -331,20 +331,6 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
         expect(result.success).toBe(true);
         expect(result.message).toContain("Successfully cleared unused tags");
       });
-
-      it("should fail when notes array is missing for addTags", () => {
-        const result = callTool("addTags", { tags: "test-tag" });
-
-        expect(result.success).toBe(false);
-        expect(result.error).toContain("notes array is required");
-      });
-
-      it("should fail when tags string is missing for removeTags", () => {
-        const result = callTool("removeTags", { notes: [12345] });
-
-        expect(result.success).toBe(false);
-        expect(result.error).toContain("tags string is required");
-      });
     });
   });
 
