@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 MCP server enabling AI assistants to interact with Anki via AnkiConnect. Built with NestJS and `@rekog/mcp-nest`.
 
 - **Package**: `@ankimcp/anki-mcp-server` (npm)
-- **License**: AGPL-3.0-or-later
+- **License**: MIT
 - **Status**: Beta (0.x.x) - breaking changes allowed
 
 ## Quick Reference

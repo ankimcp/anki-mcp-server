@@ -2,14 +2,14 @@
   "manifest_version": "0.4",
   "name": "anki-mcp-server",
   "display_name": "Anki MCP Server",
-  "version": "0.16.0",
-  "license": "AGPL-3.0-or-later",
+  "version": "0.17.0",
+  "license": "MIT",
   "description": "Model Context Protocol server for Anki spaced repetition flashcard application",
   "long_description": "Transform your Anki experience with natural language interaction - like having a private tutor. This MCP server enables AI assistants to interact with Anki, allowing them to explain concepts, make learning more engaging, provide context, and adapt to your learning style. Features include review sessions, deck management, note creation and editing, and more.\n\nRequires Anki with the AnkiConnect plugin installed.",
   "author": {
     "name": "Anatoly Tarnavsky",
     "email": "support@ankimcp.ai",
-    "url": "https://ankimcp.ai"
+    "url": "https://github.com/anatoly314"
   },
   "homepage": "https://ankimcp.ai",
   "documentation": "https://github.com/ankimcp/anki-mcp-server#readme",

@@ -880,18 +880,9 @@ If you're exploring Anki MCP integrations, here are other projects in this space
 
 ## License & Attribution
 
-This project is licensed under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later).
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for the full text.
 
-### Why AGPL-3.0?
-
-This license was chosen to maintain compatibility with Anki's AGPL-3.0 license for potential future integration scenarios.
-
-**What this means:**
-- **Personal use**: Use the software freely
-- **Running as a service for others**: You must provide source code access (AGPL Section 13)
-- **Modifying and distributing**: Share your improvements under AGPL-3.0-or-later
-
-For complete license terms, see the [LICENSE](LICENSE) file.
+Copyright © 2026 Anatoly Tarnavsky.
 
 ### Third-Party Attributions
 

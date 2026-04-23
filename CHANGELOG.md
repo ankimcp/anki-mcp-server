@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.17.0] - 2026-04
+- Relicensed from AGPL-3.0-or-later to MIT
+- Fixed manifest.json `author.url` to point at GitHub profile (required by Anthropic MCPB directory)
+
 ## [0.15.1] - 2026-04
 - Optimize README hero image; fix npm upgrade crash in publish workflows (npm/cli#9151).
 
