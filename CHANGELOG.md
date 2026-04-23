@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.18.0] - 2026-04
+- `changeDeck` + `rate_card` now validate card IDs via `cardsInfo` before mutation (was silent-success on invalid IDs).
+- `collection_stats` + `deckStats` add an `other` bucket so `total == new + learning + review + other` (captures suspended/buried cards); `per_deck` invariant: length always matches `total_decks`.
+- `createDeck` distinguishes "created parent" vs "found existing parent" in message + adds `parentExisted` field.
+- `get_due_cards` with `include_new: true` reports `"X cards (Y new, Z due)"` instead of mislabeling all as due.
+- `addNote`: duplicate errors suggest `allowDuplicate: true`; response reports `duplicateCheckScope: "none"` when duplicates allowed.
+- `addNotes` description narrowed — partial success covers duplicates only; validation errors reject the batch.
+- Consolidated shared `AnkiDeckStatsResponse` into `src/mcp/types/anki.types.ts`.
+- Fixed stale snake_case references to camelCase tool names across hints, prompts, and GUI tools.
+
 ## [0.17.0] - 2026-04
 - Relicensed from AGPL-3.0-or-later to MIT
 - Fixed manifest.json `author.url` to point at GitHub profile (required by Anthropic MCPB directory)

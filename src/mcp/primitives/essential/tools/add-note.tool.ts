@@ -72,7 +72,7 @@ export class AddNoteTool {
       details: z.object({
         fieldsAdded: z.number(),
         tagsAdded: z.number(),
-        duplicateCheckScope: z.string(),
+        duplicateCheckScope: z.enum(["deck", "collection", "default", "none"]),
       }),
     }),
     annotations: {
@@ -207,7 +207,7 @@ export class AddNoteTool {
             modelName,
             hint: allowDuplicate
               ? "The note could not be created. Check if the model and deck names are correct."
-              : "The note appears to be a duplicate. Set allowDuplicate to true if you want to add it anyway.",
+              : "This note duplicates an existing one. Retry with `allowDuplicate: true` if intentional.",
           },
         );
       }
@@ -218,6 +218,10 @@ export class AddNoteTool {
       const fieldCount = Object.keys(fields).length;
       const tagCount = tags ? tags.length : 0;
 
+      // When allowDuplicate is true, no scope check is performed.
+      const effectiveScope: "deck" | "collection" | "default" | "none" =
+        allowDuplicate ? "none" : duplicateScope || "default";
+
       return {
         success: true,
         noteId: noteId,
@@ -227,7 +231,7 @@ export class AddNoteTool {
         details: {
           fieldsAdded: fieldCount,
           tagsAdded: tagCount,
-          duplicateCheckScope: duplicateScope || "default",
+          duplicateCheckScope: effectiveScope,
         },
       };
     } catch (error) {
@@ -235,6 +239,16 @@ export class AddNoteTool {
 
       // Check for specific error types
       if (error instanceof Error) {
+        const lowerMessage = error.message.toLowerCase();
+
+        // Duplicate errors from AnkiConnect (e.g. "cannot create note because it is a duplicate")
+        if (lowerMessage.includes("duplicate")) {
+          return createErrorResponse(error, {
+            deckName,
+            modelName,
+            hint: "This note duplicates an existing one. Retry with `allowDuplicate: true` if intentional.",
+          });
+        }
         if (error.message.includes("model")) {
           return createErrorResponse(error, {
             deckName,
@@ -246,7 +260,7 @@ export class AddNoteTool {
           return createErrorResponse(error, {
             deckName,
             modelName,
-            hint: "Deck not found. Use list_decks tool to see available decks or createDeck to create a new one.",
+            hint: "Deck not found. Use listDecks tool to see available decks or createDeck to create a new one.",
           });
         }
         if (error.message.includes("field")) {

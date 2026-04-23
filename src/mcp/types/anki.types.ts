@@ -93,6 +93,24 @@ export interface DeckStats {
 }
 
 /**
+ * Response structure from AnkiConnect getDeckStats action.
+ * The response is a record keyed by deck ID (as string).
+ *
+ * Note: `total_in_deck` counts every card in the deck, while
+ * `new_count`/`learn_count`/`review_count` come from the scheduler's due tree
+ * and exclude suspended/buried cards — so the three buckets won't always sum
+ * to `total_in_deck`.
+ */
+export interface AnkiDeckStatsResponse {
+  deck_id: number;
+  name: string;
+  new_count: number;
+  learn_count: number;
+  review_count: number;
+  total_in_deck: number;
+}
+
+/**
  * Rating options for spaced repetition
  */
 export enum CardRating {

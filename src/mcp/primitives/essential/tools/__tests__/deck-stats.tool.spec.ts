@@ -78,6 +78,7 @@ describe("DeckStatsTool", () => {
       new: 10,
       learning: 5,
       review: 20,
+      other: 0,
     });
     expect(result.ease.count).toBe(25);
     expect(result.intervals.count).toBe(20);
@@ -125,6 +126,7 @@ describe("DeckStatsTool", () => {
     expect(result.counts.new).toBe(5);
     expect(result.counts.learning).toBe(2);
     expect(result.counts.review).toBe(8);
+    expect(result.counts.other).toBe(0);
   });
 
   it("should handle deck not found", async () => {
@@ -164,8 +166,66 @@ describe("DeckStatsTool", () => {
 
     expect(result.deck).toBe(deckName);
     expect(result.counts.total).toBe(0);
+    expect(result.counts.other).toBe(0);
     expect(result.ease.count).toBe(0);
     expect(result.intervals.count).toBe(0);
+  });
+
+  it("should report 'other' bucket when total exceeds new+learning+review (Bug #2 regression)", async () => {
+    // Mirrors the collection_stats regression: 4 cards total, 3 new, 0 learning,
+    // 0 review — the missing card is suspended/buried and should land in `other`.
+    const deckName = "Spanish";
+
+    ankiClient.invoke.mockImplementation((action: string) => {
+      if (action === "deckNamesAndIds") {
+        return Promise.resolve({ [deckName]: 1651445861967 });
+      }
+
+      if (action === "getDeckStats") {
+        return Promise.resolve({
+          "1651445861967": {
+            deck_id: 1651445861967,
+            name: deckName,
+            new_count: 3,
+            learn_count: 0,
+            review_count: 0,
+            total_in_deck: 4, // 1 suspended card not counted in the buckets
+          },
+        });
+      }
+
+      if (action === "findCards") {
+        return Promise.resolve([1, 2, 3, 4]);
+      }
+
+      if (action === "getEaseFactors") {
+        return Promise.resolve([0, 0, 0, 2500]);
+      }
+
+      if (action === "getIntervals") {
+        return Promise.resolve([0, 0, 0, 30]);
+      }
+
+      return Promise.resolve({});
+    });
+
+    const rawResult = await tool.execute({ deck: deckName }, mockContext);
+    const result = parseToolResult(rawResult) as DeckStatsResult;
+
+    // Arithmetic must close: total === new + learning + review + other
+    expect(result.counts).toEqual({
+      total: 4,
+      new: 3,
+      learning: 0,
+      review: 0,
+      other: 1,
+    });
+    expect(
+      result.counts.new +
+        result.counts.learning +
+        result.counts.review +
+        result.counts.other,
+    ).toBe(result.counts.total);
   });
 
   it("should use custom bucket boundaries", async () => {

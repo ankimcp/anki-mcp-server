@@ -33,7 +33,7 @@ export class AddNotesTool {
   @Tool({
     name: "addNotes",
     description:
-      "Add multiple notes to Anki in a single batch. Up to 100 notes sharing the same deck and model. Supports partial success - individual failures don't affect others. IMPORTANT: Only create notes that were explicitly requested by the user.",
+      "Add multiple notes to Anki in a single batch. Up to 100 notes sharing the same deck and model. Duplicates are skipped individually; validation errors (empty required fields, bad tags) reject the batch. IMPORTANT: Only create notes that were explicitly requested by the user.",
     parameters: z.object({
       deckName: z.string().min(1).describe("The deck to add all notes to"),
       modelName: z

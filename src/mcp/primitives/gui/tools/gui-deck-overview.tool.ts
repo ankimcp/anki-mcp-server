@@ -24,7 +24,7 @@ export class GuiDeckOverviewTool {
       name: z
         .string()
         .min(1)
-        .describe("Deck name to open (get from list_decks)"),
+        .describe("Deck name to open (get from listDecks)"),
     }),
     outputSchema: z.object({
       success: z.boolean(),
@@ -57,7 +57,7 @@ export class GuiDeckOverviewTool {
           new Error(`Failed to open Deck Overview for deck "${name}"`),
           {
             deckName: name,
-            hint: "Deck not found or Anki GUI is not responding. Use list_decks to see available decks.",
+            hint: "Deck not found or Anki GUI is not responding. Use listDecks to see available decks.",
           },
         );
       }
@@ -80,7 +80,7 @@ export class GuiDeckOverviewTool {
         ) {
           return createErrorResponse(error, {
             deckName: name,
-            hint: "Deck not found. Use list_decks to see available decks.",
+            hint: "Deck not found. Use listDecks to see available decks.",
           });
         }
       }

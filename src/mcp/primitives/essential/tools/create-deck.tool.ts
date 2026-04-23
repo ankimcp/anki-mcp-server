@@ -32,6 +32,7 @@ export class CreateDeckTool {
       exists: z.boolean().optional(),
       parentDeck: z.string().optional(),
       childDeck: z.string().optional(),
+      parentExisted: z.boolean().optional(),
     }),
     annotations: {
       title: "Create Deck",

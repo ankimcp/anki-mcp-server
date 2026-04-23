@@ -1,21 +1,9 @@
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
+import type { AnkiDeckStatsResponse } from "@/mcp/types/anki.types";
 import {
   computeDistribution,
   DistributionMetrics,
 } from "@/mcp/utils/stats.utils";
-
-/**
- * Response structure from AnkiConnect getDeckStats action
- * The response is a record keyed by deck ID (as string)
- */
-export interface AnkiDeckStatsResponse {
-  deck_id: number;
-  name: string;
-  new_count: number;
-  learn_count: number;
-  review_count: number;
-  total_in_deck: number;
-}
 
 /**
  * Parameters for deckStats action
@@ -51,6 +39,13 @@ export interface DeckStatsResult {
     learning: number;
     /** Review cards (mature) */
     review: number;
+    /**
+     * Cards not in new/learning/review buckets. Computed as
+     * `total - new - learning - review`. Typically suspended or buried cards,
+     * since AnkiConnect's getDeckStats only reports the three scheduler-visible
+     * buckets while `total_in_deck` includes every card in the deck.
+     */
+    other: number;
   };
 
   /** Ease factor distribution (only for cards with ease values) */
@@ -111,11 +106,21 @@ export async function deckStats(
     throw new Error(`Deck "${deck}" not found in statistics response`);
   }
 
+  const total = deckStatsData.total_in_deck || 0;
+  const newCount = deckStatsData.new_count || 0;
+  const learning = deckStatsData.learn_count || 0;
+  const review = deckStatsData.review_count || 0;
+  // `total_in_deck` from AnkiConnect includes every card in the deck, whereas
+  // new/learn/review come from the scheduler's due tree which excludes
+  // suspended (and buried) cards. The remainder lives in `other`.
+  const other = Math.max(0, total - newCount - learning - review);
+
   const counts = {
-    total: deckStatsData.total_in_deck || 0,
-    new: deckStatsData.new_count || 0,
-    learning: deckStatsData.learn_count || 0,
-    review: deckStatsData.review_count || 0,
+    total,
+    new: newCount,
+    learning,
+    review,
+    other,
   };
 
   await onProgress?.(30);

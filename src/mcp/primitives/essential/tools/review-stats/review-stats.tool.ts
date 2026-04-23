@@ -225,7 +225,7 @@ export class ReviewStatsTool {
     } catch (error) {
       this.logger.error(`Failed to get review statistics`, error);
       return createErrorResponse(error, {
-        hint: "Make sure Anki is running and date format is YYYY-MM-DD. Use list_decks to verify deck name if filtering by deck.",
+        hint: "Make sure Anki is running and date format is YYYY-MM-DD. Use listDecks to verify deck name if filtering by deck.",
       });
     }
   }

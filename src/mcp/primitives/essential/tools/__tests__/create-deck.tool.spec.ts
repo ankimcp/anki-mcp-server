@@ -44,11 +44,13 @@ describe("CreateDeckTool", () => {
     });
   });
 
-  it("should create a parent::child deck structure", async () => {
+  it("should create a parent::child deck structure when parent is new", async () => {
     const deckName = "Languages::Spanish";
     const deckId = 1651445861971;
 
-    ankiClient.invoke.mockResolvedValueOnce(deckId);
+    ankiClient.invoke
+      .mockResolvedValueOnce([]) // deckNames - parent does not exist
+      .mockResolvedValueOnce(deckId); // createDeck
 
     const rawResult = await tool.execute({ deckName }, mockContext);
     const result = parseToolResult(rawResult);
@@ -56,7 +58,28 @@ describe("CreateDeckTool", () => {
     expect(result.success).toBe(true);
     expect(result.parentDeck).toBe("Languages");
     expect(result.childDeck).toBe("Spanish");
-    expect(result.message).toContain('parent deck "Languages"');
+    expect(result.parentExisted).toBe(false);
+    expect(result.message).toContain('Created parent deck "Languages"');
+    expect(result.message).toContain('child deck "Spanish"');
+  });
+
+  it("should report honestly when parent deck already exists", async () => {
+    const deckName = "Languages::Spanish";
+    const deckId = 1651445861972;
+
+    ankiClient.invoke
+      .mockResolvedValueOnce(["Languages", "Other"]) // deckNames - parent exists
+      .mockResolvedValueOnce(deckId); // createDeck
+
+    const rawResult = await tool.execute({ deckName }, mockContext);
+    const result = parseToolResult(rawResult);
+
+    expect(result.success).toBe(true);
+    expect(result.parentDeck).toBe("Languages");
+    expect(result.childDeck).toBe("Spanish");
+    expect(result.parentExisted).toBe(true);
+    expect(result.message).toContain('Found existing parent deck "Languages"');
+    expect(result.message).toContain('created child deck "Spanish"');
   });
 
   it("should reject deck with more than 2 levels", async () => {

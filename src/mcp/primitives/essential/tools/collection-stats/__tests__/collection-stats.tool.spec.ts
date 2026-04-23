@@ -35,11 +35,16 @@ describe("CollectionStatsTool", () => {
   describe("execute", () => {
     it("should return collection stats with multiple decks", async () => {
       // Arrange
-      const deckNames = ["Deck A", "Deck B", "Deck C"];
+      const deckNamesAndIds = {
+        "Deck A": 1,
+        "Deck B": 2,
+        "Deck C": 3,
+      };
+      const deckNames = Object.keys(deckNamesAndIds);
 
       ankiClient.invoke.mockImplementation((action: string, _params?: any) => {
-        if (action === "deckNames") {
-          return Promise.resolve(deckNames);
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve(deckNamesAndIds);
         }
 
         if (action === "getDeckStats") {
@@ -102,7 +107,7 @@ describe("CollectionStatsTool", () => {
 
       // Assert
       expect(ankiClient.invoke).toHaveBeenCalledTimes(5);
-      expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "deckNames");
+      expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "deckNamesAndIds", {});
       expect(ankiClient.invoke).toHaveBeenNthCalledWith(2, "getDeckStats", {
         decks: deckNames,
       });
@@ -123,6 +128,7 @@ describe("CollectionStatsTool", () => {
         new: 30, // 10 + 15 + 5
         learning: 10, // 5 + 3 + 2
         review: 60, // 20 + 30 + 10
+        other: 0, // totals match exactly
       });
 
       // Check distributions
@@ -137,17 +143,154 @@ describe("CollectionStatsTool", () => {
         new: 10,
         learning: 5,
         review: 20,
+        other: 0,
       });
 
       // Progress reporting should be called
       expect(mockContext.reportProgress).toHaveBeenCalled();
     });
 
+    it("should include decks silently omitted by getDeckStats (Bug #1 regression)", async () => {
+      // Simulates the reporter's scenario: 2 decks in the collection but
+      // getDeckStats returns only 1 (Default deck omitted on some Anki versions).
+      const deckNamesAndIds = {
+        Default: 1,
+        Spanish: 1651445861967,
+      };
+
+      ankiClient.invoke.mockImplementation((action: string) => {
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve(deckNamesAndIds);
+        }
+
+        if (action === "getDeckStats") {
+          // Only returns Spanish — Default is silently omitted
+          return Promise.resolve({
+            "1651445861967": {
+              deck_id: 1651445861967,
+              name: "Spanish",
+              new_count: 3,
+              learn_count: 0,
+              review_count: 0,
+              total_in_deck: 3,
+            },
+          });
+        }
+
+        if (action === "findCards") {
+          return Promise.resolve([101, 102, 103]);
+        }
+
+        if (action === "getEaseFactors") {
+          return Promise.resolve([0, 0, 0]);
+        }
+
+        if (action === "getIntervals") {
+          return Promise.resolve([0, 0, 0]);
+        }
+
+        return Promise.resolve({});
+      });
+
+      const rawResult = await tool.execute({}, mockContext);
+      const result = parseToolResult(rawResult) as CollectionStatsResult;
+
+      // per_deck length must match total_decks — even when AnkiConnect omits a deck
+      expect(result.total_decks).toBe(2);
+      expect(result.per_deck).toHaveLength(2);
+
+      const defaultDeck = result.per_deck.find((d) => d.deck === "Default");
+      expect(defaultDeck).toEqual({
+        deck: "Default",
+        total: 0,
+        new: 0,
+        learning: 0,
+        review: 0,
+        other: 0,
+      });
+
+      const spanish = result.per_deck.find((d) => d.deck === "Spanish");
+      expect(spanish).toEqual({
+        deck: "Spanish",
+        total: 3,
+        new: 3,
+        learning: 0,
+        review: 0,
+        other: 0,
+      });
+    });
+
+    it("should report 'other' bucket when total exceeds new+learning+review (Bug #2 regression)", async () => {
+      // Reporter's scenario: 4 cards total, 3 new, 0 learning, 0 review — the
+      // missing card is suspended/buried and should land in `other`.
+      const deckNamesAndIds = { Spanish: 1651445861967 };
+
+      ankiClient.invoke.mockImplementation((action: string) => {
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve(deckNamesAndIds);
+        }
+
+        if (action === "getDeckStats") {
+          return Promise.resolve({
+            "1651445861967": {
+              deck_id: 1651445861967,
+              name: "Spanish",
+              new_count: 3,
+              learn_count: 0,
+              review_count: 0,
+              total_in_deck: 4, // 1 suspended card not counted in the buckets
+            },
+          });
+        }
+
+        if (action === "findCards") {
+          return Promise.resolve([1, 2, 3, 4]);
+        }
+
+        if (action === "getEaseFactors") {
+          return Promise.resolve([0, 0, 0, 2500]);
+        }
+
+        if (action === "getIntervals") {
+          return Promise.resolve([0, 0, 0, 30]);
+        }
+
+        return Promise.resolve({});
+      });
+
+      const rawResult = await tool.execute({}, mockContext);
+      const result = parseToolResult(rawResult) as CollectionStatsResult;
+
+      // Arithmetic must close: total === new + learning + review + other
+      expect(result.counts).toEqual({
+        total: 4,
+        new: 3,
+        learning: 0,
+        review: 0,
+        other: 1,
+      });
+      expect(
+        result.counts.new +
+          result.counts.learning +
+          result.counts.review +
+          result.counts.other,
+      ).toBe(result.counts.total);
+
+      expect(result.per_deck[0]).toEqual({
+        deck: "Spanish",
+        total: 4,
+        new: 3,
+        learning: 0,
+        review: 0,
+        other: 1,
+      });
+    });
+
     it("should handle no decks in collection", async () => {
       // Arrange
       ankiClient.invoke.mockImplementation((action: string) => {
-        if (action === "deckNames") {
-          return Promise.resolve([]);
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({});
         }
         return Promise.resolve({});
       });
@@ -163,23 +306,27 @@ describe("CollectionStatsTool", () => {
         new: 0,
         learning: 0,
         review: 0,
+        other: 0,
       });
       expect(result.ease.count).toBe(0);
       expect(result.intervals.count).toBe(0);
       expect(result.per_deck).toEqual([]);
 
-      // Should only call deckNames
+      // Should only call deckNamesAndIds
       expect(ankiClient.invoke).toHaveBeenCalledTimes(1);
-      expect(ankiClient.invoke).toHaveBeenCalledWith("deckNames");
+      expect(ankiClient.invoke).toHaveBeenCalledWith("deckNamesAndIds", {});
     });
 
     it("should handle some decks being empty", async () => {
       // Arrange
-      const deckNames = ["Full Deck", "Empty Deck"];
+      const deckNamesAndIds = {
+        "Full Deck": 1,
+        "Empty Deck": 2,
+      };
 
       ankiClient.invoke.mockImplementation((action: string) => {
-        if (action === "deckNames") {
-          return Promise.resolve(deckNames);
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve(deckNamesAndIds);
         }
 
         if (action === "getDeckStats") {
@@ -235,16 +382,17 @@ describe("CollectionStatsTool", () => {
         new: 0,
         learning: 0,
         review: 0,
+        other: 0,
       });
     });
 
     it("should correctly aggregate per-deck statistics", async () => {
       // Arrange
-      const deckNames = ["Math", "Science"];
+      const deckNamesAndIds = { Math: 1, Science: 2 };
 
       ankiClient.invoke.mockImplementation((action: string) => {
-        if (action === "deckNames") {
-          return Promise.resolve(deckNames);
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve(deckNamesAndIds);
         }
 
         if (action === "getDeckStats") {
@@ -293,6 +441,7 @@ describe("CollectionStatsTool", () => {
         new: 30, // 12 + 18
         learning: 11, // 8 + 3
         review: 60, // 25 + 35
+        other: 0,
       });
 
       // Verify per-deck matches individual decks
@@ -303,6 +452,7 @@ describe("CollectionStatsTool", () => {
         new: 12,
         learning: 8,
         review: 25,
+        other: 0,
       });
 
       const scienceDeck = result.per_deck.find((d) => d.deck === "Science");
@@ -312,6 +462,7 @@ describe("CollectionStatsTool", () => {
         new: 18,
         learning: 3,
         review: 35,
+        other: 0,
       });
     });
 
@@ -321,8 +472,8 @@ describe("CollectionStatsTool", () => {
       const customIntervalBuckets = [10, 30, 60];
 
       ankiClient.invoke.mockImplementation((action: string) => {
-        if (action === "deckNames") {
-          return Promise.resolve(["Test Deck"]);
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({ "Test Deck": 1 });
         }
 
         if (action === "getDeckStats") {
@@ -376,8 +527,11 @@ describe("CollectionStatsTool", () => {
     it("should handle empty collection (decks exist but no cards)", async () => {
       // Arrange
       ankiClient.invoke.mockImplementation((action: string) => {
-        if (action === "deckNames") {
-          return Promise.resolve(["Empty Deck 1", "Empty Deck 2"]);
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({
+            "Empty Deck 1": 1,
+            "Empty Deck 2": 2,
+          });
         }
 
         if (action === "getDeckStats") {
@@ -415,20 +569,21 @@ describe("CollectionStatsTool", () => {
         new: 0,
         learning: 0,
         review: 0,
+        other: 0,
       });
       expect(result.ease.count).toBe(0);
       expect(result.intervals.count).toBe(0);
       expect(result.per_deck).toHaveLength(2);
 
       // Should not call findCards, getEaseFactors, or getIntervals
-      expect(ankiClient.invoke).toHaveBeenCalledTimes(2); // Only deckNames and getDeckStats
+      expect(ankiClient.invoke).toHaveBeenCalledTimes(2); // Only deckNamesAndIds and getDeckStats
     });
 
     it("should correctly divide ease factors by 1000", async () => {
       // Arrange
       ankiClient.invoke.mockImplementation((action: string) => {
-        if (action === "deckNames") {
-          return Promise.resolve(["Test"]);
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({ Test: 1 });
         }
 
         if (action === "getDeckStats") {
@@ -474,8 +629,8 @@ describe("CollectionStatsTool", () => {
     it("should filter out negative intervals", async () => {
       // Arrange
       ankiClient.invoke.mockImplementation((action: string) => {
-        if (action === "deckNames") {
-          return Promise.resolve(["Test"]);
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({ Test: 1 });
         }
 
         if (action === "getDeckStats") {
@@ -537,8 +692,8 @@ describe("CollectionStatsTool", () => {
     it("should call reportProgress correctly", async () => {
       // Arrange
       ankiClient.invoke.mockImplementation((action: string) => {
-        if (action === "deckNames") {
-          return Promise.resolve(["Test"]);
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({ Test: 1 });
         }
 
         if (action === "getDeckStats") {
@@ -589,8 +744,8 @@ describe("CollectionStatsTool", () => {
     it("should handle findCards returning empty despite getDeckStats showing cards", async () => {
       // Arrange
       ankiClient.invoke.mockImplementation((action: string) => {
-        if (action === "deckNames") {
-          return Promise.resolve(["Test"]);
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({ Test: 1 });
         }
 
         if (action === "getDeckStats") {

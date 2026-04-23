@@ -110,7 +110,7 @@ export class GetDueCardsTool {
         query = `"deck:${escapedDeckName}" ${query}`;
       }
 
-      // Find due cards using AnkiConnect
+      // Find cards using AnkiConnect
       const cardIds = await this.ankiClient.invoke<number[]>("findCards", {
         query,
       });
@@ -127,6 +127,34 @@ export class GetDueCardsTool {
       }
 
       await context.reportProgress({ progress: 50, total: 100 });
+
+      // When include_new is true, the result set mixes "new" and actually-due
+      // cards. Fetch the new-only subset so we can report honest counts instead
+      // of labeling everything as "due".
+      let newCount = 0;
+      if (include_new) {
+        const newOnlyStates = ["is:new"];
+        let newQuery = `-is:suspended (${newOnlyStates.join(" OR ")})`;
+        if (deck_name) {
+          const escapedDeckName = deck_name.replace(/"/g, '\\"');
+          newQuery = `"deck:${escapedDeckName}" ${newQuery}`;
+        }
+        try {
+          const newIds = await this.ankiClient.invoke<number[]>("findCards", {
+            query: newQuery,
+          });
+          // Intersect with the result set to avoid counting cards that the
+          // outer query happened to exclude (e.g. from a different deck filter).
+          const resultSet = new Set(cardIds);
+          newCount = newIds.filter((id) => resultSet.has(id)).length;
+        } catch (err) {
+          // Non-fatal: fall back to treating all cards as due.
+          this.logger.warn(
+            `Could not enumerate new cards for count: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+      const dueOnlyCount = cardIds.length - newCount;
 
       // Limit the number of cards
       const selectedCardIds = cardIds.slice(0, cardLimit);
@@ -154,15 +182,19 @@ export class GetDueCardsTool {
 
       await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(
-        `Retrieved ${dueCards.length} due cards out of ${cardIds.length} total`,
+        `Retrieved ${dueCards.length} cards out of ${cardIds.length} total`,
       );
+
+      const message = include_new
+        ? `Found ${cardIds.length} cards (${newCount} new, ${dueOnlyCount} due), returning ${dueCards.length}`
+        : `Found ${cardIds.length} due cards, returning ${dueCards.length}`;
 
       return {
         success: true,
         cards: dueCards,
         total: cardIds.length,
         returned: dueCards.length,
-        message: `Found ${cardIds.length} due cards, returning ${dueCards.length}`,
+        message,
       };
     } catch (error) {
       this.logger.error("Failed to get due cards", error);

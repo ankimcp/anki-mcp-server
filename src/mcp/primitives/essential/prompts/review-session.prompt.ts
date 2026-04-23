@@ -30,7 +30,7 @@ export class ReviewSessionPrompt {
 1. **Sync First**: Use sync tool to get latest data from AnkiWeb
 2. **Ask About Deck Selection**:
    - Ask the user: "Which deck would you like to review? You can choose a specific deck or review cards from all decks."
-   - Use list_decks to show available options if needed
+   - Use listDecks to show available options if needed
    - If user chooses "all" or wants to review everything, use get_due_cards without deck_name parameter
    - If user specifies a deck, use get_due_cards with the deck_name parameter
 3. **Present the Question**: Show the front of the card clearly

@@ -12,18 +12,6 @@ export interface CollectionStatsParams {
 }
 
 /**
- * Response structure from AnkiConnect getDeckStats action
- */
-export interface AnkiDeckStatsResponse {
-  deck_id: number;
-  name: string;
-  new_count: number;
-  learn_count: number;
-  review_count: number;
-  total_in_deck: number;
-}
-
-/**
  * Per-deck breakdown structure
  */
 export interface PerDeckStats {
@@ -37,6 +25,13 @@ export interface PerDeckStats {
   learning: number;
   /** Review cards (mature) */
   review: number;
+  /**
+   * Cards not in new/learning/review buckets. Computed as
+   * `total - new - learning - review`. Typically suspended or buried cards,
+   * since AnkiConnect's getDeckStats only reports the three scheduler-visible
+   * buckets while `total_in_deck` includes every card in the deck.
+   */
+  other: number;
 }
 
 /**
@@ -56,6 +51,13 @@ export interface CollectionStatsResult {
     learning: number;
     /** Review cards (mature) */
     review: number;
+    /**
+     * Cards not in new/learning/review buckets. Computed as
+     * `total - new - learning - review`. Typically suspended or buried cards,
+     * since AnkiConnect's getDeckStats only reports the three scheduler-visible
+     * buckets while `total_in_deck` includes every card in the deck.
+     */
+    other: number;
   };
 
   /** Ease factor distribution (only for cards with ease values) */
@@ -64,6 +66,6 @@ export interface CollectionStatsResult {
   /** Interval distribution in days (only for review cards with positive intervals) */
   intervals: DistributionMetrics;
 
-  /** Per-deck breakdown of card counts */
+  /** Per-deck breakdown of card counts (one entry per deck returned by deckNames) */
   per_deck: PerDeckStats[];
 }

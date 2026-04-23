@@ -20,6 +20,8 @@ export interface CreateDeckResult {
   exists?: boolean;
   parentDeck?: string;
   childDeck?: string;
+  /** For parent::child names, whether the parent deck already existed before this call */
+  parentExisted?: boolean;
 }
 
 /**
@@ -48,6 +50,20 @@ export async function createDeck(
     throw new Error("Deck name parts cannot be empty");
   }
 
+  // For parent::child, determine whether the parent already exists so we can
+  // report accurately (AnkiConnect's createDeck is happy to "create" an
+  // already-existing parent silently, so the response otherwise lies).
+  let parentExisted: boolean | undefined;
+  if (parts.length === 2) {
+    try {
+      const existingDecks = await client.invoke<string[]>("deckNames");
+      parentExisted = existingDecks.includes(parts[0]);
+    } catch {
+      // If we can't enumerate decks, fall through without parentExisted info.
+      parentExisted = undefined;
+    }
+  }
+
   // Create the deck using AnkiConnect
   const deckId = await client.invoke<number>("createDeck", {
     deck: deckName,
@@ -59,13 +75,21 @@ export async function createDeck(
     const deckExists = existingDecks.includes(deckName);
 
     if (deckExists) {
-      return {
+      const result: CreateDeckResult = {
         success: true,
         message: `Deck "${deckName}" already exists`,
         deckName: deckName,
         created: false,
         exists: true,
       };
+      if (parts.length === 2) {
+        result.parentDeck = parts[0];
+        result.childDeck = parts[1];
+        if (parentExisted !== undefined) {
+          result.parentExisted = parentExisted;
+        }
+      }
+      return result;
     }
 
     throw new Error("Failed to create deck - unknown error");
@@ -79,11 +103,20 @@ export async function createDeck(
     created: true,
   };
 
-  // If it's a parent::child structure, note both decks were created
+  // If it's a parent::child structure, report honestly whether the parent was
+  // created here or already existed.
   if (parts.length === 2) {
     result.parentDeck = parts[0];
     result.childDeck = parts[1];
-    result.message = `Successfully created parent deck "${parts[0]}" and child deck "${parts[1]}"`;
+    if (parentExisted !== undefined) {
+      result.parentExisted = parentExisted;
+      result.message = parentExisted
+        ? `Found existing parent deck "${parts[0]}"; created child deck "${parts[1]}"`
+        : `Created parent deck "${parts[0]}" and child deck "${parts[1]}"`;
+    } else {
+      // Couldn't determine parent status — fall back to neutral wording.
+      result.message = `Created child deck "${parts[1]}" under parent "${parts[0]}"`;
+    }
   }
 
   return result;

@@ -41,6 +41,12 @@ export class DeckStatsTool {
         new: z.number(),
         learning: z.number(),
         review: z.number(),
+        other: z
+          .number()
+          .describe(
+            "Cards not in new/learning/review (typically suspended or buried). " +
+              "Computed as total - new - learning - review.",
+          ),
       }),
       ease: z.object({
         mean: z.number(),

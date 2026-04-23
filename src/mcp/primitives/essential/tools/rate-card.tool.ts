@@ -70,6 +70,29 @@ export class RateCardTool {
       this.logger.log(`Rating card ${card_id} with rating ${rating}`);
       await context.reportProgress({ progress: 25, total: 100 });
 
+      // Validate the card ID exists before answering. AnkiConnect's
+      // `answerCards` returns `true` even for bogus IDs, so we must
+      // pre-check with `cardsInfo` (missing cards come back as `{}`).
+      const existingInfo = await this.ankiClient.invoke<
+        Array<{ cardId?: number }>
+      >("cardsInfo", { cards: [card_id] });
+
+      const found =
+        existingInfo?.[0] && typeof existingInfo[0].cardId === "number";
+
+      if (!found) {
+        return createErrorResponse(
+          new Error(
+            `Card ID ${card_id} does not exist in the Anki collection. Cannot rate.`,
+          ),
+          {
+            cardId: card_id,
+            attemptedRating: rating,
+            hint: "Verify the card ID with get_due_cards or findNotes before rating",
+          },
+        );
+      }
+
       // Convert rating to ease for AnkiConnect
       // AnkiConnect's answerCards expects ease values 1-4
       const answers = [

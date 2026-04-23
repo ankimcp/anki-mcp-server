@@ -2,7 +2,7 @@
   "manifest_version": "0.4",
   "name": "anki-mcp-server",
   "display_name": "Anki MCP Server",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "license": "MIT",
   "description": "Model Context Protocol server for Anki spaced repetition flashcard application",
   "long_description": "Transform your Anki experience with natural language interaction - like having a private tutor. This MCP server enables AI assistants to interact with Anki, allowing them to explain concepts, make learning more engaging, provide context, and adapt to your learning style. Features include review sessions, deck management, note creation and editing, and more.\n\nRequires Anki with the AnkiConnect plugin installed.",
@@ -65,7 +65,7 @@
     },
     {
       "name": "addNotes",
-      "description": "Add multiple notes to Anki in a single batch. Up to 100 notes sharing the same deck and model. Supports partial success - individual failures don't affect others."
+      "description": "Add multiple notes to Anki in a single batch. Up to 100 notes sharing the same deck and model. Duplicates are skipped individually; validation errors (empty required fields, bad tags) reject the batch."
     },
     {
       "name": "findNotes",

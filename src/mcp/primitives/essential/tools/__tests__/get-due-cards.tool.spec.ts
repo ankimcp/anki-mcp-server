@@ -102,8 +102,9 @@ describe("GetDueCardsTool", () => {
     it("should include new cards when include_new is true", async () => {
       // Arrange
       ankiClient.invoke
-        .mockResolvedValueOnce(mockCardIds)
-        .mockResolvedValueOnce(mockCardsInfo);
+        .mockResolvedValueOnce(mockCardIds) // findCards (main)
+        .mockResolvedValueOnce([mockCardIds[1]]) // findCards (new-only count)
+        .mockResolvedValueOnce(mockCardsInfo); // cardsInfo
 
       // Act
       const rawResult = await tool.getDueCards(
@@ -116,14 +117,20 @@ describe("GetDueCardsTool", () => {
       expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "findCards", {
         query: "-is:suspended (is:due OR is:learn OR is:new)",
       });
+      expect(ankiClient.invoke).toHaveBeenNthCalledWith(2, "findCards", {
+        query: "-is:suspended (is:new)",
+      });
       expect(result.success).toBe(true);
+      expect(result.message).toContain("1 new");
+      expect(result.message).toContain("1 due");
     });
 
     it("should include only due and new when learning excluded", async () => {
       // Arrange
       ankiClient.invoke
-        .mockResolvedValueOnce(mockCardIds)
-        .mockResolvedValueOnce(mockCardsInfo);
+        .mockResolvedValueOnce(mockCardIds) // findCards (main)
+        .mockResolvedValueOnce([]) // findCards (new-only count)
+        .mockResolvedValueOnce(mockCardsInfo); // cardsInfo
 
       // Act
       const rawResult = await tool.getDueCards(
@@ -320,8 +327,9 @@ describe("GetDueCardsTool", () => {
     it("should combine deck filter with include_new", async () => {
       // Arrange
       ankiClient.invoke
-        .mockResolvedValueOnce([mockCardIds[1]])
-        .mockResolvedValueOnce([mockCardsInfo[1]]);
+        .mockResolvedValueOnce([mockCardIds[1]]) // findCards (main)
+        .mockResolvedValueOnce([mockCardIds[1]]) // findCards (new-only count)
+        .mockResolvedValueOnce([mockCardsInfo[1]]); // cardsInfo
 
       // Act
       const rawResult = await tool.getDueCards(
@@ -334,6 +342,9 @@ describe("GetDueCardsTool", () => {
       expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "findCards", {
         query:
           '"deck:Japanese::JLPT N5" -is:suspended (is:due OR is:learn OR is:new)',
+      });
+      expect(ankiClient.invoke).toHaveBeenNthCalledWith(2, "findCards", {
+        query: '"deck:Japanese::JLPT N5" -is:suspended (is:new)',
       });
       expect(result.success).toBe(true);
     });

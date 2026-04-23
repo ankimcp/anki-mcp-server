@@ -3,13 +3,13 @@ import { Tool } from "@rekog/mcp-nest";
 import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
+import type { AnkiDeckStatsResponse } from "@/mcp/types/anki.types";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { computeDistribution } from "@/mcp/utils/stats.utils";
 import type {
   CollectionStatsResult,
   CollectionStatsParams,
   PerDeckStats,
-  AnkiDeckStatsResponse,
 } from "./collection-stats.types";
 
 /**
@@ -69,6 +69,12 @@ export class CollectionStatsTool {
         new: z.number(),
         learning: z.number(),
         review: z.number(),
+        other: z
+          .number()
+          .describe(
+            "Cards not in new/learning/review (typically suspended or buried). " +
+              "Computed as total - new - learning - review.",
+          ),
       }),
       ease: z.object({
         mean: z.number(),
@@ -93,6 +99,7 @@ export class CollectionStatsTool {
           new: z.number(),
           learning: z.number(),
           review: z.number(),
+          other: z.number(),
         }),
       ),
     }),
@@ -111,11 +118,18 @@ export class CollectionStatsTool {
       this.logger.log("Getting collection-wide statistics");
       await context.reportProgress({ progress: 10, total: 100 });
 
-      // Step 1: Get all deck names
-      this.logger.log("Fetching deck names...");
-      const deckNames = await this.ankiClient.invoke<string[]>("deckNames");
+      // Step 1: Get all deck names and their IDs. We need IDs because getDeckStats
+      // returns short (child) names (e.g. "Child" for "Parent::Child"), and in some
+      // cases AnkiConnect may omit decks from its response entirely — we want every
+      // deck from `deckNames` to appear in `per_deck`, falling back to zeros.
+      this.logger.log("Fetching deck names and IDs...");
+      const deckNamesAndIds = await this.ankiClient.invoke<
+        Record<string, number>
+      >("deckNamesAndIds", {});
 
-      if (!deckNames || deckNames.length === 0) {
+      const deckNames = deckNamesAndIds ? Object.keys(deckNamesAndIds) : [];
+
+      if (deckNames.length === 0) {
         this.logger.log("No decks found in collection");
         const result: CollectionStatsResult = {
           total_decks: 0,
@@ -124,6 +138,7 @@ export class CollectionStatsTool {
             new: 0,
             learning: 0,
             review: 0,
+            other: 0,
           },
           ease: computeDistribution([], { boundaries: ease_buckets }),
           intervals: computeDistribution([], {
@@ -152,36 +167,71 @@ export class CollectionStatsTool {
         throw new Error("Invalid getDeckStats response");
       }
 
-      // Build per-deck breakdown and aggregate counts
+      // Build per-deck breakdown and aggregate counts. Iterate `deckNames` rather
+      // than `Object.values(deckStatsResponse)` so every deck gets an entry, even
+      // if getDeckStats silently omits it (observed e.g. with the Default deck on
+      // some Anki versions).
       const per_deck: PerDeckStats[] = [];
       const counts = {
         total: 0,
         new: 0,
         learning: 0,
         review: 0,
+        other: 0,
       };
 
-      // Process each deck's stats
-      for (const deckStats of Object.values(deckStatsResponse)) {
-        const deckName = deckStats.name;
-        const deckCounts = {
-          total: deckStats.total_in_deck ?? 0,
-          new: deckStats.new_count ?? 0,
-          learning: deckStats.learn_count ?? 0,
-          review: deckStats.review_count ?? 0,
-        };
+      const missingDecks: string[] = [];
 
-        // Add to per-deck breakdown
+      for (const deckName of deckNames) {
+        const deckId = deckNamesAndIds[deckName];
+        const deckStats =
+          deckId != null ? deckStatsResponse[String(deckId)] : undefined;
+
+        if (!deckStats) {
+          missingDecks.push(deckName);
+          // AnkiConnect didn't return stats for this deck — emit a zero entry so
+          // per_deck.length stays consistent with total_decks.
+          per_deck.push({
+            deck: deckName,
+            total: 0,
+            new: 0,
+            learning: 0,
+            review: 0,
+            other: 0,
+          });
+          continue;
+        }
+
+        const total = deckStats.total_in_deck ?? 0;
+        const newCount = deckStats.new_count ?? 0;
+        const learning = deckStats.learn_count ?? 0;
+        const review = deckStats.review_count ?? 0;
+        // `total_in_deck` from AnkiConnect includes every card in the deck,
+        // whereas new/learn/review come from the scheduler's due tree which
+        // excludes suspended (and buried) cards. The remainder lives in `other`.
+        const other = Math.max(0, total - newCount - learning - review);
+
         per_deck.push({
           deck: deckName,
-          ...deckCounts,
+          total,
+          new: newCount,
+          learning,
+          review,
+          other,
         });
 
-        // Aggregate counts
-        counts.total += deckCounts.total;
-        counts.new += deckCounts.new;
-        counts.learning += deckCounts.learning;
-        counts.review += deckCounts.review;
+        counts.total += total;
+        counts.new += newCount;
+        counts.learning += learning;
+        counts.review += review;
+        counts.other += other;
+      }
+
+      if (missingDecks.length > 0) {
+        this.logger.warn(
+          `getDeckStats did not return stats for ${missingDecks.length} deck(s): ` +
+            `${missingDecks.join(", ")}. Filled with zeros.`,
+        );
       }
 
       this.logger.log(
