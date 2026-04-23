@@ -32,6 +32,8 @@ For comprehensive guides, real-world examples, and step-by-step tutorials on usi
 
 **[ankimcp.ai](https://ankimcp.ai)** - Complete documentation with practical examples and use cases
 
+See [`docs/`](./docs/README.md) for supplementary documentation, including the [reviewer setup guide](./docs/reviewer-setup.md) and the sample Anki deck.
+
 ## Available Tools
 
 ### Review & Study
@@ -103,6 +105,8 @@ The easiest way to install this MCP server for Claude Desktop:
 4. Restart Claude Desktop
 
 That's it! The bundle includes everything needed to run the server locally.
+
+> **For Anthropic MCP Directory reviewers:** a zero-to-integration walkthrough with a pre-populated sample deck lives in [`docs/reviewer-setup.md`](./docs/reviewer-setup.md).
 
 ### Option 2: NPM Package with STDIO (For Other MCP Clients)
 
