@@ -11,9 +11,27 @@
     "email": "support@ankimcp.ai",
     "url": "https://ankimcp.ai"
   },
-  "homepage": "https://ankimcp.io",
+  "homepage": "https://ankimcp.ai",
   "documentation": "https://github.com/ankimcp/anki-mcp-server#readme",
   "support": "https://github.com/ankimcp/anki-mcp-server/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ankimcp/anki-mcp-server.git"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "anki",
+    "flashcards",
+    "spaced-repetition",
+    "ai",
+    "claude",
+    "chatgpt",
+    "ankiconnect"
+  ],
+  "privacy_policies": [
+    "https://ankimcp.ai/privacy/"
+  ],
   "icon": "icon.png",
   "tools": [
     {

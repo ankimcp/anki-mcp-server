@@ -443,6 +443,18 @@ These protections apply to `storeMediaFile`, `retrieveMediaFile`, `deleteMediaFi
 
 > Path traversal vulnerability reported by [Hideaki Takahashi](https://github.com/Koukyosyumei).
 
+## Privacy Policy
+
+This MCP server runs locally on your machine and collects no telemetry, analytics, or usage data.
+
+Full policy: **[https://ankimcp.ai/privacy/](https://ankimcp.ai/privacy/)**
+
+- **Data collection**: The server collects nothing. It proxies requests between your AI assistant and your local AnkiConnect plugin.
+- **Usage / storage**: No server-side storage. All flashcard data stays in your Anki installation on your own device.
+- **Third-party sharing**: None. The server only talks to the AnkiConnect URL you configure (default: localhost). If you enable Anki's built-in AnkiWeb sync, that happens between your Anki install and AnkiWeb directly — outside this server's scope.
+- **Retention**: Not applicable — no data is retained server-side.
+- **Contact**: support@ankimcp.ai
+
 ## Known Issues
 
 For a comprehensive list of known issues and limitations, please visit our documentation:
@@ -811,7 +823,7 @@ This project follows [Semantic Versioning](https://semver.org/) with a pre-1.0 d
   - Will be released when the API is stable and tested
   - Breaking changes will require major version bumps (2.0.0, etc.)
 
-**Current Status**: `0.14.0` - Active beta development. Recent features include batch note creation (`addNotes`), integrated ngrok tunneling (`--ngrok` flag), media file management, model/template management, and comprehensive deck statistics. APIs may change based on feedback and testing.
+**Current Status**: `0.15.1` - Active beta development. Recent features include batch note creation (`addNotes`), integrated ngrok tunneling (`--ngrok` flag), media file management, model/template management, and comprehensive deck statistics. APIs may change based on feedback and testing.
 
 ## Similar Projects
 
