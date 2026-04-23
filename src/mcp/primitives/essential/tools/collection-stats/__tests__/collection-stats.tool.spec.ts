@@ -107,7 +107,11 @@ describe("CollectionStatsTool", () => {
 
       // Assert
       expect(ankiClient.invoke).toHaveBeenCalledTimes(5);
-      expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "deckNamesAndIds", {});
+      expect(ankiClient.invoke).toHaveBeenNthCalledWith(
+        1,
+        "deckNamesAndIds",
+        {},
+      );
       expect(ankiClient.invoke).toHaveBeenNthCalledWith(2, "getDeckStats", {
         decks: deckNames,
       });
