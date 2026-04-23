@@ -4,6 +4,7 @@ import {
   computeDistribution,
   DistributionMetrics,
 } from "@/mcp/utils/stats.utils";
+import { isDescendantOf } from "@/mcp/utils/deck-hierarchy.utils";
 
 /**
  * Parameters for deckStats action
@@ -20,7 +21,11 @@ export interface DeckStatsParams {
 }
 
 /**
- * Result structure for deckStats action
+ * Result structure for deckStats action.
+ *
+ * All `counts` fields roll up descendants: a stat for `"German"` covers
+ * `"German"` + `"German::Verbs"` + `"German::Verbs::Irregular"` etc., matching
+ * how the Anki UI displays parent decks.
  */
 export interface DeckStatsResult {
   /** Whether the operation succeeded */
@@ -29,21 +34,27 @@ export interface DeckStatsResult {
   /** Deck name */
   deck: string;
 
-  /** Card counts by status */
+  /**
+   * Card counts by status. All values are rolled up over the deck and all of
+   * its descendants (matches Anki UI convention for parent decks).
+   * Invariant: `total === new + learning + review + other`.
+   */
   counts: {
-    /** Total cards in deck */
+    /**
+     * Total cards in this deck AND all of its descendants
+     * (e.g. stats for `"German"` include cards in `"German::Verbs"`).
+     */
     total: number;
-    /** New cards (never studied) */
+    /** New cards (never studied), rolled up over descendants */
     new: number;
-    /** Learning/relearning cards */
+    /** Learning/relearning cards, rolled up over descendants */
     learning: number;
-    /** Review cards (mature) */
+    /** Review cards (mature), rolled up over descendants */
     review: number;
     /**
-     * Cards not in new/learning/review buckets. Computed as
-     * `total - new - learning - review`. Typically suspended or buried cards,
-     * since AnkiConnect's getDeckStats only reports the three scheduler-visible
-     * buckets while `total_in_deck` includes every card in the deck.
+     * Cards not in new/learning/review (typically suspended or buried),
+     * rolled up over descendants. Computed as
+     * `total - new - learning - review`.
      */
     other: number;
   };
@@ -62,7 +73,14 @@ export type ProgressCallback = (progress: number) => Promise<void>;
 
 /**
  * Get comprehensive statistics for a single deck including card counts,
- * ease factor distribution, and interval distribution
+ * ease factor distribution, and interval distribution.
+ *
+ * Counts are rolled up over descendant decks (e.g. `"German"` includes
+ * cards from `"German::Verbs"`). This matches how AnkiConnect reports
+ * scheduler buckets for parent decks and how the Anki UI displays them.
+ * Without this rollup, `total_in_deck` (direct cards only) would be
+ * inconsistent with `new_count` / `learn_count` / `review_count`
+ * (descendants included), producing nonsense like `new > total`.
  *
  * @see https://git.sr.ht/~foosoft/anki-connect#getdeckstats
  * @see https://git.sr.ht/~foosoft/anki-connect#findcards
@@ -80,8 +98,11 @@ export async function deckStats(
     intervalBuckets = [7, 21, 90],
   } = params;
 
-  // Step 1: Resolve deck name → ID (getDeckStats returns short names for child decks,
-  // so we match by ID instead of name to handle "Parent::Child" decks correctly)
+  // Step 1: Resolve deck name → ID and enumerate descendants. We need the
+  // descendants because AnkiConnect's `getDeckStats.total_in_deck` only
+  // counts cards stored directly in that deck's table — children are
+  // excluded. We'll sum `total_in_deck` across the subtree to match the
+  // scheduler buckets, which ARE already rolled up for parent decks.
   const deckNamesAndIds = await client.invoke<Record<string, number>>(
     "deckNamesAndIds",
     {},
@@ -92,27 +113,45 @@ export async function deckStats(
     throw new Error(`Deck "${deck}" not found`);
   }
 
-  // Step 2: Get basic card counts from getDeckStats
+  // Names to request stats for: the deck itself + every descendant
+  // (e.g. for "German" we also want "German::Verbs", "German::Verbs::Irr").
+  const subtreeDeckNames = Object.keys(deckNamesAndIds).filter(
+    (name) => name === deck || isDescendantOf(name, deck),
+  );
+
+  // Step 2: Get basic card counts from getDeckStats (for the whole subtree)
   const deckStatsResponse = await client.invoke<
     Record<string, AnkiDeckStatsResponse>
   >("getDeckStats", {
-    decks: [deck],
+    decks: subtreeDeckNames,
   });
 
-  // Extract stats by deck ID
-  const deckStatsData = deckStatsResponse?.[String(deckId)];
+  const rootDeckStats = deckStatsResponse?.[String(deckId)];
 
-  if (!deckStatsData) {
+  if (!rootDeckStats) {
     throw new Error(`Deck "${deck}" not found in statistics response`);
   }
 
-  const total = deckStatsData.total_in_deck || 0;
-  const newCount = deckStatsData.new_count || 0;
-  const learning = deckStatsData.learn_count || 0;
-  const review = deckStatsData.review_count || 0;
-  // `total_in_deck` from AnkiConnect includes every card in the deck, whereas
-  // new/learn/review come from the scheduler's due tree which excludes
-  // suspended (and buried) cards. The remainder lives in `other`.
+  // Bucket counts for the requested deck are already rolled up by the
+  // scheduler, so we pull them straight from the root's response.
+  const newCount = rootDeckStats.new_count || 0;
+  const learning = rootDeckStats.learn_count || 0;
+  const review = rootDeckStats.review_count || 0;
+
+  // Roll up `total_in_deck` across the subtree (root + descendants) so it's
+  // consistent with the scheduler buckets. Without this, a parent with
+  // cards only in children would report `total=0, new>0`.
+  let total = 0;
+  for (const descendantName of subtreeDeckNames) {
+    const descId = deckNamesAndIds[descendantName];
+    const descStats =
+      descId != null ? deckStatsResponse?.[String(descId)] : undefined;
+    total += descStats?.total_in_deck ?? 0;
+  }
+
+  // Anything not in the three scheduler buckets (typically suspended or
+  // buried cards) lands in `other`. Clamp to zero in the pathological case
+  // where AnkiConnect's counts disagree with its own card listing.
   const other = Math.max(0, total - newCount - learning - review);
 
   const counts = {
@@ -139,8 +178,8 @@ export async function deckStats(
     };
   }
 
-  // Step 3: Get all card IDs for this deck
-  // Escape special characters in deck name for Anki search
+  // Step 3: Get all card IDs for this deck (Anki's `deck:` query includes
+  // subdecks by default, so this already covers the whole subtree).
   const escapedDeckName = deck.replace(/"/g, '\\"');
   const cardIds = await client.invoke<number[]>("findCards", {
     query: `"deck:${escapedDeckName}"`,

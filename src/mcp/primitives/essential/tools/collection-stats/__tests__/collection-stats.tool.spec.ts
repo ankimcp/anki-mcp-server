@@ -290,6 +290,103 @@ describe("CollectionStatsTool", () => {
       });
     });
 
+    it("should roll up parent::child counts without double-counting (Bug #3 regression)", async () => {
+      // Reporter scenario: parent "German" has 4 direct cards; child
+      // "German::Verbs" has 8 new cards. AnkiConnect's new_count for the
+      // parent is already rolled up (12), but total_in_deck is 4 (own cards
+      // only). Without mirroring the rollup on total, we'd get impossible
+      // counts like new(12) > total(4). Collection-level counts must sum
+      // ROOT decks only (German) to avoid counting German::Verbs twice.
+      const parentId = 5000000001;
+      const childId = 5000000002;
+      ankiClient.invoke.mockImplementation((action: string) => {
+        if (action === "deckNamesAndIds") {
+          return Promise.resolve({
+            German: parentId,
+            "German::Verbs": childId,
+          });
+        }
+
+        if (action === "getDeckStats") {
+          return Promise.resolve({
+            [String(parentId)]: {
+              deck_id: parentId,
+              name: "German",
+              new_count: 12, // scheduler rollup: 4 parent new + 8 child new
+              learn_count: 0,
+              review_count: 0,
+              total_in_deck: 4, // parent's OWN cards only
+            },
+            [String(childId)]: {
+              deck_id: childId,
+              name: "Verbs",
+              new_count: 8,
+              learn_count: 0,
+              review_count: 0,
+              total_in_deck: 8,
+            },
+          });
+        }
+
+        if (action === "findCards") {
+          return Promise.resolve(Array.from({ length: 12 }, (_, i) => i + 1));
+        }
+
+        if (action === "getEaseFactors") {
+          return Promise.resolve(Array(12).fill(0));
+        }
+
+        if (action === "getIntervals") {
+          return Promise.resolve(Array(12).fill(0));
+        }
+
+        return Promise.resolve({});
+      });
+
+      const rawResult = await tool.execute({}, mockContext);
+      const result = parseToolResult(rawResult) as CollectionStatsResult;
+
+      // per_deck has one entry per deck, each with rolled-up totals.
+      const german = result.per_deck.find((d) => d.deck === "German");
+      const verbs = result.per_deck.find((d) => d.deck === "German::Verbs");
+
+      // Parent row: 4 own + 8 from child = 12 rolled-up total.
+      expect(german).toEqual({
+        deck: "German",
+        total: 12,
+        new: 12,
+        learning: 0,
+        review: 0,
+        other: 0,
+      });
+      // Child row: just its own cards (no descendants).
+      expect(verbs).toEqual({
+        deck: "German::Verbs",
+        total: 8,
+        new: 8,
+        learning: 0,
+        review: 0,
+        other: 0,
+      });
+
+      // Per-row invariant: no impossible arithmetic.
+      for (const row of result.per_deck) {
+        expect(row.new).toBeLessThanOrEqual(row.total);
+        expect(row.new + row.learning + row.review + row.other).toBe(row.total);
+      }
+
+      // Collection-level: sum of ROOT decks only. "German" is the only root;
+      // summing "German::Verbs" too would double-count.
+      expect(result.counts).toEqual({
+        total: 12,
+        new: 12,
+        learning: 0,
+        review: 0,
+        other: 0,
+      });
+      expect(result.counts.new).toBeLessThanOrEqual(result.counts.total);
+    });
+
     it("should handle no decks in collection", async () => {
       // Arrange
       ankiClient.invoke.mockImplementation((action: string) => {

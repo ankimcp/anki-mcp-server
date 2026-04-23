@@ -15,7 +15,9 @@ export class DeckStatsTool {
   @Tool({
     name: "deckStats",
     description:
-      'Get comprehensive statistics for a single deck including card counts, ease and interval distributions. Pass a deck name (e.g., "Japanese::JLPT N5") and optional bucket boundaries.',
+      'Get comprehensive statistics for a single deck including card counts, ease and interval distributions. Pass a deck name (e.g., "Japanese::JLPT N5") and optional bucket boundaries. ' +
+      "Counts are rolled up over descendant decks (parent decks include their children), matching Anki's deck browser. " +
+      "Invariant: total === new + learning + review + other.",
     parameters: z.object({
       deck: z.string().describe('Deck name (e.g., "Japanese::JLPT N5")'),
       easeBuckets: z
@@ -36,18 +38,43 @@ export class DeckStatsTool {
     outputSchema: z.object({
       success: z.boolean(),
       deck: z.string(),
-      counts: z.object({
-        total: z.number(),
-        new: z.number(),
-        learning: z.number(),
-        review: z.number(),
-        other: z
-          .number()
-          .describe(
-            "Cards not in new/learning/review (typically suspended or buried). " +
-              "Computed as total - new - learning - review.",
-          ),
-      }),
+      counts: z
+        .object({
+          total: z
+            .number()
+            .describe(
+              "Total cards in this deck AND all of its descendants. " +
+                'Example: stats for "German" include cards in "German::Verbs" ' +
+                'and "German::Verbs::Irregular". Invariant: ' +
+                "total === new + learning + review + other.",
+            ),
+          new: z
+            .number()
+            .describe(
+              "New cards (never studied), rolled up over descendant decks.",
+            ),
+          learning: z
+            .number()
+            .describe(
+              "Learning/relearning cards, rolled up over descendant decks.",
+            ),
+          review: z
+            .number()
+            .describe(
+              "Review cards (mature), rolled up over descendant decks.",
+            ),
+          other: z
+            .number()
+            .describe(
+              "Cards not in new/learning/review (typically suspended or buried), " +
+                "rolled up over descendant decks. " +
+                "Computed as total - new - learning - review.",
+            ),
+        })
+        .describe(
+          "Card counts rolled up over the deck and all of its descendants. " +
+            "Matches Anki's deck browser behaviour for parent decks.",
+        ),
       ease: z.object({
         mean: z.number(),
         median: z.number(),

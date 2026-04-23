@@ -228,6 +228,84 @@ describe("DeckStatsTool", () => {
     ).toBe(result.counts.total);
   });
 
+  it("should roll up child deck totals for parent deck (Bug #3 regression)", async () => {
+    // Reporter scenario: parent "German" has 4 direct cards, child "German::Verbs"
+    // has 8 new cards. AnkiConnect returns total_in_deck=4 for the parent BUT
+    // new_count=8 (scheduler rolls up child due cards). Without rollup on `total`,
+    // the result is impossible (new > total). After the fix, total must include
+    // the children's cards.
+    const parentName = "German";
+    const childName = "German::Verbs";
+    const parentId = 5000000001;
+    const childId = 5000000002;
+
+    ankiClient.invoke.mockImplementation((action: string, params?: any) => {
+      if (action === "deckNamesAndIds") {
+        return Promise.resolve({
+          [parentName]: parentId,
+          [childName]: childId,
+        });
+      }
+      if (action === "getDeckStats") {
+        // Parent subtree request must include both decks.
+        expect(params.decks).toEqual(
+          expect.arrayContaining([parentName, childName]),
+        );
+        return Promise.resolve({
+          [String(parentId)]: {
+            deck_id: parentId,
+            name: parentName,
+            // Scheduler buckets for parent are ALREADY rolled up:
+            // 4 parent new + 8 child new = 12 total new.
+            new_count: 12,
+            learn_count: 0,
+            review_count: 0,
+            total_in_deck: 4, // parent's OWN cards only (not children)
+          },
+          [String(childId)]: {
+            deck_id: childId,
+            name: "Verbs",
+            new_count: 8,
+            learn_count: 0,
+            review_count: 0,
+            total_in_deck: 8,
+          },
+        });
+      }
+      if (action === "findCards") {
+        // `deck:German` matches parent AND children (Anki default)
+        return Promise.resolve(Array.from({ length: 12 }, (_, i) => i + 1));
+      }
+      if (action === "getEaseFactors") {
+        return Promise.resolve(Array(12).fill(0));
+      }
+      if (action === "getIntervals") {
+        return Promise.resolve(Array(12).fill(0));
+      }
+      return Promise.resolve({});
+    });
+
+    const rawResult = await tool.execute({ deck: parentName }, mockContext);
+    const result = parseToolResult(rawResult) as DeckStatsResult;
+
+    // Rolled-up total includes children: 4 parent + 8 child = 12.
+    expect(result.counts).toEqual({
+      total: 12,
+      new: 12,
+      learning: 0,
+      review: 0,
+      other: 0,
+    });
+    // Invariant must hold — no impossible arithmetic.
+    expect(result.counts.new).toBeLessThanOrEqual(result.counts.total);
+    expect(
+      result.counts.new +
+        result.counts.learning +
+        result.counts.review +
+        result.counts.other,
+    ).toBe(result.counts.total);
+  });
+
   it("should use custom bucket boundaries", async () => {
     const deckName = "Custom Buckets";
 

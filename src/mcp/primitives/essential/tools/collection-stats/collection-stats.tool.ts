@@ -5,6 +5,10 @@ import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import type { AnkiDeckStatsResponse } from "@/mcp/types/anki.types";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
+import {
+  getRootDeckNames,
+  rollupDeckTotal,
+} from "@/mcp/utils/deck-hierarchy.utils";
 import { computeDistribution } from "@/mcp/utils/stats.utils";
 import type {
   CollectionStatsResult,
@@ -25,7 +29,9 @@ export class CollectionStatsTool {
     name: "collection_stats",
     description:
       "Get aggregated statistics across all decks in the collection including card counts, ease factor distribution, and interval distribution. " +
-      "Provides both collection-wide metrics and per-deck breakdown. " +
+      "Per-deck counts are rolled up over descendants (a parent deck includes its children), matching Anki's deck browser. " +
+      "Collection-level `counts` sum the ROOT decks only to avoid double-counting children. " +
+      "Invariant: for every deck and for the collection, total === new + learning + review + other. " +
       "Use this to analyze overall collection health and compare deck statistics. " +
       "Ease buckets and interval buckets can be customized to focus on specific ranges.",
     parameters: z.object({
@@ -64,18 +70,44 @@ export class CollectionStatsTool {
     }),
     outputSchema: z.object({
       total_decks: z.number(),
-      counts: z.object({
-        total: z.number(),
-        new: z.number(),
-        learning: z.number(),
-        review: z.number(),
-        other: z
-          .number()
-          .describe(
-            "Cards not in new/learning/review (typically suspended or buried). " +
-              "Computed as total - new - learning - review.",
-          ),
-      }),
+      counts: z
+        .object({
+          total: z
+            .number()
+            .describe(
+              "Total cards in the collection. Computed as the sum of " +
+                "ROOT-deck rolled-up totals (decks without `::` in the name), " +
+                "which prevents double-counting children. Invariant: " +
+                "total === new + learning + review + other.",
+            ),
+          new: z
+            .number()
+            .describe(
+              "New cards (never studied), summed over root decks' rolled-up counts.",
+            ),
+          learning: z
+            .number()
+            .describe(
+              "Learning/relearning cards, summed over root decks' rolled-up counts.",
+            ),
+          review: z
+            .number()
+            .describe(
+              "Review cards (mature), summed over root decks' rolled-up counts.",
+            ),
+          other: z
+            .number()
+            .describe(
+              "Cards not in new/learning/review (typically suspended or buried), " +
+                "summed over root decks' rolled-up counts. " +
+                "Computed as total - new - learning - review.",
+            ),
+        })
+        .describe(
+          "Aggregated card counts across the collection. Summed over ROOT " +
+            "decks only (names without `::`) so that a parent's rollup is not " +
+            "added on top of its children.",
+        ),
       ease: z.object({
         mean: z.number(),
         median: z.number(),
@@ -92,16 +124,23 @@ export class CollectionStatsTool {
         count: z.number(),
         buckets: z.record(z.string(), z.number()),
       }),
-      per_deck: z.array(
-        z.object({
-          deck: z.string(),
-          total: z.number(),
-          new: z.number(),
-          learning: z.number(),
-          review: z.number(),
-          other: z.number(),
-        }),
-      ),
+      per_deck: z
+        .array(
+          z.object({
+            deck: z.string(),
+            total: z.number(),
+            new: z.number(),
+            learning: z.number(),
+            review: z.number(),
+            other: z.number(),
+          }),
+        )
+        .describe(
+          "Per-deck breakdown with one entry per deck. Each entry's counts " +
+            'are rolled up over that deck\'s descendants (entry for "German" ' +
+            'includes cards from "German::Verbs"). Invariant per row: ' +
+            "total === new + learning + review + other.",
+        ),
     }),
     annotations: {
       title: "Collection Statistics",
@@ -167,19 +206,14 @@ export class CollectionStatsTool {
         throw new Error("Invalid getDeckStats response");
       }
 
-      // Build per-deck breakdown and aggregate counts. Iterate `deckNames` rather
-      // than `Object.values(deckStatsResponse)` so every deck gets an entry, even
-      // if getDeckStats silently omits it (observed e.g. with the Default deck on
-      // some Anki versions).
-      const per_deck: PerDeckStats[] = [];
-      const counts = {
-        total: 0,
-        new: 0,
-        learning: 0,
-        review: 0,
-        other: 0,
-      };
-
+      // AnkiConnect's `total_in_deck` covers only cards directly in that deck's
+      // table (no descendants), whereas new/learn/review come from the
+      // scheduler's due tree and ARE rolled up over descendants. To make the
+      // arithmetic close (`total >= new + learning + review`) we need to roll
+      // up `total_in_deck` ourselves. Build a name → own-total map once,
+      // then derive each deck's rolled-up total from it.
+      const perDeckOwnTotal = new Map<string, number>();
+      const perDeckStats = new Map<string, AnkiDeckStatsResponse>();
       const missingDecks: string[] = [];
 
       for (const deckName of deckNames) {
@@ -189,26 +223,30 @@ export class CollectionStatsTool {
 
         if (!deckStats) {
           missingDecks.push(deckName);
-          // AnkiConnect didn't return stats for this deck — emit a zero entry so
-          // per_deck.length stays consistent with total_decks.
-          per_deck.push({
-            deck: deckName,
-            total: 0,
-            new: 0,
-            learning: 0,
-            review: 0,
-            other: 0,
-          });
+          // AnkiConnect silently omitted this deck — fill with zeros so the
+          // rollup doesn't skip it and `per_deck.length` stays consistent
+          // with `total_decks`.
+          perDeckOwnTotal.set(deckName, 0);
           continue;
         }
 
-        const total = deckStats.total_in_deck ?? 0;
-        const newCount = deckStats.new_count ?? 0;
-        const learning = deckStats.learn_count ?? 0;
-        const review = deckStats.review_count ?? 0;
-        // `total_in_deck` from AnkiConnect includes every card in the deck,
-        // whereas new/learn/review come from the scheduler's due tree which
-        // excludes suspended (and buried) cards. The remainder lives in `other`.
+        perDeckOwnTotal.set(deckName, deckStats.total_in_deck ?? 0);
+        perDeckStats.set(deckName, deckStats);
+      }
+
+      // Build per-deck breakdown with rolled-up totals.
+      const per_deck: PerDeckStats[] = [];
+      for (const deckName of deckNames) {
+        const stats = perDeckStats.get(deckName);
+        const newCount = stats?.new_count ?? 0;
+        const learning = stats?.learn_count ?? 0;
+        const review = stats?.review_count ?? 0;
+
+        // Rolled-up total = this deck's own cards + all descendants' own cards.
+        // The scheduler's new/learn/review for a parent ALREADY include
+        // descendants, so rolling up `total` here keeps all four fields
+        // consistent and `other` non-negative.
+        const total = rollupDeckTotal(deckName, perDeckOwnTotal);
         const other = Math.max(0, total - newCount - learning - review);
 
         per_deck.push({
@@ -219,12 +257,6 @@ export class CollectionStatsTool {
           review,
           other,
         });
-
-        counts.total += total;
-        counts.new += newCount;
-        counts.learning += learning;
-        counts.review += review;
-        counts.other += other;
       }
 
       if (missingDecks.length > 0) {
@@ -234,8 +266,29 @@ export class CollectionStatsTool {
         );
       }
 
+      // Collection-level counts: sum over ROOT decks only. Each root's
+      // per-deck entry is already rolled up over its entire subtree, so
+      // summing all decks (including children) would double-count.
+      const rootDeckNames = new Set(getRootDeckNames(deckNames));
+      const counts = {
+        total: 0,
+        new: 0,
+        learning: 0,
+        review: 0,
+        other: 0,
+      };
+      for (const entry of per_deck) {
+        if (!rootDeckNames.has(entry.deck)) continue;
+        counts.total += entry.total;
+        counts.new += entry.new;
+        counts.learning += entry.learning;
+        counts.review += entry.review;
+        counts.other += entry.other;
+      }
+
       this.logger.log(
-        `Aggregated counts: ${counts.total} total cards across ${deckNames.length} decks`,
+        `Aggregated counts: ${counts.total} total cards across ${rootDeckNames.size} root deck(s) ` +
+          `(${deckNames.length} total decks including children)`,
       );
       await context.reportProgress({ progress: 40, total: 100 });
 
