@@ -1,0 +1,136 @@
+name: Publish to MCP Registry
+
+# Triggers:
+#   1. workflow_dispatch — manual trigger; maintainer picks ref/version.
+#   2. workflow_run — automatically chained to the npm publish workflow.
+#      Fires only when npm publish completes successfully (gated by the
+#      `if:` on the job). Chaining on npm-publish (rather than Release)
+#      guarantees the npm tarball is already on registry.npmjs.org by the
+#      time this workflow starts, so no propagation polling is needed.
+#      When triggered this way, we check out
+#      github.event.workflow_run.head_sha so version/server.json reflect
+#      the commit that was actually released.
+#
+# IMPORTANT CAVEAT: workflow_run always runs the workflow FILE at the
+# default branch (main), not at the tag/SHA that fired the upstream
+# workflow. We only checkout head_sha for the *repo contents*; the YAML
+# itself is whatever is on main at dispatch time. See:
+# https://docs.github.com/en/actions/writing-workflows/choosing-when-workflows-run/events-that-trigger-workflows#workflow_run
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to publish (tag, branch, or SHA). Defaults to the workflow branch.'
+        required: false
+        default: ''
+      version:
+        description: 'Version to publish (e.g. 0.18.3). Defaults to the version in package.json at the chosen ref.'
+        required: false
+        default: ''
+  workflow_run:
+    workflows: ['Publish to npm (@ankimcp/anki-mcp-server)']
+    types: [completed]
+
+# Key on the upstream head_sha for workflow_run, and on the chosen ref
+# (or run id) for manual dispatch. Ensures two runs for the same release
+# commit cannot race. Version is resolved later from package.json, so we
+# cannot key on it directly at the trigger level.
+concurrency:
+  group: mcp-registry-publish-${{ github.event.workflow_run.head_sha || inputs.ref || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Skip this job when chained from a failed npm publish run.
+    # For workflow_dispatch, conclusion is empty and the `!= 'failure'`
+    # style check would also work, but we explicitly allow dispatch.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    permissions:
+      contents: read
+
+    steps:
+      - name: Resolve checkout ref
+        id: resolve_ref
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+          WR_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            REF="$WR_HEAD_SHA"
+            echo "workflow_run: checking out head_sha $REF"
+          elif [ -n "$INPUT_REF" ]; then
+            REF="$INPUT_REF"
+            echo "workflow_dispatch: checking out input ref $REF"
+          else
+            REF=""
+            echo "workflow_dispatch: checking out default (workflow branch)"
+          fi
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.resolve_ref.outputs.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Resolve version
+        id: resolve_version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+            echo "Using version from workflow input: $VERSION"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            echo "Using version from package.json: $VERSION"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Verify server.json exists
+        run: |
+          if [ ! -f server.json ]; then
+            echo "::error::server.json not found at repo root. See https://modelcontextprotocol.io/docs/registry/quickstart"
+            exit 1
+          fi
+
+      - name: Sync version into server.json
+        env:
+          VERSION: ${{ steps.resolve_version.outputs.version }}
+        run: |
+          jq --arg v "$VERSION" '
+            .version = $v
+            | if .packages then .packages |= map(.version = $v) else . end
+          ' server.json > server.tmp
+          mv server.tmp server.json
+          echo "server.json (after version sync):"
+          cat server.json
+
+      - name: Install mcp-publisher
+        run: |
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/download/v1.6.0/mcp-publisher_linux_amd64.tar.gz" \
+            | tar xz mcp-publisher
+          ./mcp-publisher --help
+
+      - name: Authenticate to MCP Registry (DNS / ankimcp.ai)
+        env:
+          MCP_REGISTRY_PRIVATE_KEY: ${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}
+        run: |
+          if [ -z "$MCP_REGISTRY_PRIVATE_KEY" ]; then
+            echo "::error::MCP_REGISTRY_PRIVATE_KEY secret is not set."
+            exit 1
+          fi
+          ./mcp-publisher login dns \
+            --domain ankimcp.ai \
+            --private-key "$MCP_REGISTRY_PRIVATE_KEY"
+
+      - name: Publish server to MCP Registry
+        run: ./mcp-publisher publish

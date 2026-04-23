@@ -1,0 +1,23 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "ai.ankimcp/anki-mcp-server",
+  "title": "Anki MCP Server",
+  "description": "MCP server for Anki flashcards: adaptive review, notes, media, and deck management via AnkiConnect.",
+  "version": "0.18.4",
+  "repository": {
+    "url": "https://github.com/ankimcp/anki-mcp-server",
+    "source": "github"
+  },
+  "websiteUrl": "https://ankimcp.ai",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@ankimcp/anki-mcp-server",
+      "version": "0.18.4",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
