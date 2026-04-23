@@ -22,6 +22,10 @@ nest-cli.json
 # Claude development files
 /.claude/
 /.claude-draft/
+/.docs/
+
+# Icon source (only generated icon.png is needed at runtime)
+/assets/
 
 # Docker development files
 /.docker/
@@ -32,8 +36,16 @@ nest-cli.json
 # NPM bin scripts (package.json bin handles this)
 /bin/
 
-# Documentation (available on GitHub)
-/docs/
+# Documentation (available on GitHub), except screenshots which ship in the bundle.
+# Three-part pattern required because of how the mcpb walker + `ignore` library
+# interact:
+# - /docs/* excludes all immediate children (files and subdirs)
+# - !/docs/screenshots (no trailing slash) re-includes the dir itself so the
+#   walker descends into it (queries use no trailing slash)
+# - !/docs/screenshots/* re-includes the files inside
+/docs/*
+!/docs/screenshots
+!/docs/screenshots/*
 
 # Git and GitHub
 .git/

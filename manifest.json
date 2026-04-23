@@ -32,6 +32,11 @@
   "privacy_policies": [
     "https://ankimcp.ai/privacy/"
   ],
+  "screenshots": [
+    "docs/screenshots/01-extension-config.png",
+    "docs/screenshots/02-create-and-review.png",
+    "docs/screenshots/03-adaptive-review.png"
+  ],
   "icon": "icon.png",
   "tools": [
     {
