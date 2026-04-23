@@ -46,6 +46,7 @@ export class DeleteNotesTool {
       hint: z.string().optional(),
     }),
     annotations: {
+      title: "Delete Notes",
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: false,

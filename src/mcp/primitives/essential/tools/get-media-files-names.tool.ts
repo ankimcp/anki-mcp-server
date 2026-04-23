@@ -30,6 +30,7 @@ export class GetMediaFilesNamesTool {
       pattern: z.string().optional(),
     }),
     annotations: {
+      title: "List Media Files",
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,

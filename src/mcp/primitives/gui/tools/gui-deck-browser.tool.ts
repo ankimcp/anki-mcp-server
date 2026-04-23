@@ -28,8 +28,10 @@ export class GuiDeckBrowserTool {
       hint: z.string(),
     }),
     annotations: {
+      title: "Open Deck Browser",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async guiDeckBrowser(_args: Record<string, never>, context: Context) {

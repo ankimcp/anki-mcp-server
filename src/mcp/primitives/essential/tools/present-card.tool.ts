@@ -49,8 +49,10 @@ export class PresentCardTool {
       instruction: z.string(),
     }),
     annotations: {
+      title: "Present Card for Review",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async presentCard(

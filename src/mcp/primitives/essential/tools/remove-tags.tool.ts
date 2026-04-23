@@ -33,6 +33,7 @@ export class RemoveTagsTool {
       tagsRemoved: z.array(z.string()),
     }),
     annotations: {
+      title: "Remove Tags",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,

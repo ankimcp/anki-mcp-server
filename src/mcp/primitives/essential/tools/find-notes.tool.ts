@@ -39,8 +39,10 @@ export class FindNotesTool {
       hint: z.string().optional(),
     }),
     annotations: {
+      title: "Find Notes",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async findNotes({ query }: { query: string }, context: Context) {

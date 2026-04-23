@@ -40,8 +40,10 @@ export class GetTagsTool {
       totalUnfiltered: z.number().optional(),
     }),
     annotations: {
+      title: "List Tags",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async getTags({ pattern }: { pattern?: string }, context: Context) {

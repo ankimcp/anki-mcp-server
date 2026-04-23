@@ -29,8 +29,10 @@ export class GuiShowAnswerTool {
       hint: z.string(),
     }),
     annotations: {
+      title: "Show Card Answer",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async guiShowAnswer(_args: Record<string, never>, context: Context) {

@@ -97,8 +97,10 @@ export class CollectionStatsTool {
       ),
     }),
     annotations: {
+      title: "Collection Statistics",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async execute(params: CollectionStatsParams, context: Context) {

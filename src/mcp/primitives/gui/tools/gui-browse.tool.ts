@@ -51,8 +51,10 @@ export class GuiBrowseTool {
       hint: z.string(),
     }),
     annotations: {
+      title: "Open Card Browser",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async guiBrowse(

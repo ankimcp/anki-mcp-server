@@ -25,6 +25,7 @@ export class SyncTool {
       timestamp: z.string(),
     }),
     annotations: {
+      title: "Sync with AnkiWeb",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,

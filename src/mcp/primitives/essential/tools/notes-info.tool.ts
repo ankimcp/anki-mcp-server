@@ -54,8 +54,10 @@ export class NotesInfoTool {
       hint: z.string(),
     }),
     annotations: {
+      title: "Get Notes Info",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async notesInfo({ notes }: { notes: number[] }, context: Context) {

@@ -47,8 +47,10 @@ export class GuiCurrentCardTool {
       hint: z.string(),
     }),
     annotations: {
+      title: "Get Current Review Card",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async guiCurrentCard(_args: Record<string, never>, context: Context) {

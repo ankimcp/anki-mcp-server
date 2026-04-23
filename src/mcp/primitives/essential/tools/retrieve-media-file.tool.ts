@@ -31,6 +31,7 @@ export class RetrieveMediaFileTool {
       found: z.boolean(),
     }),
     annotations: {
+      title: "Retrieve Media File",
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,

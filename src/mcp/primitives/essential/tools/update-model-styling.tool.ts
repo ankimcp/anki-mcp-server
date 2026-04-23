@@ -50,8 +50,10 @@ export class UpdateModelStylingTool {
       cssLengthChange: z.number().optional(),
     }),
     annotations: {
+      title: "Update Note Type CSS",
       readOnlyHint: false,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async updateModelStyling(

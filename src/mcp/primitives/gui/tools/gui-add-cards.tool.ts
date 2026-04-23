@@ -44,8 +44,10 @@ export class GuiAddCardsTool {
       hint: z.string(),
     }),
     annotations: {
+      title: "Open Add Cards Dialog",
       readOnlyHint: false,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async guiAddCards(

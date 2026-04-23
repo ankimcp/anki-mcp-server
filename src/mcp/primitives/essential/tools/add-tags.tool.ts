@@ -33,6 +33,7 @@ export class AddTagsTool {
       tagsAdded: z.array(z.string()),
     }),
     annotations: {
+      title: "Add Tags",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,

@@ -33,6 +33,7 @@ export class ReplaceTagsTool {
       replaceWithTag: z.string(),
     }),
     annotations: {
+      title: "Replace Tag",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,

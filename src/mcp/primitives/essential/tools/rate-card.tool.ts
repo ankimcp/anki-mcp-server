@@ -46,8 +46,10 @@ export class RateCardTool {
         .nullable(),
     }),
     annotations: {
+      title: "Rate Card",
       readOnlyHint: false,
       destructiveHint: false,
+      idempotentHint: false,
     },
   })
   async rateCard(

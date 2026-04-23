@@ -72,8 +72,10 @@ export class UpdateNoteFieldsTool {
       hint: z.string(),
     }),
     annotations: {
+      title: "Update Note Fields",
       readOnlyHint: false,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async updateNoteFields(

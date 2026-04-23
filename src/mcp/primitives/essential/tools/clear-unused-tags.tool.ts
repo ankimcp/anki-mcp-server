@@ -22,6 +22,7 @@ export class ClearUnusedTagsTool {
       message: z.string(),
     }),
     annotations: {
+      title: "Clear Unused Tags",
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: true,

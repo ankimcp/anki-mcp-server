@@ -76,8 +76,10 @@ export class AddNoteTool {
       }),
     }),
     annotations: {
+      title: "Add Note",
       readOnlyHint: false,
       destructiveHint: false,
+      idempotentHint: false,
     },
   })
   async addNote(

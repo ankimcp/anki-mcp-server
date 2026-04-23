@@ -65,8 +65,10 @@ export class GetDueCardsTool {
       message: z.string(),
     }),
     annotations: {
+      title: "Get Due Cards",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async getDueCards(

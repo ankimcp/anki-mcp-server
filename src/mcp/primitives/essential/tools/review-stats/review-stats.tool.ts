@@ -101,8 +101,10 @@ export class ReviewStatsTool {
       }),
     }),
     annotations: {
+      title: "Review Statistics",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async execute(

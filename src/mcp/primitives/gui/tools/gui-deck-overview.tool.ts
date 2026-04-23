@@ -33,8 +33,10 @@ export class GuiDeckOverviewTool {
       hint: z.string(),
     }),
     annotations: {
+      title: "Open Deck Overview",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async guiDeckOverview({ name }: { name: string }, context: Context) {

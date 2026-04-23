@@ -29,6 +29,7 @@ export class DeleteMediaFileTool {
       message: z.string(),
     }),
     annotations: {
+      title: "Delete Media File",
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: true,

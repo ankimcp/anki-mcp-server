@@ -39,8 +39,10 @@ export class ModelStylingTool {
       hint: z.string(),
     }),
     annotations: {
+      title: "Get Note Type CSS",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async modelStyling({ modelName }: { modelName: string }, context: Context) {

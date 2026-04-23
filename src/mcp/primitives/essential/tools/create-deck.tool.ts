@@ -34,6 +34,7 @@ export class CreateDeckTool {
       childDeck: z.string().optional(),
     }),
     annotations: {
+      title: "Create Deck",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,

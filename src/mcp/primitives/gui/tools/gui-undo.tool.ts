@@ -29,8 +29,10 @@ export class GuiUndoTool {
       hint: z.string(),
     }),
     annotations: {
+      title: "Undo Last Action",
       readOnlyHint: false,
       destructiveHint: false,
+      idempotentHint: false,
     },
   })
   async guiUndo(_args: Record<string, never>, context: Context) {

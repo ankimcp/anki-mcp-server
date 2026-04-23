@@ -30,8 +30,10 @@ export class GuiSelectedNotesTool {
       hint: z.string(),
     }),
     annotations: {
+      title: "Get Selected Notes",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async guiSelectedNotes(_args: Record<string, never>, context: Context) {

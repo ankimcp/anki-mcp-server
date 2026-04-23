@@ -92,8 +92,10 @@ export class AddNotesTool {
       ),
     }),
     annotations: {
+      title: "Batch Add Notes",
       readOnlyHint: false,
       destructiveHint: false,
+      idempotentHint: false,
     },
   })
   async addNotes(

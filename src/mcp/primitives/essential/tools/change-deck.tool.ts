@@ -27,6 +27,7 @@ export class ChangeDeckTool {
       targetDeck: z.string(),
     }),
     annotations: {
+      title: "Move Cards to Deck",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,

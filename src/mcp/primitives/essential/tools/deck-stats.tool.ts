@@ -60,6 +60,7 @@ export class DeckStatsTool {
       }),
     }),
     annotations: {
+      title: "Deck Statistics",
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,

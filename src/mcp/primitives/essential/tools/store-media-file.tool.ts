@@ -43,6 +43,7 @@ export class StoreMediaFileTool {
       prefixedWithUnderscore: z.boolean(),
     }),
     annotations: {
+      title: "Store Media File",
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: false,

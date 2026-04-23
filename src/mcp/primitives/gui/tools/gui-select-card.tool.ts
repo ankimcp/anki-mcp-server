@@ -37,8 +37,10 @@ export class GuiSelectCardTool {
       hint: z.string(),
     }),
     annotations: {
+      title: "Select Card in Browser",
       readOnlyHint: false,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async guiSelectCard({ card }: { card: number }, context: Context) {

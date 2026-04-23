@@ -80,8 +80,10 @@ export class CreateModelTool {
       warnings: z.array(z.string()).optional(),
     }),
     annotations: {
+      title: "Create Note Type",
       readOnlyHint: false,
       destructiveHint: false,
+      idempotentHint: false,
     },
   })
   async createModel(

@@ -52,6 +52,7 @@ export class ListDecksTool {
       message: z.string().optional(),
     }),
     annotations: {
+      title: "List Decks",
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,

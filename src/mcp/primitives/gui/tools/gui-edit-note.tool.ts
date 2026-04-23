@@ -34,8 +34,10 @@ export class GuiEditNoteTool {
       hint: z.string(),
     }),
     annotations: {
+      title: "Open Note Editor",
       readOnlyHint: false,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async guiEditNote({ note }: { note: number }, context: Context) {

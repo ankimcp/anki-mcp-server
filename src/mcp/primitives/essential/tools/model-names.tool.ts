@@ -31,8 +31,10 @@ export class ModelNamesTool {
       }),
     }),
     annotations: {
+      title: "List Note Types",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async modelNames(_args: Record<string, never>, context: Context) {

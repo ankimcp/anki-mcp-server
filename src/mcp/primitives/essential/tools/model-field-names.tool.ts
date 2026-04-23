@@ -34,8 +34,10 @@ export class ModelFieldNamesTool {
       hint: z.string().optional(),
     }),
     annotations: {
+      title: "Get Note Type Fields",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
     },
   })
   async modelFieldNames(
