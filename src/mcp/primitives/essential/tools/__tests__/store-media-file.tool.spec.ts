@@ -396,8 +396,12 @@ describe("StoreMediaFileTool", () => {
           mockContext,
         );
 
-        const invokeCall = ankiClient.invoke.mock.calls[0];
-        expect(invokeCall[1].path).not.toContain("..");
+        expect(ankiClient.invoke).toHaveBeenCalledWith(
+          "storeMediaFile",
+          expect.objectContaining({
+            path: expect.not.stringContaining(".."),
+          }),
+        );
       });
     });
 

@@ -717,12 +717,16 @@ describe("UpdateNoteFieldsTool", () => {
         );
 
         // Verify the filename was sanitized in the AnkiConnect call
-        const updateCall = ankiClient.invoke.mock.calls.find(
-          (call: any[]) => call[0] === "updateNoteFields",
+        expect(ankiClient.invoke).toHaveBeenCalledWith(
+          "updateNoteFields",
+          expect.objectContaining({
+            note: expect.objectContaining({
+              audio: expect.arrayContaining([
+                expect.objectContaining({ filename: "evil.mp3" }),
+              ]),
+            }),
+          }),
         );
-        if (updateCall) {
-          expect(updateCall[1].note.audio[0].filename).toBe("evil.mp3");
-        }
       });
     });
   });
