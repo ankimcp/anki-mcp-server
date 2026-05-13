@@ -95,7 +95,20 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+          # MCP Registry has no dist-tag concept — one listing per server
+          # name. Prereleases (SemVer identifier after `-`, e.g. 0.18.4-tunnel)
+          # must NOT replace the stable entry. Flag prereleases and skip the
+          # remaining steps so the workflow still reports green without
+          # publishing.
+          if [[ "$VERSION" =~ - ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$VERSION is a prerelease; skipping MCP Registry publish."
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Verify server.json exists
+        if: steps.resolve_version.outputs.is_prerelease == 'false'
         run: |
           if [ ! -f server.json ]; then
             echo "::error::server.json not found at repo root. See https://modelcontextprotocol.io/docs/registry/quickstart"
@@ -103,6 +116,7 @@ jobs:
           fi
 
       - name: Sync version into server.json
+        if: steps.resolve_version.outputs.is_prerelease == 'false'
         env:
           VERSION: ${{ steps.resolve_version.outputs.version }}
         run: |
@@ -115,12 +129,14 @@ jobs:
           cat server.json
 
       - name: Install mcp-publisher
+        if: steps.resolve_version.outputs.is_prerelease == 'false'
         run: |
           curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/download/v1.6.0/mcp-publisher_linux_amd64.tar.gz" \
             | tar xz mcp-publisher
           ./mcp-publisher --help
 
       - name: Authenticate to MCP Registry (DNS / ankimcp.ai)
+        if: steps.resolve_version.outputs.is_prerelease == 'false'
         env:
           MCP_REGISTRY_PRIVATE_KEY: ${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}
         run: |
@@ -133,4 +149,5 @@ jobs:
             --private-key "$MCP_REGISTRY_PRIVATE_KEY"
 
       - name: Publish server to MCP Registry
+        if: steps.resolve_version.outputs.is_prerelease == 'false'
         run: ./mcp-publisher publish
