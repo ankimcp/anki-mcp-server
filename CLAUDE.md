@@ -58,12 +58,17 @@ src/
 ├── main-tunnel.ts           # Tunnel bootstrap: auth commands + WebSocket tunnel
 ├── app.module.ts            # Root module with forStdio()/forHttp()/forTunnel() factories
 ├── bootstrap.ts             # Shared logger setup (pino → NestJS LoggerService)
-├── cli.ts                   # Commander CLI with subcommands: default (server), --tunnel, --login, --logout
+├── cli.ts                   # Commander entrypoint: option parsing, subcommand dispatch
+├── cli/cli-output.ts        # User-facing print helpers (cli.success/error/info/box) — separate from cli.ts so non-CLI code can use it without pulling in Commander
 ├── app-config.service.ts    # IAnkiConfig implementation (reads from validated AppConfig)
 ├── config/                  # Zod-validated config system (schema, factory, APP_CONFIG token)
+├── services/ngrok.service.ts # Optional ngrok subprocess for HTTP-mode public tunneling
+├── http/guards/             # HTTP-only guards (Origin allowlist)
 ├── tunnel/                  # Tunnel mode: WebSocket client, OAuth device flow, credentials
 │   ├── tunnel.client.ts     # WebSocket client for tunnel server
 │   ├── tunnel-mcp.service.ts # Bridges MCP ↔ tunnel via InMemoryTransport
+│   ├── in-memory.transport.ts # MCP transport that connects to TunnelClient in-process
+│   ├── tunnel.protocol.ts   # WS message type definitions (request/response/ping/error)
 │   ├── device-flow.service.ts # OAuth device flow authentication
 │   ├── credentials.service.ts # Persistent credential storage
 │   └── commands/            # CLI command handlers (login, logout, tunnel)
@@ -138,7 +143,7 @@ These are upstream behaviors that shape tool design — surface them in tool des
 
 1. **CLI Output** (user-facing, clean, no timestamps):
    ```typescript
-   import { cli } from '@/cli';
+   import { cli } from '@/cli/cli-output';
 
    cli.success('Connected to Anki');      // ✓ Connected to Anki
    cli.error('Connection failed');         // ✗ Connection failed
@@ -211,6 +216,8 @@ See `src/mcp/primitives/essential/tools/sync.tool.ts` for minimal example.
 Three distinct tiers — pick the right one for the change:
 
 - **Unit** — `src/**/__tests__/*.spec.ts`, colocated with source. Mock `AnkiConnectClient`. Fast, run on every push.
+  - Tool-level tests live next to each tool (e.g. `src/mcp/primitives/essential/tools/__tests__/`).
+  - App-level wiring tests live in `src/__tests__/` (`app-config.service.spec.ts`, `cli.spec.ts`, `main-http.spec.ts`) — bootstrap, CLI parsing, config validation.
 - **Workflows** — `test/workflows/*.spec.ts` (e.g., `note-management.spec.ts`, `review-session.spec.ts`). Multi-tool scenarios still against a mocked client. Use for cross-tool invariants.
 - **E2E** — `test/e2e/*.e2e-spec.ts`. Hits a real Anki + AnkiConnect running in Docker. Covers both STDIO and HTTP transports.
 
