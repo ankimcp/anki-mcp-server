@@ -123,6 +123,7 @@ export class DeviceFlowService {
         .post(this.deviceEndpoint, {
           body: new URLSearchParams({
             client_id: this.config.authClientId,
+            scope: "openid offline_access",
           }).toString(),
         })
         .json<DeviceCodeResponse>();

@@ -206,6 +206,12 @@ describe("DeviceFlowService", () => {
           body: expect.stringContaining("client_id=ankimcp-cli"),
         }),
       );
+      expect(mockKyInstance.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.stringContaining("scope=openid+offline_access"),
+        }),
+      );
       expect(loggerSpy).toHaveBeenCalledWith(
         "Requesting device code from tunnel service",
       );
