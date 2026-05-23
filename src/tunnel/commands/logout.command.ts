@@ -1,10 +1,12 @@
 import { CredentialsService } from "../credentials.service";
-import { cli } from "@/cli/cli-output";
+import type { Cli } from "@/cli/cli-output";
 
 /**
  * Handle logout command
  *
  * Clears stored credentials from ~/.ankimcp/credentials.json
+ *
+ * @param cli - User-facing output surface (constructed at bootstrap).
  *
  * @example
  * ```bash
@@ -18,7 +20,7 @@ import { cli } from "@/cli/cli-output";
  * Not logged in. Nothing to do.
  * ```
  */
-export async function handleLogout(): Promise<void> {
+export async function handleLogout(cli: Cli): Promise<void> {
   const credentialsService = new CredentialsService();
 
   // Check if credentials exist

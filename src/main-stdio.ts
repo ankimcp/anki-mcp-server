@@ -5,7 +5,7 @@ import {
   createLoggerService,
   LOG_DESTINATION,
 } from "./bootstrap";
-import { cli } from "./cli/cli-output";
+import { createCli } from "./cli/cli-output";
 import { buildConfigInput } from "./config";
 
 /**
@@ -28,6 +28,9 @@ function parseStdioArgs(): { readOnly: boolean; ankiConnect?: string } {
 
   return { readOnly, ankiConnect };
 }
+
+// STDIO mode has no --debug flag of its own; stack traces are off by default.
+const cli = createCli(false);
 
 async function bootstrap() {
   // Parse CLI args for STDIO mode

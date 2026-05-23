@@ -1,4 +1,10 @@
-import { parseCliArgs, CliOptions, displayStartupBanner } from "../cli";
+import {
+  parseCliArgs,
+  parseOptionalUrl,
+  CliOptions,
+  displayStartupBanner,
+} from "../cli";
+import { createCli, type Cli } from "../cli/cli-output";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -353,7 +359,7 @@ describe("CLI Module", () => {
         debug: false,
       };
 
-      displayStartupBanner(options);
+      displayStartupBanner(createCli(false), options);
 
       const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
 
@@ -383,7 +389,7 @@ describe("CLI Module", () => {
         debug: false,
       };
 
-      displayStartupBanner(options);
+      displayStartupBanner(createCli(false), options);
 
       const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
 
@@ -410,7 +416,7 @@ describe("CLI Module", () => {
         debug: false,
       };
 
-      displayStartupBanner(options);
+      displayStartupBanner(createCli(false), options);
 
       const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
 
@@ -435,7 +441,7 @@ describe("CLI Module", () => {
         debug: false,
       };
 
-      displayStartupBanner(options);
+      displayStartupBanner(createCli(false), options);
 
       const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
 
@@ -459,7 +465,7 @@ describe("CLI Module", () => {
         debug: false,
       };
 
-      displayStartupBanner(options);
+      displayStartupBanner(createCli(false), options);
 
       const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
 
@@ -483,7 +489,7 @@ describe("CLI Module", () => {
         debug: false,
       };
 
-      displayStartupBanner(options);
+      displayStartupBanner(createCli(false), options);
 
       const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
 
@@ -508,7 +514,7 @@ describe("CLI Module", () => {
         debug: false,
       };
 
-      displayStartupBanner(options);
+      displayStartupBanner(createCli(false), options);
 
       const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
 
@@ -516,5 +522,99 @@ describe("CLI Module", () => {
 
       consoleLogSpy.mockRestore();
     });
+  });
+});
+
+/**
+ * Fix #15: parse-boundary URL validation.
+ *
+ * The risk being guarded: `--tunnel ""` (e.g. from a shell expansion of an
+ * unset env var) is a user-supplied override intent. Silently falling back to
+ * the env/default URL is a footgun — these tests pin the strict behaviour.
+ */
+describe("parseOptionalUrl", () => {
+  function makeStubCli(): jest.Mocked<Cli> {
+    return {
+      success: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      info: jest.fn(),
+      blank: jest.fn(),
+      box: jest.fn(),
+      dim: jest.fn(),
+    };
+  }
+
+  let exitSpy: jest.SpyInstance;
+  let cli: jest.Mocked<Cli>;
+
+  beforeEach(() => {
+    cli = makeStubCli();
+    exitSpy = jest.spyOn(process, "exit").mockImplementation(((
+      _code?: number,
+    ) => {
+      throw new Error("exit");
+    }) as never);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("returns undefined when the flag was not passed (raw === false)", () => {
+    expect(parseOptionalUrl(false, "--tunnel", cli)).toBeUndefined();
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(cli.error).not.toHaveBeenCalled();
+  });
+
+  it("returns undefined when the flag was passed without a value (raw === true)", () => {
+    expect(parseOptionalUrl(true, "--tunnel", cli)).toBeUndefined();
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(cli.error).not.toHaveBeenCalled();
+  });
+
+  it("returns a valid ws:// URL unchanged", () => {
+    expect(parseOptionalUrl("ws://localhost:3004", "--tunnel", cli)).toBe(
+      "ws://localhost:3004",
+    );
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns a valid wss:// URL unchanged", () => {
+    expect(parseOptionalUrl("wss://tunnel.ankimcp.ai", "--tunnel", cli)).toBe(
+      "wss://tunnel.ankimcp.ai",
+    );
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects an empty string (the shell-expansion footgun) with exit 1", () => {
+    expect(() => parseOptionalUrl("", "--tunnel", cli)).toThrow("exit");
+    expect(cli.error).toHaveBeenCalledWith(
+      expect.stringMatching(/Invalid --tunnel URL/),
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("rejects a garbage non-URL string with exit 1", () => {
+    expect(() => parseOptionalUrl("not a url", "--tunnel", cli)).toThrow(
+      "exit",
+    );
+    expect(cli.error).toHaveBeenCalledWith(
+      expect.stringMatching(/Invalid --tunnel URL/),
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("rejects a non-ws/wss protocol with exit 1", () => {
+    expect(() =>
+      parseOptionalUrl("https://tunnel.ankimcp.ai", "--tunnel", cli),
+    ).toThrow("exit");
+    expect(cli.error).toHaveBeenCalledWith(expect.stringMatching(/protocol/i));
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("includes the flag name in the error message for both --tunnel and --login", () => {
+    expect(() => parseOptionalUrl("", "--login", cli)).toThrow("exit");
+    expect(cli.error).toHaveBeenCalledWith(expect.stringMatching(/--login/));
   });
 });

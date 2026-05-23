@@ -6,9 +6,7 @@ import {
   blank,
   box,
   dim,
-  cli,
-  setDebugMode,
-  isDebugMode,
+  createCli,
 } from "../cli-output";
 
 describe("CLI Output Utility", () => {
@@ -26,8 +24,9 @@ describe("CLI Output Utility", () => {
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();
     consoleWarnSpy.mockRestore();
-    // Reset debug mode after each test
-    setDebugMode(false);
+    // No module-level debug state to reset — that was the whole point of the
+    // refactor. Each test that cares about debug behaviour constructs its own
+    // `createCli(debug)` instance below.
   });
 
   describe("success()", () => {
@@ -61,36 +60,38 @@ describe("CLI Output Utility", () => {
       );
     });
 
-    it("should not show stack trace when debug mode is off", () => {
+    it("defaults debug to false: stack trace omitted when debug param not passed", () => {
       const testError = new Error("Test error with stack");
       error("Test error", testError);
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // Only the message, no stack
     });
 
-    it("should show stack trace when debug mode is on", () => {
-      setDebugMode(true);
+    it("should not show stack trace when debug=false", () => {
       const testError = new Error("Test error with stack");
-      error("Test error", testError);
+      error("Test error", testError, false);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("should show stack trace when debug=true", () => {
+      const testError = new Error("Test error with stack");
+      error("Test error", testError, true);
       expect(consoleErrorSpy).toHaveBeenCalledTimes(2); // Message + stack
-      // Second call should contain the stack trace
       expect(consoleErrorSpy).toHaveBeenNthCalledWith(
         2,
         expect.stringContaining("Error: Test error with stack"),
       );
     });
 
-    it("should not show stack trace when error object is not provided", () => {
-      setDebugMode(true);
-      error("Test error");
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // Only the message
+    it("should not show stack trace when error object is not provided (even with debug=true)", () => {
+      error("Test error", undefined, true);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
     });
 
-    it("should not show stack trace when error object has no stack", () => {
-      setDebugMode(true);
+    it("should not show stack trace when error object has no stack (even with debug=true)", () => {
       const testError = new Error("Test error");
       delete testError.stack;
-      error("Test error", testError);
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // Only the message
+      error("Test error", testError, true);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -102,7 +103,6 @@ describe("CLI Output Utility", () => {
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining("Test warning"),
       );
-      // Verify it contains ANSI yellow color code
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining("\x1b[33m"),
       );
@@ -114,7 +114,6 @@ describe("CLI Output Utility", () => {
       info("Test info");
       expect(consoleLogSpy).toHaveBeenCalledTimes(1);
       expect(consoleLogSpy).toHaveBeenCalledWith("Test info");
-      // Should not contain icons
       expect(consoleLogSpy).not.toHaveBeenCalledWith(
         expect.stringContaining("✓"),
       );
@@ -142,7 +141,6 @@ describe("CLI Output Utility", () => {
 
       const calls = consoleLogSpy.mock.calls.map((call) => call[0]);
 
-      // Verify box drawing characters
       expect(calls[0]).toContain("┌");
       expect(calls[0]).toContain("─");
       expect(calls[0]).toContain("┐");
@@ -170,7 +168,6 @@ describe("CLI Output Utility", () => {
 
       const calls = consoleLogSpy.mock.calls.map((call) => call[0]);
 
-      // All lines should have same width (based on content length)
       const widths = calls.map((line) => line.length);
       expect(new Set(widths).size).toBe(1); // All widths should be equal
     });
@@ -183,53 +180,78 @@ describe("CLI Output Utility", () => {
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining("Secondary text"),
       );
-      // Verify it contains ANSI dim color code
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining("\x1b[2m"),
       );
-      // Verify reset code is present
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining("\x1b[0m"),
       );
     });
   });
 
-  describe("cli namespace", () => {
-    it("should export all functions in cli namespace", () => {
-      expect(cli.success).toBe(success);
-      expect(cli.error).toBe(error);
-      expect(cli.warn).toBe(warn);
-      expect(cli.info).toBe(info);
-      expect(cli.blank).toBe(blank);
-      expect(cli.box).toBe(box);
-      expect(cli.dim).toBe(dim);
-      expect(cli.setDebugMode).toBe(setDebugMode);
-      expect(cli.isDebugMode).toBe(isDebugMode);
+  describe("createCli()", () => {
+    it("returns an object exposing the full Cli surface", () => {
+      const cli = createCli(false);
+      expect(typeof cli.success).toBe("function");
+      expect(typeof cli.error).toBe("function");
+      expect(typeof cli.warn).toBe("function");
+      expect(typeof cli.info).toBe("function");
+      expect(typeof cli.blank).toBe("function");
+      expect(typeof cli.box).toBe("function");
+      expect(typeof cli.dim).toBe("function");
     });
 
-    it("should allow calling via namespace", () => {
-      cli.success("Namespace test");
+    it("delegates success/info/warn/blank/box/dim to the pure functions", () => {
+      const cli = createCli(false);
+
+      cli.success("ok");
       expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("✓"));
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Namespace test"),
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("ok"));
+
+      cli.info("hello");
+      expect(consoleLogSpy).toHaveBeenCalledWith("hello");
+
+      cli.warn("careful");
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("careful"),
       );
     });
-  });
 
-  describe("debug mode", () => {
-    it("should start with debug mode off", () => {
-      expect(isDebugMode()).toBe(false);
+    it("error() with debug=false in factory does not print stack trace", () => {
+      const cli = createCli(false);
+      const testError = new Error("boom");
+      cli.error("oops", testError);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
     });
 
-    it("should allow enabling debug mode", () => {
-      setDebugMode(true);
-      expect(isDebugMode()).toBe(true);
+    it("error() with debug=true in factory prints stack trace", () => {
+      const cli = createCli(true);
+      const testError = new Error("boom");
+      cli.error("oops", testError);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
+      expect(consoleErrorSpy).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining("Error: boom"),
+      );
     });
 
-    it("should allow disabling debug mode", () => {
-      setDebugMode(true);
-      setDebugMode(false);
-      expect(isDebugMode()).toBe(false);
+    it("two instances are independent: debug flag is closed over, not shared", () => {
+      const cliDebug = createCli(true);
+      const cliQuiet = createCli(false);
+      const testError = new Error("boom");
+
+      cliQuiet.error("a", testError);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // no stack
+
+      cliDebug.error("b", testError);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(3); // 1 + (msg + stack) = 3
+    });
+
+    it("methods are safe to destructure (closure-bound, no `this`)", () => {
+      const { error: errorFn } = createCli(true);
+      const testError = new Error("boom");
+      errorFn("standalone", testError);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
     });
   });
 });

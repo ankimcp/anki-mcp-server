@@ -120,7 +120,6 @@ export type TunnelCloseCode =
 // ============================================================================
 
 export const TUNNEL_DEFAULTS = {
-  URL: "ws://localhost:3004/tunnel",
   CONNECTION_TIMEOUT: 10000, // 10s
   REQUEST_TIMEOUT: 30000, // 30s
   HEARTBEAT_INTERVAL: 30000, // 30s

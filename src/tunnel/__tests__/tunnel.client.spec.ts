@@ -12,6 +12,8 @@ import { TunnelCloseCodes, TUNNEL_DEFAULTS } from "../tunnel.protocol";
 // Mock WebSocket
 jest.mock("ws");
 
+const TEST_TUNNEL_URL = "wss://test.example/tunnel";
+
 describe("TunnelClient", () => {
   let mockMcpHandler: jest.Mocked<McpRequestHandler>;
   let mockCredentialsService: jest.Mocked<CredentialsService>;
@@ -94,6 +96,7 @@ describe("TunnelClient", () => {
       mockMcpHandler,
       mockCredentialsService,
       mockDeviceFlowService,
+      TEST_TUNNEL_URL,
     );
   });
 
@@ -126,7 +129,7 @@ describe("TunnelClient", () => {
       expect(result).toBe(tunnelUrl);
       expect(mockCredentialsService.loadCredentials).toHaveBeenCalled();
       expect(WebSocket).toHaveBeenCalledWith(
-        TUNNEL_DEFAULTS.URL,
+        TEST_TUNNEL_URL,
         expect.objectContaining({
           headers: {
             Authorization: "Bearer mock_access_token",
@@ -222,6 +225,68 @@ describe("TunnelClient", () => {
       // Error event should have been emitted
       expect(errorSpy).toHaveBeenCalled();
     });
+
+    it("uses caller-supplied credentials and skips the disk read", async () => {
+      const callerCreds: TunnelCredentials = {
+        ...mockCredentials,
+        access_token: "caller_supplied_token",
+      };
+
+      const connectPromise = client.connect(callerCreds);
+
+      await Promise.resolve();
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.OPEN });
+      mockWs.emit("open");
+      mockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "tunnel_established",
+          url: "https://abc123.tunnel.ankimcp.ai",
+          expiresAt: null,
+        }),
+      );
+      await connectPromise;
+
+      // Disk read skipped — caller already provided creds.
+      expect(mockCredentialsService.loadCredentials).not.toHaveBeenCalled();
+      // The supplied access token is what we authed with.
+      expect(WebSocket).toHaveBeenCalledWith(
+        TEST_TUNNEL_URL,
+        expect.objectContaining({
+          headers: { Authorization: "Bearer caller_supplied_token" },
+        }),
+      );
+    });
+
+    it("still refreshes when caller-supplied credentials are expired", async () => {
+      const callerCreds: TunnelCredentials = {
+        ...mockCredentials,
+        access_token: "expired_token",
+      };
+      mockCredentialsService.isTokenExpired.mockReturnValue(true);
+
+      const connectPromise = client.connect(callerCreds);
+
+      await new Promise((resolve) => setImmediate(resolve));
+
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.OPEN });
+      mockWs.emit("open");
+      mockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "tunnel_established",
+          url: "https://abc123.tunnel.ankimcp.ai",
+          expiresAt: null,
+        }),
+      );
+      await connectPromise;
+
+      // Did not re-read from disk (caller supplied), but did refresh.
+      expect(mockCredentialsService.loadCredentials).not.toHaveBeenCalled();
+      expect(mockDeviceFlowService.refreshToken).toHaveBeenCalledWith(
+        "mock_refresh_token",
+      );
+    }, 10000);
   });
 
   describe("disconnect", () => {

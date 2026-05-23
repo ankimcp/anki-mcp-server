@@ -58,11 +58,16 @@ export class TunnelClientError extends Error {
  * - 'error': (error: Error) => void - Non-fatal error occurred
  * - 'expiring': (expiresAt: string, minutesRemaining: number) => void - Tunnel expiring soon
  *
+ * URL resolution: the constructor takes a required `tunnelUrl` argument which
+ * is the single source of truth for this instance. The caller owns URL
+ * resolution (env vars, CLI flags, schema default) — the client does NOT
+ * re-resolve and does NOT carry its own fallback.
+ *
  * @example
- * const client = new TunnelClient(mcpHandler, credentialsService, deviceFlowService);
+ * const client = new TunnelClient(mcpHandler, credentialsService, deviceFlowService, tunnelUrl);
  * client.on('tunnel_url', (url) => console.log('Tunnel URL:', url));
  * client.on('error', (err) => console.error('Tunnel error:', err));
- * const tunnelUrl = await client.connect();
+ * const publicUrl = await client.connect();
  */
 export class TunnelClient extends EventEmitter {
   private readonly logger = new Logger(TunnelClient.name);
@@ -82,20 +87,27 @@ export class TunnelClient extends EventEmitter {
     private readonly mcpHandler: McpRequestHandler,
     private readonly credentialsService: CredentialsService,
     private readonly deviceFlowService: DeviceFlowService,
-    private readonly tunnelUrl: string = TUNNEL_DEFAULTS.URL,
+    private readonly tunnelUrl: string,
   ) {
     super();
   }
 
   /**
-   * Connect to tunnel server and establish tunnel
-   * Returns the public tunnel URL once established
+   * Connect to tunnel server and establish tunnel.
    *
-   * @param providedTunnelUrl - Override default tunnel URL
+   * The tunnel URL is fixed at construction time — callers own URL resolution
+   * and pass the resolved value to the constructor. This keeps a single
+   * source of truth and lets the reconnect path call `connect()` with no
+   * arguments without re-resolving anything.
+   *
+   * @param initialCredentials - Optional pre-loaded credentials. When provided,
+   *   the client skips its own disk read for this connection attempt. The
+   *   {@link CredentialsService} is still consulted for token refresh and for
+   *   subsequent reconnects (which call `connect()` internally with no args).
    * @returns Public tunnel URL (e.g., https://abc123.tunnel.ankimcp.ai)
    * @throws {TunnelClientError} If connection fails or credentials invalid
    */
-  async connect(providedTunnelUrl?: string): Promise<string> {
+  async connect(initialCredentials?: TunnelCredentials): Promise<string> {
     if (this.isConnecting) {
       throw new TunnelClientError(
         "Connection already in progress",
@@ -107,13 +119,15 @@ export class TunnelClient extends EventEmitter {
       throw new TunnelClientError("Already connected", "already_connected");
     }
 
-    const url = providedTunnelUrl || this.tunnelUrl;
     this.isManualDisconnect = false;
     this.isConnecting = true;
 
     try {
-      // Load credentials from storage
-      this.credentials = await this.credentialsService.loadCredentials();
+      // Use caller-provided credentials when available (avoids a redundant disk
+      // read on the initial connect from the CLI). Reconnects and refresh
+      // paths continue to use the credentials service as before.
+      this.credentials =
+        initialCredentials ?? (await this.credentialsService.loadCredentials());
       if (!this.credentials) {
         throw new TunnelClientError(
           "No credentials found. Please run login first.",
@@ -127,8 +141,8 @@ export class TunnelClient extends EventEmitter {
         await this.refreshTokenAndSave();
       }
 
-      // Connect to WebSocket with access token
-      const tunnelUrl = await this.establishConnection(url);
+      // Connect to WebSocket with access token using the instance's tunnel URL
+      const tunnelUrl = await this.establishConnection(this.tunnelUrl);
       this.reconnectAttempts = 0; // Reset on successful connection
       this.isConnecting = false;
       return tunnelUrl;
@@ -494,6 +508,10 @@ export class TunnelClient extends EventEmitter {
           await this.refreshTokenAndSave();
         }
 
+        // Reconnects intentionally call connect() with no initial credentials —
+        // we want to pick up the latest persisted state from disk (especially
+        // after refreshTokenAndSave has just updated it). The instance's
+        // tunnelUrl remains the single source of truth.
         await this.connect();
       } catch (error) {
         this.logger.error("Reconnection failed:", error);

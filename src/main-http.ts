@@ -6,8 +6,13 @@ import {
   LOG_DESTINATION,
 } from "./bootstrap";
 import { OriginValidationGuard } from "./http/guards/origin-validation.guard";
-import { parseCliArgs, displayStartupBanner, checkForUpdates } from "./cli";
-import { cli, setDebugMode } from "./cli/cli-output";
+import {
+  parseCliArgs,
+  parseOptionalUrl,
+  displayStartupBanner,
+  checkForUpdates,
+} from "./cli";
+import { createCli } from "./cli/cli-output";
 import { NgrokService } from "./services/ngrok.service";
 import { buildConfigInput } from "./config";
 
@@ -17,8 +22,15 @@ async function bootstrap() {
 
   const options = parseCliArgs();
 
-  // Set debug mode early so all error handlers can show stack traces
-  setDebugMode(options.debug);
+  // Build the CLI output surface once with the parsed debug flag.
+  // From here on, anything that needs user-facing output must receive `cli`
+  // explicitly — there is no module-level fallback.
+  const cli = createCli(options.debug);
+
+  // Validate `--tunnel` URL at the parse boundary so an empty/garbage value
+  // doesn't silently fall through `buildConfigInput` and either be ignored
+  // (true/false) or fail Zod validation (empty string).
+  const tunnelUrl = parseOptionalUrl(options.tunnel, "--tunnel", cli);
 
   // Build config input from env + CLI overrides (no process.env mutation)
   const configInput = buildConfigInput({
@@ -26,7 +38,7 @@ async function bootstrap() {
     host: options.host,
     ankiConnect: options.ankiConnect,
     readOnly: options.readOnly,
-    tunnel: options.tunnel,
+    tunnel: tunnelUrl,
     ngrok: options.ngrok,
     debug: options.debug,
   });
@@ -70,10 +82,13 @@ async function bootstrap() {
   }
 
   // Show startup information
-  displayStartupBanner(options, ngrokUrl);
+  displayStartupBanner(cli, options, ngrokUrl);
 }
 
+// Bootstrap-level error handler: we don't yet have a `cli` (options weren't
+// parsed), so we build a non-debug one for the failure path.
 bootstrap().catch((err) => {
+  const cli = createCli(false);
   cli.error(
     `Failed to start MCP HTTP server: ${err instanceof Error ? err.message : String(err)}`,
     err instanceof Error ? err : undefined,

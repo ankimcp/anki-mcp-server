@@ -5,7 +5,9 @@
  * (after building with npm run build)
  */
 
-import { cli } from "../cli-output";
+import { createCli } from "../cli-output";
+
+const cli = createCli(false);
 
 // Demo all output types
 cli.success("Successfully connected to Anki");

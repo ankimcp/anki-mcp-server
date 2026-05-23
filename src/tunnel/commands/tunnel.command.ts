@@ -1,57 +1,47 @@
 import { NestFactory } from "@nestjs/core";
-import { Logger } from "@nestjs/common";
+import { Logger, type INestApplicationContext } from "@nestjs/common";
 import { AppModule } from "@/app.module";
-import { CredentialsService } from "@/tunnel";
-import { DeviceFlowService } from "@/tunnel";
-import { TunnelClient, McpRequestHandler, TunnelClientError } from "@/tunnel";
-import { TUNNEL_DEFAULTS } from "@/tunnel";
+import {
+  CredentialsService,
+  DeviceFlowError,
+  DeviceFlowService,
+  McpRequestHandler,
+  TunnelClient,
+  TunnelClientError,
+  TunnelCredentials,
+} from "@/tunnel";
 import { TunnelMcpService } from "@/tunnel/tunnel-mcp.service";
 import { AppConfigService } from "@/app-config.service";
 import { loadValidatedConfig } from "@/config";
-import { cli, setDebugMode } from "@/cli/cli-output";
+import type { Cli } from "@/cli/cli-output";
+import { startSpinner } from "@/cli/spinner";
 import {
   createPinoLogger,
   createLoggerService,
   LOG_DESTINATION,
 } from "@/bootstrap";
-
-/**
- * Display a simple text spinner for polling
- * Returns a function to stop the spinner
- */
-function startSpinner(message: string): () => void {
-  const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-  let i = 0;
-
-  const interval = setInterval(() => {
-    process.stdout.write(`\r${frames[i]} ${message}`);
-    i = (i + 1) % frames.length;
-  }, 80);
-
-  return () => {
-    clearInterval(interval);
-    process.stdout.write("\r"); // Clear spinner line
-  };
-}
+import { performLogin, translateDeviceFlowError } from "./perform-login";
 
 /**
  * Display a URL in a nice box
  */
-function displayBox(title: string, url: string): void {
+function displayBox(cli: Cli, title: string, url: string): void {
   cli.box(title, url);
 }
 
 /**
- * Format connection errors with user-friendly messages
+ * Format connection errors with user-friendly messages.
+ *
+ * The `tunnelUrl` argument is the resolved URL the caller is actually using
+ * (CLI flag → env → schema default). It's required: bare-default fallbacks
+ * would lie to the user about which host failed.
  */
-function formatConnectionError(error: unknown, tunnelUrl?: string): string {
-  const url = tunnelUrl || TUNNEL_DEFAULTS.URL;
-
+function formatConnectionError(error: unknown, tunnelUrl: string): string {
   // Check for ECONNREFUSED (server not running)
   if (error instanceof TunnelClientError && error.originalError) {
     const origError = error.originalError as { code?: string };
     if (origError.code === "ECONNREFUSED") {
-      return `Cannot connect to tunnel server at ${url}
+      return `Cannot connect to tunnel server at ${tunnelUrl}
    Make sure the tunnel server is running.`;
     }
   }
@@ -62,7 +52,7 @@ function formatConnectionError(error: unknown, tunnelUrl?: string): string {
       error.message.includes("ECONNREFUSED") ||
       error.message.includes("connect ECONNREFUSED")
     ) {
-      return `Cannot connect to tunnel server at ${url}
+      return `Cannot connect to tunnel server at ${tunnelUrl}
    Make sure the tunnel server is running.`;
     }
 
@@ -71,7 +61,7 @@ function formatConnectionError(error: unknown, tunnelUrl?: string): string {
       error.message.includes("timeout") ||
       error.message.includes("Connection timeout")
     ) {
-      return `Connection timeout to ${url}
+      return `Connection timeout to ${tunnelUrl}
    The tunnel server may be unavailable or slow to respond.`;
     }
 
@@ -91,50 +81,171 @@ function formatConnectionError(error: unknown, tunnelUrl?: string): string {
 }
 
 /**
+ * Ensure we have valid credentials, triggering the login flow if missing.
+ *
+ * Returns the loaded credentials, or — when none exist — runs `performLogin()`
+ * inline and returns the freshly minted credentials. On login failure this
+ * prints a translated CLI message and exits the process with code 1.
+ *
+ * This runs BEFORE the NestJS application context is constructed, so a hard
+ * `process.exit(1)` is correct here — there is no `app` to gracefully close.
+ *
+ * Service instances are reused from the caller so we don't double-instantiate
+ * `CredentialsService` / `DeviceFlowService` for the auto-login path.
+ */
+async function ensureCredentials(
+  cli: Cli,
+  credentialsService: CredentialsService,
+  deviceFlowService: DeviceFlowService,
+): Promise<TunnelCredentials> {
+  const existing = await credentialsService.loadCredentials();
+  if (existing) {
+    return existing;
+  }
+
+  // Device flow polls a remote URL and shows the user a code — it inherently
+  // needs an interactive session (a browser, plus visibility of the printed
+  // code). If we're running headless (systemd, Docker without `-it`, CI),
+  // polling would hang for ~10 minutes with the user never seeing the prompt.
+  // Fast-fail with an actionable message instead.
+  if (!process.stdout.isTTY) {
+    cli.error(
+      "Not logged in and running non-interactively. Run: ankimcp --login first.",
+    );
+    process.exit(1);
+  }
+
+  cli.info("Not logged in — starting authentication flow...");
+  cli.blank();
+
+  try {
+    const credentials = await performLogin({
+      credentialsService,
+      deviceFlowService,
+      cli,
+    });
+    cli.info("Continuing to tunnel...");
+    cli.blank();
+    return credentials;
+  } catch (error) {
+    cli.blank();
+
+    if (error instanceof DeviceFlowError) {
+      cli.error(translateDeviceFlowError(error));
+    } else {
+      cli.error(
+        `Login failed: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error : undefined,
+      );
+    }
+
+    cli.blank();
+    process.exit(1);
+  }
+}
+
+/**
  * Handle --tunnel command
  * Establishes a tunnel connection to the tunnel service
  *
  * Flow:
- * 1. Load credentials (or prompt to login)
+ * 1. Load credentials (auto-triggers `--login` flow if missing)
  * 2. Create NestJS application context with in-memory MCP service
  * 3. Create McpRequestHandler that calls TunnelMcpService directly
- * 4. Connect to tunnel service via TunnelClient
+ * 4. Connect to tunnel service via TunnelClient (passing the loaded
+ *    credentials so it doesn't re-read them from disk, and the fully
+ *    resolved URL so the client doesn't re-resolve internally)
  * 5. Display tunnel URL
  * 6. Listen for events (requests, errors, expiring, disconnected)
- * 7. Handle graceful shutdown on SIGINT/SIGTERM
+ * 7. Handle graceful shutdown on SIGINT/SIGTERM via the local `gracefulExit`
  *
+ * @param cli - User-facing output surface (constructed at bootstrap; debug flag
+ *   is already baked into `cli.error`).
  * @param tunnelUrl - Optional custom tunnel URL (defaults to production)
- * @param debug - Optional debug mode flag
+ * @param debug - Optional debug mode flag (controls NestJS log levels — the
+ *   `cli` parameter already has the debug flag bound for stack-trace output).
  * @param readOnly - Optional read-only mode flag
- * @throws {Error} If not logged in or connection fails
+ * @throws {Error} If connection fails
  */
 export async function handleTunnel(
+  cli: Cli,
   tunnelUrl?: string,
   debug?: boolean,
   readOnly?: boolean,
 ): Promise<void> {
-  // Set debug mode early so all error handlers can show stack traces
-  setDebugMode(debug || false);
-
   const credentialsService = new CredentialsService();
-  const validatedConfig = loadValidatedConfig({ debug, readOnly });
+  // Pass tunnelUrl through to config so the device flow targets the same host
+  // as the tunnel itself (the auth endpoints are derived from this URL).
+  const validatedConfig = loadValidatedConfig({
+    debug,
+    readOnly,
+    tunnel: tunnelUrl,
+  });
   const appConfigService = new AppConfigService(validatedConfig);
   const deviceFlowService = new DeviceFlowService(appConfigService);
+
+  // Closed over by `gracefulExit` below. Declared up front so the helper can
+  // see whichever values exist when a signal arrives — `app` is undefined
+  // until step 2 succeeds, `tunnelClient` until step 4.
+  let app: INestApplicationContext | undefined;
+  let tunnelClient: TunnelClient | undefined;
+
+  // Reentrancy guard for the shutdown helper. A second Ctrl+C during cleanup
+  // should force-exit immediately rather than spawn a parallel shutdown.
+  let shuttingDown = false;
+
+  /**
+   * Single exit point. Cleans up the tunnel client and Nest app (in that
+   * order — disconnect drops the socket so Nest's shutdown isn't racing with
+   * inbound traffic) before terminating the process.
+   *
+   * Returns `Promise<never>` so call sites can use `return await gracefulExit(...)`
+   * and have TypeScript's flow analysis treat the call as terminating without
+   * needing definite-assignment assertions on later variables.
+   */
+  const gracefulExit = async (
+    code: number,
+    message?: string,
+  ): Promise<never> => {
+    if (shuttingDown) {
+      // Already cleaning up — caller pressed Ctrl+C twice (or two paths raced).
+      // Skip cleanup and exit immediately so the user isn't stuck.
+      process.exit(code);
+    }
+    shuttingDown = true;
+
+    try {
+      if (message) {
+        cli.info(message);
+      }
+      tunnelClient?.disconnect();
+      if (app) {
+        await app.close();
+      }
+    } catch (err) {
+      cli.error(
+        `Cleanup error: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    process.exit(code);
+  };
 
   cli.blank();
 
   try {
-    // Step 1: Load credentials
-    const credentials = await credentialsService.loadCredentials();
-    if (!credentials) {
-      cli.error("Not logged in. Run: ankimcp --login");
-      cli.blank();
-      process.exit(1);
-    }
+    // Step 1: Load credentials (or run login flow inline if missing).
+    // We pass these straight to TunnelClient.connect() below so it skips its
+    // own disk read on the initial connection. Reconnects inside TunnelClient
+    // still load from disk on demand — that path is intentionally untouched.
+    const credentials = await ensureCredentials(
+      cli,
+      credentialsService,
+      deviceFlowService,
+    );
 
     // Step 2: Create NestJS application context with in-memory MCP service
     const stopSpinner = startSpinner("Starting MCP service...");
-    let app;
     let tunnelMcpService: TunnelMcpService;
 
     // Create logger that writes to stderr (keeps stdout clear for CLI output)
@@ -167,7 +278,8 @@ export async function handleTunnel(
         error instanceof Error ? error : undefined,
       );
       cli.blank();
-      process.exit(1);
+      // No app yet — gracefulExit will skip the Nest close path safely.
+      return await gracefulExit(1);
     }
 
     cli.blank();
@@ -185,10 +297,12 @@ export async function handleTunnel(
     };
 
     // Step 4: Connect to tunnel service via TunnelClient
-    // Priority: CLI arg > env var (via config) > hardcoded default
-    const effectiveTunnelUrl = tunnelUrl || validatedConfig.tunnel.serverUrl;
+    // Single source of URL truth: CLI arg > env var > schema default.
+    // Invalid CLI URLs are already rejected by parseOptionalUrl at the boot
+    // boundary, so any non-undefined `tunnelUrl` here is already validated.
+    const effectiveTunnelUrl = tunnelUrl ?? validatedConfig.tunnel.serverUrl;
 
-    const tunnelClient = new TunnelClient(
+    tunnelClient = new TunnelClient(
       mcpHandler,
       credentialsService,
       deviceFlowService,
@@ -205,12 +319,15 @@ export async function handleTunnel(
       ) {
         cli.blank();
         cli.error(error.message);
-        tunnelClient.disconnect();
-        process.exit(1);
+        // EventEmitter.emit is sync — fire and forget. The gracefulExit helper
+        // handles its own awaits before process.exit, and the reentrancy guard
+        // protects against a second signal arriving while we're cleaning up.
+        void gracefulExit(1);
+        return;
       }
 
       // During connect(), errors are caught by try/catch, so we only log post-connect errors
-      if (tunnelClient.isConnected()) {
+      if (tunnelClient?.isConnected()) {
         cli.error(`Tunnel error: ${error.message}`, error);
       }
       // Pre-connect errors are handled by the catch block below
@@ -220,7 +337,7 @@ export async function handleTunnel(
     let publicUrl: string;
 
     try {
-      publicUrl = await tunnelClient.connect(tunnelUrl);
+      publicUrl = await tunnelClient.connect(credentials);
       connectSpinner();
       cli.success("Tunnel established");
       cli.blank();
@@ -234,20 +351,20 @@ export async function handleTunnel(
       ) {
         cli.blank();
         cli.error(error.message);
-        await app.close();
-        process.exit(1);
+        // `return await` so TS sees this branch as terminating — without it
+        // `publicUrl` below is flagged as possibly-unassigned.
+        return await gracefulExit(1);
       }
 
-      // Format user-friendly error message
-      const errorMessage = formatConnectionError(error, tunnelUrl);
+      // Format user-friendly error message using the URL we actually tried.
+      const errorMessage = formatConnectionError(error, effectiveTunnelUrl);
       cli.error(errorMessage, error instanceof Error ? error : undefined);
       cli.blank();
-      await app.close();
-      process.exit(1);
+      return await gracefulExit(1);
     }
 
     // Step 5: Display tunnel URL in a nice box
-    displayBox("🚇 Tunnel URL", publicUrl);
+    displayBox(cli, "🚇 Tunnel URL", publicUrl);
     cli.blank();
     cli.info("Tunnel is active. Press Ctrl+C to disconnect.");
     cli.blank();
@@ -272,21 +389,21 @@ export async function handleTunnel(
       cli.blank();
     });
 
-    // Step 7: Handle graceful shutdown
-    const shutdown = async () => {
+    // Step 7: Handle graceful shutdown.
+    //
+    // `gracefulExit` is async, but Node won't await the promise returned from
+    // a signal-handler callback. We wrap with `void` and a sync arrow so the
+    // returned promise is explicitly discarded — without this, an `app.close`
+    // rejection would surface as an unhandled rejection rather than the
+    // controlled `cli.error` path inside `gracefulExit`.
+    process.on("SIGINT", () => {
       cli.blank();
-      cli.info("Shutting down...");
-
-      tunnelClient.disconnect();
-      await app.close();
-
-      cli.success("Tunnel closed");
+      void gracefulExit(0, "Shutting down...");
+    });
+    process.on("SIGTERM", () => {
       cli.blank();
-      process.exit(0);
-    };
-
-    process.on("SIGINT", shutdown);
-    process.on("SIGTERM", shutdown);
+      void gracefulExit(0, "Shutting down...");
+    });
 
     // Keep process running
     await new Promise(() => {});
@@ -297,6 +414,6 @@ export async function handleTunnel(
       error instanceof Error ? error : undefined,
     );
     cli.blank();
-    process.exit(1);
+    await gracefulExit(1);
   }
 }
