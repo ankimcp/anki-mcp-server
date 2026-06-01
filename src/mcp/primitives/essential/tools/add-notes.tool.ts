@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import {
   AnkiConnectClient,
@@ -98,41 +97,30 @@ export class AddNotesTool {
       idempotentHint: false,
     },
   })
-  async addNotes(
-    {
-      deckName,
-      modelName,
-      tags: sharedTags,
-      allowDuplicate,
-      duplicateScope,
-      notes,
-    }: {
-      deckName: string;
-      modelName: string;
+  async addNotes({
+    deckName,
+    modelName,
+    tags: sharedTags,
+    allowDuplicate,
+    duplicateScope,
+    notes,
+  }: {
+    deckName: string;
+    modelName: string;
+    tags?: string[];
+    allowDuplicate?: boolean;
+    duplicateScope?: "deck" | "collection";
+    notes: Array<{
+      fields: Record<string, string>;
       tags?: string[];
-      allowDuplicate?: boolean;
-      duplicateScope?: "deck" | "collection";
-      notes: Array<{
-        fields: Record<string, string>;
-        tags?: string[];
-      }>;
-    },
-    context: Context,
-  ) {
+    }>;
+  }) {
     try {
       this.logger.log(
         `Adding ${notes.length} notes to deck "${deckName}" with model "${modelName}"`,
       );
 
-      const totalSteps = notes.length + 2; // +2 for validation steps
-      let currentStep = 0;
-
       // 1. Validate model and get field names (single call)
-      await context.reportProgress({
-        progress: currentStep,
-        total: totalSteps,
-      });
-
       const fieldNames = await this.ankiClient.invoke<string[] | null>(
         "modelFieldNames",
         { modelName },
@@ -149,12 +137,6 @@ export class AddNotesTool {
           },
         );
       }
-
-      currentStep++;
-      await context.reportProgress({
-        progress: currentStep,
-        total: totalSteps,
-      });
 
       // 2. Validate sort fields (first field must be non-empty for all notes)
       const sortField = fieldNames[0];
@@ -184,12 +166,6 @@ export class AddNotesTool {
           },
         );
       }
-
-      currentStep++;
-      await context.reportProgress({
-        progress: currentStep,
-        total: totalSteps,
-      });
 
       // 3. Sequential loop: call addNote per note
       const results: NoteResult[] = [];
@@ -270,12 +246,6 @@ export class AddNotesTool {
             failedCount++;
           }
         }
-
-        currentStep++;
-        await context.reportProgress({
-          progress: currentStep,
-          total: totalSteps,
-        });
       }
 
       this.logger.log(

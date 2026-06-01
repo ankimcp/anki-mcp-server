@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -39,17 +38,14 @@ export class GuiDeckOverviewTool {
       idempotentHint: true,
     },
   })
-  async guiDeckOverview({ name }: { name: string }, context: Context) {
+  async guiDeckOverview({ name }: { name: string }) {
     try {
       this.logger.log(`Opening Deck Overview for deck "${name}"`);
-      await context.reportProgress({ progress: 50, total: 100 });
 
       // Call AnkiConnect guiDeckOverview action
       const success = await this.ankiClient.invoke<boolean>("guiDeckOverview", {
         name,
       });
-
-      await context.reportProgress({ progress: 100, total: 100 });
 
       if (!success) {
         this.logger.warn(`Failed to open Deck Overview for deck "${name}"`);

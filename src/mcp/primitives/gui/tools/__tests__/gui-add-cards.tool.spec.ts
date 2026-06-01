@@ -1,10 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { GuiAddCardsTool } from "../gui-add-cards.tool";
 import { AnkiConnectClient } from "../../../../clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 const mockAnkiClient = {
   invoke: jest.fn(),
@@ -12,7 +9,6 @@ const mockAnkiClient = {
 
 describe("GuiAddCardsTool", () => {
   let tool: GuiAddCardsTool;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,7 +22,6 @@ describe("GuiAddCardsTool", () => {
     }).compile();
 
     tool = module.get<GuiAddCardsTool>(GuiAddCardsTool);
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -48,10 +43,7 @@ describe("GuiAddCardsTool", () => {
     it("should successfully open Add Cards dialog", async () => {
       mockAnkiClient.invoke.mockResolvedValue(1234567890);
 
-      const rawResult = await tool.guiAddCards(
-        { note: validNote },
-        mockContext,
-      );
+      const rawResult = await tool.guiAddCards({ note: validNote });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -61,7 +53,6 @@ describe("GuiAddCardsTool", () => {
       expect(mockAnkiClient.invoke).toHaveBeenCalledWith("guiAddCards", {
         note: validNote,
       });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(3);
     });
 
     it("should handle empty field values", async () => {
@@ -73,10 +64,7 @@ describe("GuiAddCardsTool", () => {
         },
       };
 
-      const rawResult = await tool.guiAddCards(
-        { note: noteWithEmptyField },
-        mockContext,
-      );
+      const rawResult = await tool.guiAddCards({ note: noteWithEmptyField });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -88,10 +76,7 @@ describe("GuiAddCardsTool", () => {
       const error = new Error('Model "InvalidModel" not found');
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiAddCards(
-        { note: validNote },
-        mockContext,
-      );
+      const rawResult = await tool.guiAddCards({ note: validNote });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -103,10 +88,7 @@ describe("GuiAddCardsTool", () => {
       const error = new Error("Deck not found");
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiAddCards(
-        { note: validNote },
-        mockContext,
-      );
+      const rawResult = await tool.guiAddCards({ note: validNote });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -117,10 +99,7 @@ describe("GuiAddCardsTool", () => {
       const error = new Error('Field "InvalidField" not found in model');
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiAddCards(
-        { note: validNote },
-        mockContext,
-      );
+      const rawResult = await tool.guiAddCards({ note: validNote });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);

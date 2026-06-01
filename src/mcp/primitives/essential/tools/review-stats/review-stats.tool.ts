@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -107,14 +106,11 @@ export class ReviewStatsTool {
       idempotentHint: true,
     },
   })
-  async execute(
-    params: {
-      deck: string;
-      start_date: string;
-      end_date?: string;
-    },
-    context: Context,
-  ) {
+  async execute(params: {
+    deck: string;
+    start_date: string;
+    end_date?: string;
+  }) {
     try {
       const { deck, start_date } = params;
       const end_date = params.end_date || this.getTodayISO();
@@ -122,7 +118,6 @@ export class ReviewStatsTool {
       this.logger.log(
         `Getting review statistics from ${start_date} to ${end_date} for deck: ${deck}`,
       );
-      await context.reportProgress({ progress: 10, total: 100 });
 
       // Convert dates to timestamps (in milliseconds)
       // Note: Using local timezone to match Anki's behavior for "today"
@@ -139,8 +134,6 @@ export class ReviewStatsTool {
           deck: deck,
         },
       );
-
-      await context.reportProgress({ progress: 40, total: 100 });
 
       // Filter reviews to end_date (API only filters by start)
       const filteredReviews = reviews.filter(
@@ -161,8 +154,6 @@ export class ReviewStatsTool {
         .map(([date, count]) => ({ date, count }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
-      await context.reportProgress({ progress: 60, total: 100 });
-
       // Extract button presses (index 3 in tuple)
       // 1=Again, 2=Hard, 3=Good, 4=Easy
       const buttonPresses = filteredReviews.map((review) => review[3]);
@@ -170,8 +161,6 @@ export class ReviewStatsTool {
       // Compute retention
       this.logger.log("Computing retention metrics...");
       const retention = computeRetention(buttonPresses);
-
-      await context.reportProgress({ progress: 80, total: 100 });
 
       // Calculate summary statistics
       this.logger.log("Calculating summary statistics...");
@@ -194,8 +183,6 @@ export class ReviewStatsTool {
       // Calculate streak
       const streak = calculateStreak(reviewsByDay);
 
-      await context.reportProgress({ progress: 90, total: 100 });
-
       const result: ReviewStatsResult = {
         period: {
           start: start_date,
@@ -214,7 +201,6 @@ export class ReviewStatsTool {
         retention,
       };
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(
         `Successfully retrieved review statistics: ${totalReviews} total reviews, ` +
           `${daysStudied} days studied, ${(retention.overall * 100).toFixed(1)}% retention, ` +

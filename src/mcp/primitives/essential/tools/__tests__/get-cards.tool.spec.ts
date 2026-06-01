@@ -2,10 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { GetCardsTool } from "../get-cards.tool";
 import { AnkiConnectClient } from "../../../../clients/anki-connect.client";
 import { mockCards } from "../../../../../test-fixtures/mock-data";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 import { AnkiCard } from "../../../../types/anki.types";
 
 // Mock the AnkiConnectClient
@@ -14,7 +11,6 @@ jest.mock("../../../../clients/anki-connect.client");
 describe("GetCardsTool", () => {
   let tool: GetCardsTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -27,7 +23,6 @@ describe("GetCardsTool", () => {
     ) as jest.Mocked<AnkiConnectClient>;
 
     // Setup mock context
-    mockContext = createMockContext();
 
     // Clear all mocks before each test
     jest.clearAllMocks();
@@ -59,7 +54,7 @@ describe("GetCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo); // cardsInfo
 
       // Act
-      const rawResult = await tool.getCards({}, mockContext);
+      const rawResult = await tool.getCards({});
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -76,7 +71,6 @@ describe("GetCardsTool", () => {
       expect(result.total).toBe(2);
       expect(result.returned).toBe(2);
       expect(result.message).toContain("Found 2 due cards");
-      expect(mockContext.reportProgress).toHaveBeenCalled();
     });
 
     it("should filter by new card state with suspended excluded", async () => {
@@ -88,7 +82,7 @@ describe("GetCardsTool", () => {
         .mockResolvedValueOnce(newCardsInfo);
 
       // Act
-      const rawResult = await tool.getCards({ card_state: "new" }, mockContext);
+      const rawResult = await tool.getCards({ card_state: "new" });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -107,10 +101,7 @@ describe("GetCardsTool", () => {
         .mockResolvedValueOnce([mockCardsInfo[1]]);
 
       // Act
-      const rawResult = await tool.getCards(
-        { card_state: "learning" },
-        mockContext,
-      );
+      const rawResult = await tool.getCards({ card_state: "learning" });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -128,10 +119,7 @@ describe("GetCardsTool", () => {
         .mockResolvedValueOnce([mockCardsInfo[1]]);
 
       // Act
-      const rawResult = await tool.getCards(
-        { card_state: "suspended" },
-        mockContext,
-      );
+      const rawResult = await tool.getCards({ card_state: "suspended" });
       const result = parseToolResult(rawResult);
 
       // Assert - should NOT have -is:suspended prefix when querying for suspended
@@ -149,10 +137,7 @@ describe("GetCardsTool", () => {
         .mockResolvedValueOnce([mockCardsInfo[1]]);
 
       // Act
-      const rawResult = await tool.getCards(
-        { card_state: "buried" },
-        mockContext,
-      );
+      const rawResult = await tool.getCards({ card_state: "buried" });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -170,10 +155,10 @@ describe("GetCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo);
 
       // Act
-      const rawResult = await tool.getCards(
-        { deck_name: "Spanish", card_state: "due" },
-        mockContext,
-      );
+      const rawResult = await tool.getCards({
+        deck_name: "Spanish",
+        card_state: "due",
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -189,10 +174,10 @@ describe("GetCardsTool", () => {
       ankiClient.invoke.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       // Act
-      await tool.getCards(
-        { deck_name: 'Deck with "quotes"', card_state: "new" },
-        mockContext,
-      );
+      await tool.getCards({
+        deck_name: 'Deck with "quotes"',
+        card_state: "new",
+      });
 
       // Assert
       expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "findCards", {
@@ -211,7 +196,7 @@ describe("GetCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo.slice(0, 5));
 
       // Act
-      const rawResult = await tool.getCards({ limit: 5 }, mockContext);
+      const rawResult = await tool.getCards({ limit: 5 });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -235,7 +220,7 @@ describe("GetCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo);
 
       // Act
-      await tool.getCards({ limit: 100 }, mockContext);
+      await tool.getCards({ limit: 100 });
 
       // Assert - should only request 50 cards max
       expect(ankiClient.invoke).toHaveBeenNthCalledWith(2, "cardsInfo", {
@@ -248,10 +233,7 @@ describe("GetCardsTool", () => {
       ankiClient.invoke.mockResolvedValueOnce([]);
 
       // Act
-      const rawResult = await tool.getCards(
-        { card_state: "suspended" },
-        mockContext,
-      );
+      const rawResult = await tool.getCards({ card_state: "suspended" });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -259,10 +241,6 @@ describe("GetCardsTool", () => {
       expect(result.message).toBe("No suspended cards found");
       expect(result.cards).toEqual([]);
       expect(result.total).toBe(0);
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 100,
-        total: 100,
-      });
     });
 
     it("should handle network errors gracefully", async () => {
@@ -271,7 +249,7 @@ describe("GetCardsTool", () => {
       ankiClient.invoke.mockRejectedValueOnce(networkError);
 
       // Act
-      const rawResult = await tool.getCards({}, mockContext);
+      const rawResult = await tool.getCards({});
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -289,7 +267,7 @@ describe("GetCardsTool", () => {
         );
 
       // Act
-      const rawResult = await tool.getCards({}, mockContext);
+      const rawResult = await tool.getCards({});
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -304,7 +282,7 @@ describe("GetCardsTool", () => {
         .mockResolvedValueOnce([mockCardsInfo[0]]);
 
       // Act
-      const rawResult = await tool.getCards({}, mockContext);
+      const rawResult = await tool.getCards({});
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -328,22 +306,9 @@ describe("GetCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo);
 
       // Act
-      await tool.getCards({}, mockContext);
+      await tool.getCards({});
 
       // Assert
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(3);
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(1, {
-        progress: 10,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(2, {
-        progress: 50,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(3, {
-        progress: 100,
-        total: 100,
-      });
     });
 
     it("should combine deck filter with new card state", async () => {
@@ -353,10 +318,10 @@ describe("GetCardsTool", () => {
         .mockResolvedValueOnce([mockCardsInfo[1]]);
 
       // Act
-      const rawResult = await tool.getCards(
-        { deck_name: "Japanese::JLPT N5", card_state: "new" },
-        mockContext,
-      );
+      const rawResult = await tool.getCards({
+        deck_name: "Japanese::JLPT N5",
+        card_state: "new",
+      });
       const result = parseToolResult(rawResult);
 
       // Assert

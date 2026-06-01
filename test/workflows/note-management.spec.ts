@@ -5,10 +5,7 @@ import { FindNotesTool } from "../../src/mcp/primitives/essential/tools/find-not
 import { NotesInfoTool } from "../../src/mcp/primitives/essential/tools/notes-info.tool";
 import { UpdateNoteFieldsTool } from "../../src/mcp/primitives/essential/tools/update-note-fields.tool";
 import { DeleteNotesTool } from "../../src/mcp/primitives/essential/tools/delete-notes.tool";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../src/test-fixtures/test-helpers";
+import { parseToolResult } from "../../src/test-fixtures/test-helpers";
 
 jest.mock("../../src/mcp/clients/anki-connect.client");
 
@@ -19,7 +16,6 @@ describe("Note Management Workflow", () => {
   let notesInfoTool: NotesInfoTool;
   let updateNoteFieldsTool: UpdateNoteFieldsTool;
   let deleteNotesTool: DeleteNotesTool;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -42,8 +38,6 @@ describe("Note Management Workflow", () => {
     updateNoteFieldsTool =
       module.get<UpdateNoteFieldsTool>(UpdateNoteFieldsTool);
     deleteNotesTool = module.get<DeleteNotesTool>(DeleteNotesTool);
-
-    mockContext = createMockContext();
 
     jest.clearAllMocks();
   });
@@ -80,7 +74,7 @@ describe("Note Management Workflow", () => {
         },
       );
 
-      const addRawResult = await addNoteTool.addNote(noteData, mockContext);
+      const addRawResult = await addNoteTool.addNote(noteData);
       const addResult = parseToolResult(addRawResult);
       expect(addResult.success).toBe(true);
       expect(addResult.noteId).toBe(newNoteId);
@@ -95,10 +89,9 @@ describe("Note Management Workflow", () => {
         },
       );
 
-      const findRawResult = await findNotesTool.findNotes(
-        { query: `deck:${noteData.deckName}` },
-        mockContext,
-      );
+      const findRawResult = await findNotesTool.findNotes({
+        query: `deck:${noteData.deckName}`,
+      });
       const findResult = parseToolResult(findRawResult);
       expect(findResult.success).toBe(true);
       expect(findResult.noteIds).toContain(newNoteId);
@@ -125,10 +118,9 @@ describe("Note Management Workflow", () => {
         },
       );
 
-      const infoRawResult = await notesInfoTool.notesInfo(
-        { notes: [newNoteId] },
-        mockContext,
-      );
+      const infoRawResult = await notesInfoTool.notesInfo({
+        notes: [newNoteId],
+      });
       const infoResult = parseToolResult(infoRawResult);
       expect(infoResult.success).toBe(true);
       expect(infoResult.notes).toHaveLength(1);
@@ -150,15 +142,12 @@ describe("Note Management Workflow", () => {
         },
       );
 
-      const updateRawResult = await updateNoteFieldsTool.updateNoteFields(
-        {
-          note: {
-            id: newNoteId,
-            fields: updatedFields,
-          },
+      const updateRawResult = await updateNoteFieldsTool.updateNoteFields({
+        note: {
+          id: newNoteId,
+          fields: updatedFields,
         },
-        mockContext,
-      );
+      });
       const updateResult = parseToolResult(updateRawResult);
       expect(updateResult.success).toBe(true);
       expect(updateResult.updatedFields).toEqual(["Front", "Back"]);
@@ -181,10 +170,9 @@ describe("Note Management Workflow", () => {
         },
       );
 
-      const verifyRawResult = await notesInfoTool.notesInfo(
-        { notes: [newNoteId] },
-        mockContext,
-      );
+      const verifyRawResult = await notesInfoTool.notesInfo({
+        notes: [newNoteId],
+      });
       const verifyResult = parseToolResult(verifyRawResult);
       expect(verifyResult.notes[0].fields.Front.value).toBe(
         updatedFields.Front,
@@ -204,13 +192,10 @@ describe("Note Management Workflow", () => {
         },
       );
 
-      const deleteRawResult = await deleteNotesTool.deleteNotes(
-        {
-          notes: [newNoteId],
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const deleteRawResult = await deleteNotesTool.deleteNotes({
+        notes: [newNoteId],
+        confirmDeletion: true,
+      });
       const deleteResult = parseToolResult(deleteRawResult);
       expect(deleteResult.success).toBe(true);
       expect(deleteResult.deletedNoteIds).toContain(newNoteId);
@@ -225,10 +210,9 @@ describe("Note Management Workflow", () => {
         },
       );
 
-      const finalSearchRawResult = await findNotesTool.findNotes(
-        { query: `deck:${noteData.deckName}` },
-        mockContext,
-      );
+      const finalSearchRawResult = await findNotesTool.findNotes({
+        query: `deck:${noteData.deckName}`,
+      });
       const finalSearchResult = parseToolResult(finalSearchRawResult);
       expect(finalSearchResult.noteIds).not.toContain(newNoteId);
     });
@@ -258,10 +242,9 @@ describe("Note Management Workflow", () => {
         },
       );
 
-      const findRawResult = await findNotesTool.findNotes(
-        { query: "tag:batch" },
-        mockContext,
-      );
+      const findRawResult = await findNotesTool.findNotes({
+        query: "tag:batch",
+      });
       const findResult = parseToolResult(findRawResult);
       expect(findResult.noteIds).toEqual(noteIds);
 
@@ -275,10 +258,7 @@ describe("Note Management Workflow", () => {
         },
       );
 
-      const infoRawResult = await notesInfoTool.notesInfo(
-        { notes: noteIds },
-        mockContext,
-      );
+      const infoRawResult = await notesInfoTool.notesInfo({ notes: noteIds });
       const infoResult = parseToolResult(infoRawResult);
       expect(infoResult.notes).toHaveLength(3);
 
@@ -296,15 +276,12 @@ describe("Note Management Workflow", () => {
           },
         );
 
-        const updateRawResult = await updateNoteFieldsTool.updateNoteFields(
-          {
-            note: {
-              id: noteIds[i],
-              fields: { Back: `Updated Answer ${noteIds[i]}` },
-            },
+        const updateRawResult = await updateNoteFieldsTool.updateNoteFields({
+          note: {
+            id: noteIds[i],
+            fields: { Back: `Updated Answer ${noteIds[i]}` },
           },
-          mockContext,
-        );
+        });
         const updateResult = parseToolResult(updateRawResult);
         expect(updateResult.success).toBe(true);
       }
@@ -322,13 +299,10 @@ describe("Note Management Workflow", () => {
         },
       );
 
-      const deleteRawResult = await deleteNotesTool.deleteNotes(
-        {
-          notes: noteIds,
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const deleteRawResult = await deleteNotesTool.deleteNotes({
+        notes: noteIds,
+        confirmDeletion: true,
+      });
       const deleteResult = parseToolResult(deleteRawResult);
       expect(deleteResult.deletedCount).toBe(3);
       expect(deleteResult.cardsDeleted).toBe(3);
@@ -347,15 +321,12 @@ describe("Note Management Workflow", () => {
         },
       );
 
-      const updateRawResult = await updateNoteFieldsTool.updateNoteFields(
-        {
-          note: {
-            id: noteId,
-            fields: { Front: "Test" },
-          },
+      const updateRawResult = await updateNoteFieldsTool.updateNoteFields({
+        note: {
+          id: noteId,
+          fields: { Front: "Test" },
         },
-        mockContext,
-      );
+      });
       const updateResult = parseToolResult(updateRawResult);
       expect(updateResult.success).toBe(false);
       expect(updateResult.error).toContain("Note not found");
@@ -373,17 +344,14 @@ describe("Note Management Workflow", () => {
         },
       );
 
-      const addRawResult = await addNoteTool.addNote(
-        {
-          deckName: "RecoveryDeck",
-          modelName: "Basic",
-          fields: {
-            Front: "Recovery Question",
-            Back: "Recovery Answer",
-          },
+      const addRawResult = await addNoteTool.addNote({
+        deckName: "RecoveryDeck",
+        modelName: "Basic",
+        fields: {
+          Front: "Recovery Question",
+          Back: "Recovery Answer",
         },
-        mockContext,
-      );
+      });
       const addResult = parseToolResult(addRawResult);
       expect(addResult.success).toBe(true);
 
@@ -412,15 +380,12 @@ describe("Note Management Workflow", () => {
         },
       );
 
-      const retryUpdateRawResult = await updateNoteFieldsTool.updateNoteFields(
-        {
-          note: {
-            id: noteId,
-            fields: { Front: "Updated Recovery Question" },
-          },
+      const retryUpdateRawResult = await updateNoteFieldsTool.updateNoteFields({
+        note: {
+          id: noteId,
+          fields: { Front: "Updated Recovery Question" },
         },
-        mockContext,
-      );
+      });
       const retryUpdateResult = parseToolResult(retryUpdateRawResult);
       expect(retryUpdateResult.success).toBe(true);
     });
@@ -445,10 +410,9 @@ describe("Note Management Workflow", () => {
           },
         );
 
-        const rawResult = await findNotesTool.findNotes(
-          { query: testCase.query },
-          mockContext,
-        );
+        const rawResult = await findNotesTool.findNotes({
+          query: testCase.query,
+        });
         const result = parseToolResult(rawResult);
         expect(result.noteIds).toEqual(testCase.expectedIds);
       }

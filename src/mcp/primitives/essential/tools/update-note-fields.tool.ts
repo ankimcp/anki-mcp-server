@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -78,27 +77,24 @@ export class UpdateNoteFieldsTool {
       idempotentHint: true,
     },
   })
-  async updateNoteFields(
-    {
-      note,
-    }: {
-      note: {
-        id: number;
-        fields: Record<string, string>;
-        audio?: Array<{
-          url: string;
-          filename: string;
-          fields: string[];
-        }>;
-        picture?: Array<{
-          url: string;
-          filename: string;
-          fields: string[];
-        }>;
-      };
-    },
-    context: Context,
-  ) {
+  async updateNoteFields({
+    note,
+  }: {
+    note: {
+      id: number;
+      fields: Record<string, string>;
+      audio?: Array<{
+        url: string;
+        filename: string;
+        fields: string[];
+      }>;
+      picture?: Array<{
+        url: string;
+        filename: string;
+        fields: string[];
+      }>;
+    };
+  }) {
     try {
       const fieldCount = Object.keys(note.fields).length;
       this.logger.log(
@@ -143,8 +139,6 @@ export class UpdateNoteFieldsTool {
         }
       }
 
-      await context.reportProgress({ progress: 25, total: 100 });
-
       // First, let's get the current note info to validate it exists
       const notesInfo = await this.ankiClient.invoke<any[]>("notesInfo", {
         notes: [note.id],
@@ -179,8 +173,6 @@ export class UpdateNoteFieldsTool {
         );
       }
 
-      await context.reportProgress({ progress: 50, total: 100 });
-
       // Build the update parameters
       const updateParams: any = {
         note: {
@@ -200,7 +192,6 @@ export class UpdateNoteFieldsTool {
       // Call AnkiConnect updateNoteFields action
       await this.ankiClient.invoke<null>("updateNoteFields", updateParams);
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(`Successfully updated note ID: ${note.id}`);
 
       // Get the list of updated fields for the response

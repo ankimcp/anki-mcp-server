@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -35,15 +34,12 @@ export class GuiUndoTool {
       idempotentHint: false,
     },
   })
-  async guiUndo(_args: Record<string, never>, context: Context) {
+  async guiUndo(_args: Record<string, never>) {
     try {
       this.logger.log("Undoing last action in Anki");
-      await context.reportProgress({ progress: 50, total: 100 });
 
       // Call AnkiConnect guiUndo action
       const success = await this.ankiClient.invoke<boolean>("guiUndo");
-
-      await context.reportProgress({ progress: 100, total: 100 });
 
       if (!success) {
         this.logger.warn("Nothing to undo");

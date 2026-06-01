@@ -1,10 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { DeckStatsTool } from "../deck-stats.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 import type { DeckStatsResult } from "../deckActions/actions/deckStats.action";
 
 jest.mock("@/mcp/clients/anki-connect.client");
@@ -12,7 +9,6 @@ jest.mock("@/mcp/clients/anki-connect.client");
 describe("DeckStatsTool", () => {
   let tool: DeckStatsTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: ReturnType<typeof createMockContext>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -23,7 +19,6 @@ describe("DeckStatsTool", () => {
     ankiClient = module.get(
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -68,7 +63,7 @@ describe("DeckStatsTool", () => {
       return Promise.resolve({});
     });
 
-    const rawResult = await tool.execute({ deck: deckName }, mockContext);
+    const rawResult = await tool.execute({ deck: deckName });
     const result = parseToolResult(rawResult) as DeckStatsResult;
 
     expect(ankiClient.invoke).toHaveBeenCalledTimes(5);
@@ -118,7 +113,7 @@ describe("DeckStatsTool", () => {
       return Promise.resolve({});
     });
 
-    const rawResult = await tool.execute({ deck: fullDeckName }, mockContext);
+    const rawResult = await tool.execute({ deck: fullDeckName });
     const result = parseToolResult(rawResult) as DeckStatsResult;
 
     expect(result.deck).toBe(fullDeckName);
@@ -132,7 +127,7 @@ describe("DeckStatsTool", () => {
   it("should handle deck not found", async () => {
     ankiClient.invoke.mockResolvedValueOnce({});
 
-    const rawResult = await tool.execute({ deck: "NonExistent" }, mockContext);
+    const rawResult = await tool.execute({ deck: "NonExistent" });
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -161,7 +156,7 @@ describe("DeckStatsTool", () => {
       return Promise.resolve({});
     });
 
-    const rawResult = await tool.execute({ deck: deckName }, mockContext);
+    const rawResult = await tool.execute({ deck: deckName });
     const result = parseToolResult(rawResult) as DeckStatsResult;
 
     expect(result.deck).toBe(deckName);
@@ -209,7 +204,7 @@ describe("DeckStatsTool", () => {
       return Promise.resolve({});
     });
 
-    const rawResult = await tool.execute({ deck: deckName }, mockContext);
+    const rawResult = await tool.execute({ deck: deckName });
     const result = parseToolResult(rawResult) as DeckStatsResult;
 
     // Arithmetic must close: total === new + learning + review + other
@@ -285,7 +280,7 @@ describe("DeckStatsTool", () => {
       return Promise.resolve({});
     });
 
-    const rawResult = await tool.execute({ deck: parentName }, mockContext);
+    const rawResult = await tool.execute({ deck: parentName });
     const result = parseToolResult(rawResult) as DeckStatsResult;
 
     // Rolled-up total includes children: 4 parent + 8 child = 12.
@@ -337,14 +332,11 @@ describe("DeckStatsTool", () => {
       return Promise.resolve({});
     });
 
-    const rawResult = await tool.execute(
-      {
-        deck: deckName,
-        easeBuckets: [1.5, 2.0, 2.5],
-        intervalBuckets: [14, 30, 60],
-      },
-      mockContext,
-    );
+    const rawResult = await tool.execute({
+      deck: deckName,
+      easeBuckets: [1.5, 2.0, 2.5],
+      intervalBuckets: [14, 30, 60],
+    });
     const result = parseToolResult(rawResult) as DeckStatsResult;
 
     expect(result.ease.buckets).toBeDefined();
@@ -388,7 +380,7 @@ describe("DeckStatsTool", () => {
       return Promise.resolve({});
     });
 
-    const rawResult = await tool.execute({ deck: deckName }, mockContext);
+    const rawResult = await tool.execute({ deck: deckName });
     const result = parseToolResult(rawResult) as DeckStatsResult;
 
     expect(result.ease.count).toBe(3);
@@ -431,51 +423,10 @@ describe("DeckStatsTool", () => {
       return Promise.resolve({});
     });
 
-    const rawResult = await tool.execute({ deck: deckName }, mockContext);
+    const rawResult = await tool.execute({ deck: deckName });
     const result = parseToolResult(rawResult) as DeckStatsResult;
 
     expect(result.intervals.count).toBe(10);
     expect(result.intervals.mean).toBe(25);
-  });
-
-  it("should report progress", async () => {
-    const deckName = "Test Deck";
-
-    ankiClient.invoke.mockImplementation((action: string) => {
-      if (action === "deckNamesAndIds") {
-        return Promise.resolve({ [deckName]: 1234567890 });
-      }
-      if (action === "getDeckStats") {
-        return Promise.resolve({
-          "1234567890": {
-            deck_id: 1234567890,
-            name: deckName,
-            new_count: 0,
-            learn_count: 0,
-            review_count: 5,
-            total_in_deck: 5,
-          },
-        });
-      }
-      if (action === "findCards") {
-        return Promise.resolve([1, 2, 3, 4, 5]);
-      }
-      if (action === "getEaseFactors") {
-        return Promise.resolve(Array(5).fill(2500));
-      }
-      if (action === "getIntervals") {
-        return Promise.resolve(Array(5).fill(10));
-      }
-      return Promise.resolve({});
-    });
-
-    await tool.execute({ deck: deckName }, mockContext);
-
-    expect(mockContext.reportProgress).toHaveBeenCalled();
-    const calls = mockContext.reportProgress.mock.calls;
-    expect(calls.length).toBeGreaterThan(1);
-
-    expect(calls[0][0]).toEqual({ progress: 10, total: 100 });
-    expect(calls[calls.length - 1][0]).toEqual({ progress: 100, total: 100 });
   });
 });

@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -41,17 +40,15 @@ export class CreateDeckTool {
       idempotentHint: true,
     },
   })
-  async execute(params: { deckName: string }, context: Context) {
+  async execute(params: { deckName: string }) {
     try {
       this.logger.log(`Executing createDeck: ${params.deckName}`);
-      await context.reportProgress({ progress: 25, total: 100 });
 
       const result = await createDeck(
         { deckName: params.deckName },
         this.ankiClient,
       );
 
-      await context.reportProgress({ progress: 100, total: 100 });
       return result;
     } catch (error) {
       this.logger.error("Failed to execute createDeck", error);

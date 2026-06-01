@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -39,7 +38,7 @@ export class RemoveTagsTool {
       idempotentHint: true,
     },
   })
-  async execute(params: { notes: number[]; tags: string }, context: Context) {
+  async execute(params: { notes: number[]; tags: string }) {
     try {
       this.logger.log(
         `Executing removeTags on ${params.notes?.length ?? 0} note(s)`,
@@ -52,14 +51,11 @@ export class RemoveTagsTool {
         throw new Error("tags string is required for removeTags action");
       }
 
-      await context.reportProgress({ progress: 25, total: 100 });
-
       const result = await removeTags(
         { notes: params.notes, tags: params.tags },
         this.ankiClient,
       );
 
-      await context.reportProgress({ progress: 100, total: 100 });
       return result;
     } catch (error) {
       this.logger.error("Failed to execute removeTags", error);

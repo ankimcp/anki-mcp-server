@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { NoteOptions } from "@/mcp/types/anki.types";
@@ -82,35 +81,31 @@ export class AddNoteTool {
       idempotentHint: false,
     },
   })
-  async addNote(
-    {
-      deckName,
-      modelName,
-      fields,
-      tags,
-      allowDuplicate,
-      duplicateScope,
-      duplicateScopeOptions,
-    }: {
-      deckName: string;
-      modelName: string;
-      fields: Record<string, string>;
-      tags?: string[];
-      allowDuplicate?: boolean;
-      duplicateScope?: "deck" | "collection";
-      duplicateScopeOptions?: {
-        deckName?: string;
-        checkChildren?: boolean;
-        checkAllModels?: boolean;
-      };
-    },
-    context: Context,
-  ) {
+  async addNote({
+    deckName,
+    modelName,
+    fields,
+    tags,
+    allowDuplicate,
+    duplicateScope,
+    duplicateScopeOptions,
+  }: {
+    deckName: string;
+    modelName: string;
+    fields: Record<string, string>;
+    tags?: string[];
+    allowDuplicate?: boolean;
+    duplicateScope?: "deck" | "collection";
+    duplicateScopeOptions?: {
+      deckName?: string;
+      checkChildren?: boolean;
+      checkAllModels?: boolean;
+    };
+  }) {
     try {
       this.logger.log(
         `Adding note to deck "${deckName}" with model "${modelName}"`,
       );
-      await context.reportProgress({ progress: 20, total: 100 });
 
       // Get the field names for the model to determine the sort field (first field)
       const fieldNames = await this.ankiClient.invoke<string[]>(
@@ -130,8 +125,6 @@ export class AddNoteTool {
         );
       }
 
-      await context.reportProgress({ progress: 35, total: 100 });
-
       // Validate that the first field (sort field) is non-empty
       const sortField = fieldNames[0];
       const sortFieldValue = fields[sortField];
@@ -149,8 +142,6 @@ export class AddNoteTool {
           },
         );
       }
-
-      await context.reportProgress({ progress: 50, total: 100 });
 
       // Build the note parameters for AnkiConnect
       const noteParams: any = {
@@ -187,18 +178,13 @@ export class AddNoteTool {
         noteParams.options = options;
       }
 
-      await context.reportProgress({ progress: 60, total: 100 });
-
       // Add the note using AnkiConnect
       const noteId = await this.ankiClient.invoke<number | null>("addNote", {
         note: noteParams,
       });
 
-      await context.reportProgress({ progress: 80, total: 100 });
-
       if (!noteId) {
         this.logger.warn("Note creation failed - possibly a duplicate");
-        await context.reportProgress({ progress: 100, total: 100 });
 
         return createErrorResponse(
           new Error("Failed to create note - it may be a duplicate"),
@@ -212,7 +198,6 @@ export class AddNoteTool {
         );
       }
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(`Successfully created note with ID: ${noteId}`);
 
       const fieldCount = Object.keys(fields).length;

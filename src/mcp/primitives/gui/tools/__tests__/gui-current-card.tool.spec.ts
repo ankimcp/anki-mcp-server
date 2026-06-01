@@ -2,10 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { GuiCurrentCardTool } from "../gui-current-card.tool";
 import { AnkiConnectClient } from "../../../../clients/anki-connect.client";
 import { GuiCurrentCardInfo } from "../../../../types/anki.types";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 const mockAnkiClient = {
   invoke: jest.fn(),
@@ -13,7 +10,6 @@ const mockAnkiClient = {
 
 describe("GuiCurrentCardTool", () => {
   let tool: GuiCurrentCardTool;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -27,7 +23,6 @@ describe("GuiCurrentCardTool", () => {
     }).compile();
 
     tool = module.get<GuiCurrentCardTool>(GuiCurrentCardTool);
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -49,20 +44,19 @@ describe("GuiCurrentCardTool", () => {
 
       mockAnkiClient.invoke.mockResolvedValue(mockCardInfo);
 
-      const rawResult = await tool.guiCurrentCard({}, mockContext);
+      const rawResult = await tool.guiCurrentCard({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
       expect(result.cardInfo).toEqual(mockCardInfo);
       expect(result.inReview).toBe(true);
       expect(mockAnkiClient.invoke).toHaveBeenCalledWith("guiCurrentCard");
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(2);
     });
 
     it("should handle not in review mode (returns null)", async () => {
       mockAnkiClient.invoke.mockResolvedValue(null);
 
-      const rawResult = await tool.guiCurrentCard({}, mockContext);
+      const rawResult = await tool.guiCurrentCard({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -75,7 +69,7 @@ describe("GuiCurrentCardTool", () => {
       const error = new Error("Anki GUI not responding");
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiCurrentCard({}, mockContext);
+      const rawResult = await tool.guiCurrentCard({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);

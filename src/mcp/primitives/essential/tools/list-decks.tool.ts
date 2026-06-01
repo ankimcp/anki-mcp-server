@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -58,17 +57,15 @@ export class ListDecksTool {
       idempotentHint: true,
     },
   })
-  async execute(params: { includeStats?: boolean }, context: Context) {
+  async execute(params: { includeStats?: boolean }) {
     try {
       this.logger.log("Executing listDecks");
-      await context.reportProgress({ progress: 10, total: 100 });
 
       const result = await listDecks(
         { includeStats: params.includeStats },
         this.ankiClient,
       );
 
-      await context.reportProgress({ progress: 100, total: 100 });
       return result;
     } catch (error) {
       this.logger.error("Failed to execute listDecks", error);

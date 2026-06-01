@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -43,17 +42,14 @@ export class GuiSelectCardTool {
       idempotentHint: true,
     },
   })
-  async guiSelectCard({ card }: { card: number }, context: Context) {
+  async guiSelectCard({ card }: { card: number }) {
     try {
       this.logger.log(`Selecting card ${card} in Card Browser`);
-      await context.reportProgress({ progress: 50, total: 100 });
 
       // Call AnkiConnect guiSelectCard action
       const success = await this.ankiClient.invoke<boolean>("guiSelectCard", {
         card,
       });
-
-      await context.reportProgress({ progress: 100, total: 100 });
 
       if (!success) {
         this.logger.warn("Card Browser is not open");

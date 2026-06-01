@@ -1,17 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { RetrieveMediaFileTool } from "../retrieve-media-file.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 jest.mock("@/mcp/clients/anki-connect.client");
 
 describe("RetrieveMediaFileTool", () => {
   let tool: RetrieveMediaFileTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: ReturnType<typeof createMockContext>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -22,7 +18,6 @@ describe("RetrieveMediaFileTool", () => {
     ankiClient = module.get(
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -32,7 +27,7 @@ describe("RetrieveMediaFileTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce("base64EncodedFileContent==");
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenCalledWith("retrieveMediaFile", {
@@ -50,7 +45,7 @@ describe("RetrieveMediaFileTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce(false);
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(true);
@@ -65,7 +60,7 @@ describe("RetrieveMediaFileTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce("file-contents-base64");
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenCalledWith("retrieveMediaFile", {
@@ -81,7 +76,7 @@ describe("RetrieveMediaFileTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce("base64data");
 
-    await tool.execute(params, mockContext);
+    await tool.execute(params);
 
     expect(ankiClient.invoke).toHaveBeenCalledWith("retrieveMediaFile", {
       filename: "pronunciation.mp3",
@@ -94,15 +89,6 @@ describe("RetrieveMediaFileTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce("base64Data");
 
-    await tool.execute(params, mockContext);
-
-    expect(mockContext.reportProgress).toHaveBeenCalledWith({
-      progress: 50,
-      total: 100,
-    });
-    expect(mockContext.reportProgress).toHaveBeenCalledWith({
-      progress: 100,
-      total: 100,
-    });
+    await tool.execute(params);
   });
 });

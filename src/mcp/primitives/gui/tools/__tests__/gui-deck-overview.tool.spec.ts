@@ -1,10 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { GuiDeckOverviewTool } from "../gui-deck-overview.tool";
 import { AnkiConnectClient } from "../../../../clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 const mockAnkiClient = {
   invoke: jest.fn(),
@@ -12,7 +9,6 @@ const mockAnkiClient = {
 
 describe("GuiDeckOverviewTool", () => {
   let tool: GuiDeckOverviewTool;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,7 +22,6 @@ describe("GuiDeckOverviewTool", () => {
     }).compile();
 
     tool = module.get<GuiDeckOverviewTool>(GuiDeckOverviewTool);
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -38,10 +33,7 @@ describe("GuiDeckOverviewTool", () => {
     it("should successfully open deck overview", async () => {
       mockAnkiClient.invoke.mockResolvedValue(true);
 
-      const rawResult = await tool.guiDeckOverview(
-        { name: "Spanish" },
-        mockContext,
-      );
+      const rawResult = await tool.guiDeckOverview({ name: "Spanish" });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -49,16 +41,12 @@ describe("GuiDeckOverviewTool", () => {
       expect(mockAnkiClient.invoke).toHaveBeenCalledWith("guiDeckOverview", {
         name: "Spanish",
       });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(2);
     });
 
     it("should handle failure to open (returns false)", async () => {
       mockAnkiClient.invoke.mockResolvedValue(false);
 
-      const rawResult = await tool.guiDeckOverview(
-        { name: "NonExistent" },
-        mockContext,
-      );
+      const rawResult = await tool.guiDeckOverview({ name: "NonExistent" });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -70,10 +58,7 @@ describe("GuiDeckOverviewTool", () => {
       const error = new Error('Deck "InvalidDeck" not found');
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiDeckOverview(
-        { name: "InvalidDeck" },
-        mockContext,
-      );
+      const rawResult = await tool.guiDeckOverview({ name: "InvalidDeck" });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);

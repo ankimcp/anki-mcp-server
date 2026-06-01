@@ -1,17 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { RemoveTagsTool } from "../remove-tags.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 jest.mock("@/mcp/clients/anki-connect.client");
 
 describe("RemoveTagsTool", () => {
   let tool: RemoveTagsTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: ReturnType<typeof createMockContext>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -22,7 +18,6 @@ describe("RemoveTagsTool", () => {
     ankiClient = module.get(
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -33,7 +28,7 @@ describe("RemoveTagsTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce(null);
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenCalledWith("removeTags", {
@@ -52,7 +47,7 @@ describe("RemoveTagsTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce(null);
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(true);
@@ -65,7 +60,7 @@ describe("RemoveTagsTool", () => {
       tags: "test",
     };
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);

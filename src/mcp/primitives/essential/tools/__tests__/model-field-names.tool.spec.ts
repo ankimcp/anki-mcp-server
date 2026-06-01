@@ -1,15 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ModelFieldNamesTool } from "../model-field-names.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createMockContext,
-  parseToolResult,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 describe("ModelFieldNamesTool", () => {
   let tool: ModelFieldNamesTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,7 +22,6 @@ describe("ModelFieldNamesTool", () => {
 
     tool = module.get<ModelFieldNamesTool>(ModelFieldNamesTool);
     ankiClient = module.get(AnkiConnectClient);
-    mockContext = createMockContext();
   });
 
   afterEach(() => {
@@ -40,7 +35,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -66,7 +61,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -85,7 +80,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -102,7 +97,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -123,7 +118,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -150,7 +145,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -164,7 +159,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -179,7 +174,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -196,7 +191,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -211,7 +206,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      await tool.modelFieldNames({ modelName }, mockContext);
+      await tool.modelFieldNames({ modelName });
 
       expect(ankiClient.invoke).toHaveBeenCalledWith("modelFieldNames", {
         modelName: modelName,
@@ -225,7 +220,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("model was not found"));
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -241,7 +236,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("ECONNREFUSED"));
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -256,7 +251,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("Unknown error"));
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -269,7 +264,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      await tool.modelFieldNames({ modelName }, mockContext);
+      await tool.modelFieldNames({ modelName });
 
       // AnkiConnect will handle validation, we just pass it through
       expect(ankiClient.invoke).toHaveBeenCalledWith("modelFieldNames", {
@@ -285,7 +280,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -299,7 +294,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(null);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -313,7 +308,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(undefined);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -328,7 +323,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -341,7 +336,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -356,21 +351,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      await tool.modelFieldNames({ modelName }, mockContext);
-
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 25,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 75,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 100,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(3);
+      await tool.modelFieldNames({ modelName });
     });
 
     it("should report progress even when retrieval fails", async () => {
@@ -378,13 +359,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("Failed"));
 
-      await tool.modelFieldNames({ modelName }, mockContext);
-
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 25,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(1);
+      await tool.modelFieldNames({ modelName });
     });
   });
 
@@ -395,7 +370,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.example).toEqual({
@@ -410,7 +385,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.example).toEqual({
@@ -425,7 +400,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       // Custom models don't get examples
@@ -441,7 +416,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result).toHaveProperty("success");
@@ -459,7 +434,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("model was not found"));
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result).toHaveProperty("success");
@@ -475,7 +450,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(fieldNames);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.hint).toBe(
@@ -488,7 +463,7 @@ describe("ModelFieldNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(null);
 
-      const rawResult = await tool.modelFieldNames({ modelName }, mockContext);
+      const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.hint).toBe("Use modelNames tool to see available models");

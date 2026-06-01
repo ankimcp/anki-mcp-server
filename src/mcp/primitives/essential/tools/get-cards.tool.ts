@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, SimplifiedCard } from "@/mcp/types/anki.types";
@@ -81,21 +80,21 @@ export class GetCardsTool {
       idempotentHint: true,
     },
   })
-  async getCards(
-    {
-      deck_name,
-      card_state = "due",
-      limit,
-    }: { deck_name?: string; card_state?: CardState; limit?: number },
-    context: Context,
-  ) {
+  async getCards({
+    deck_name,
+    card_state = "due",
+    limit,
+  }: {
+    deck_name?: string;
+    card_state?: CardState;
+    limit?: number;
+  }) {
     try {
       const cardLimit = Math.min(limit || 10, 50);
 
       this.logger.log(
         `Getting ${card_state} cards from deck: ${deck_name || "all"}, limit: ${cardLimit}`,
       );
-      await context.reportProgress({ progress: 10, total: 100 });
 
       // Build search query from card state
       const stateQuery = CARD_STATE_QUERY_MAP[card_state];
@@ -117,7 +116,6 @@ export class GetCardsTool {
 
       if (cardIds.length === 0) {
         this.logger.log(`No ${card_state} cards found`);
-        await context.reportProgress({ progress: 100, total: 100 });
         return {
           success: true,
           message: `No ${card_state} cards found`,
@@ -125,8 +123,6 @@ export class GetCardsTool {
           total: 0,
         };
       }
-
-      await context.reportProgress({ progress: 50, total: 100 });
 
       // Limit the number of cards
       const selectedCardIds = cardIds.slice(0, cardLimit);
@@ -152,7 +148,6 @@ export class GetCardsTool {
         };
       });
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(
         `Retrieved ${cards.length} ${card_state} cards out of ${cardIds.length} total`,
       );

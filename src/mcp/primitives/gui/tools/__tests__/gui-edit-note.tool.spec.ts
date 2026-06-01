@@ -1,10 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { GuiEditNoteTool } from "../gui-edit-note.tool";
 import { AnkiConnectClient } from "../../../../clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 const mockAnkiClient = {
   invoke: jest.fn(),
@@ -12,7 +9,6 @@ const mockAnkiClient = {
 
 describe("GuiEditNoteTool", () => {
   let tool: GuiEditNoteTool;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,7 +22,6 @@ describe("GuiEditNoteTool", () => {
     }).compile();
 
     tool = module.get<GuiEditNoteTool>(GuiEditNoteTool);
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -38,10 +33,7 @@ describe("GuiEditNoteTool", () => {
     it("should successfully open note editor", async () => {
       mockAnkiClient.invoke.mockResolvedValue(null);
 
-      const rawResult = await tool.guiEditNote(
-        { note: 1234567890 },
-        mockContext,
-      );
+      const rawResult = await tool.guiEditNote({ note: 1234567890 });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -49,17 +41,13 @@ describe("GuiEditNoteTool", () => {
       expect(mockAnkiClient.invoke).toHaveBeenCalledWith("guiEditNote", {
         note: 1234567890,
       });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(2);
     });
 
     it("should handle note not found error", async () => {
       const error = new Error("Note not found");
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiEditNote(
-        { note: 9999999999 },
-        mockContext,
-      );
+      const rawResult = await tool.guiEditNote({ note: 9999999999 });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -71,10 +59,7 @@ describe("GuiEditNoteTool", () => {
       const error = new Error("Anki not responding");
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiEditNote(
-        { note: 1234567890 },
-        mockContext,
-      );
+      const rawResult = await tool.guiEditNote({ note: 1234567890 });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);

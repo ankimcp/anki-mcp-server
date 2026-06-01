@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -40,15 +39,13 @@ export class GuiEditNoteTool {
       idempotentHint: true,
     },
   })
-  async guiEditNote({ note }: { note: number }, context: Context) {
+  async guiEditNote({ note }: { note: number }) {
     try {
       this.logger.log(`Opening note editor for note ${note}`);
-      await context.reportProgress({ progress: 50, total: 100 });
 
       // Call AnkiConnect guiEditNote action
       await this.ankiClient.invoke<null>("guiEditNote", { note });
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(`Note editor opened for note ${note}`);
 
       return {

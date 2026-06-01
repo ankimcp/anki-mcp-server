@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -57,22 +56,18 @@ export class GuiBrowseTool {
       idempotentHint: true,
     },
   })
-  async guiBrowse(
-    {
-      query,
-      reorderCards,
-    }: {
-      query: string;
-      reorderCards?: {
-        order: "ascending" | "descending";
-        columnId: string;
-      };
-    },
-    context: Context,
-  ) {
+  async guiBrowse({
+    query,
+    reorderCards,
+  }: {
+    query: string;
+    reorderCards?: {
+      order: "ascending" | "descending";
+      columnId: string;
+    };
+  }) {
     try {
       this.logger.log(`Opening Card Browser with query: "${query}"`);
-      await context.reportProgress({ progress: 25, total: 100 });
 
       const params: any = { query };
       if (reorderCards) {
@@ -85,7 +80,6 @@ export class GuiBrowseTool {
         params,
       );
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(
         `Card Browser opened with ${cardIds.length} card(s) found`,
       );

@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -37,17 +36,15 @@ export class RetrieveMediaFileTool {
       idempotentHint: true,
     },
   })
-  async execute(params: { filename: string }, context: Context) {
+  async execute(params: { filename: string }) {
     try {
       this.logger.log(`Executing retrieveMediaFile: ${params.filename}`);
-      await context.reportProgress({ progress: 50, total: 100 });
 
       const result = await retrieveMediaFile(
         { filename: params.filename },
         this.ankiClient,
       );
 
-      await context.reportProgress({ progress: 100, total: 100 });
       return result;
     } catch (error) {
       this.logger.error("Failed to execute retrieveMediaFile", error);

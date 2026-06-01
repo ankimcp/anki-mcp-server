@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -36,16 +35,14 @@ export class GuiSelectedNotesTool {
       idempotentHint: true,
     },
   })
-  async guiSelectedNotes(_args: Record<string, never>, context: Context) {
+  async guiSelectedNotes(_args: Record<string, never>) {
     try {
       this.logger.log("Getting selected notes from Card Browser");
-      await context.reportProgress({ progress: 50, total: 100 });
 
       // Call AnkiConnect guiSelectedNotes action
       const noteIds =
         await this.ankiClient.invoke<number[]>("guiSelectedNotes");
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(
         `Retrieved ${noteIds.length} selected note(s) from Card Browser`,
       );

@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import type { AnkiDeckStatsResponse } from "@/mcp/types/anki.types";
@@ -149,13 +148,12 @@ export class CollectionStatsTool {
       idempotentHint: true,
     },
   })
-  async execute(params: CollectionStatsParams, context: Context) {
+  async execute(params: CollectionStatsParams) {
     try {
       const { ease_buckets = [2.0, 2.5, 3.0], interval_buckets = [7, 21, 90] } =
         params;
 
       this.logger.log("Getting collection-wide statistics");
-      await context.reportProgress({ progress: 10, total: 100 });
 
       // Step 1: Get all deck names and their IDs. We need IDs because getDeckStats
       // returns short (child) names (e.g. "Child" for "Parent::Child"), and in some
@@ -187,12 +185,10 @@ export class CollectionStatsTool {
           per_deck: [],
         };
 
-        await context.reportProgress({ progress: 100, total: 100 });
         return result;
       }
 
       this.logger.log(`Found ${deckNames.length} decks in collection`);
-      await context.reportProgress({ progress: 20, total: 100 });
 
       // Step 2: Get stats for all decks at once
       this.logger.log("Fetching statistics for all decks...");
@@ -290,7 +286,6 @@ export class CollectionStatsTool {
         `Aggregated counts: ${counts.total} total cards across ${rootDeckNames.size} root deck(s) ` +
           `(${deckNames.length} total decks including children)`,
       );
-      await context.reportProgress({ progress: 40, total: 100 });
 
       // Handle empty collection case
       if (counts.total === 0) {
@@ -306,7 +301,6 @@ export class CollectionStatsTool {
           per_deck,
         };
 
-        await context.reportProgress({ progress: 100, total: 100 });
         return result;
       }
 
@@ -331,12 +325,10 @@ export class CollectionStatsTool {
           per_deck,
         };
 
-        await context.reportProgress({ progress: 100, total: 100 });
         return result;
       }
 
       this.logger.log(`Found ${cardIds.length} cards in collection`);
-      await context.reportProgress({ progress: 50, total: 100 });
 
       // Step 4: Get ease factors for all cards (divide by 1000!)
       this.logger.log(`Fetching ease factors for ${cardIds.length} cards...`);
@@ -357,7 +349,6 @@ export class CollectionStatsTool {
         .filter((e) => e > 0); // Filter out invalid values (0 = new cards)
 
       this.logger.log(`Processed ${easeValues.length} ease values`);
-      await context.reportProgress({ progress: 70, total: 100 });
 
       // Step 5: Get intervals for all cards (filter negatives!)
       this.logger.log(`Fetching intervals for ${cardIds.length} cards...`);
@@ -376,7 +367,6 @@ export class CollectionStatsTool {
       const intervalValues = intervalsRaw.filter((i) => i > 0); // Only review cards (positive = days)
 
       this.logger.log(`Processed ${intervalValues.length} interval values`);
-      await context.reportProgress({ progress: 90, total: 100 });
 
       // Step 6: Compute distributions
       this.logger.log("Computing distributions...");
@@ -397,7 +387,6 @@ export class CollectionStatsTool {
         per_deck,
       };
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(
         `Successfully retrieved collection statistics: ${deckNames.length} decks, ` +
           `${counts.total} total cards, ${ease.count} cards with ease values, ` +

@@ -5,17 +5,13 @@ import {
   AnkiConnectError,
 } from "../../../../clients/anki-connect.client";
 import { mockNotes } from "../../../../../test-fixtures/mock-data";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 jest.mock("../../../../clients/anki-connect.client");
 
 describe("DeleteNotesTool", () => {
   let tool: DeleteNotesTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -27,8 +23,6 @@ describe("DeleteNotesTool", () => {
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
 
-    mockContext = createMockContext();
-
     jest.clearAllMocks();
   });
 
@@ -38,13 +32,10 @@ describe("DeleteNotesTool", () => {
       const noteIds = [mockNotes.spanish.noteId, mockNotes.japanese.noteId];
 
       // Act
-      const rawResult = await tool.deleteNotes(
-        {
-          notes: noteIds,
-          confirmDeletion: false,
-        },
-        mockContext,
-      );
+      const rawResult = await tool.deleteNotes({
+        notes: noteIds,
+        confirmDeletion: false,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -68,13 +59,10 @@ describe("DeleteNotesTool", () => {
         .mockResolvedValueOnce(null); // deleteNotes call
 
       // Act
-      const rawResult = await tool.deleteNotes(
-        {
-          notes: noteIds,
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const rawResult = await tool.deleteNotes({
+        notes: noteIds,
+        confirmDeletion: true,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -114,13 +102,10 @@ describe("DeleteNotesTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.deleteNotes(
-        {
-          notes: noteIds,
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const rawResult = await tool.deleteNotes({
+        notes: noteIds,
+        confirmDeletion: true,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -144,13 +129,10 @@ describe("DeleteNotesTool", () => {
       ankiClient.invoke.mockResolvedValueOnce([null, null]);
 
       // Act
-      const rawResult = await tool.deleteNotes(
-        {
-          notes: noteIds,
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const rawResult = await tool.deleteNotes({
+        notes: noteIds,
+        confirmDeletion: true,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -175,13 +157,10 @@ describe("DeleteNotesTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.deleteNotes(
-        {
-          notes: noteIds,
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const rawResult = await tool.deleteNotes({
+        notes: noteIds,
+        confirmDeletion: true,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -195,13 +174,10 @@ describe("DeleteNotesTool", () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("fetch failed"));
 
       // Act
-      const rawResult = await tool.deleteNotes(
-        {
-          notes: noteIds,
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const rawResult = await tool.deleteNotes({
+        notes: noteIds,
+        confirmDeletion: true,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -220,13 +196,10 @@ describe("DeleteNotesTool", () => {
         );
 
       // Act
-      const rawResult = await tool.deleteNotes(
-        {
-          notes: noteIds,
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const rawResult = await tool.deleteNotes({
+        notes: noteIds,
+        confirmDeletion: true,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -243,13 +216,10 @@ describe("DeleteNotesTool", () => {
       );
 
       // Act
-      const rawResult = await tool.deleteNotes(
-        {
-          notes: tooManyNotes,
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const rawResult = await tool.deleteNotes({
+        notes: tooManyNotes,
+        confirmDeletion: true,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -265,13 +235,10 @@ describe("DeleteNotesTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.deleteNotes(
-        {
-          notes: [mockNotes.spanish.noteId],
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const rawResult = await tool.deleteNotes({
+        notes: [mockNotes.spanish.noteId],
+        confirmDeletion: true,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -285,28 +252,12 @@ describe("DeleteNotesTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const _rawResult = await tool.deleteNotes(
-        {
-          notes: [mockNotes.spanish.noteId],
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const _rawResult = await tool.deleteNotes({
+        notes: [mockNotes.spanish.noteId],
+        confirmDeletion: true,
+      });
 
       // Assert
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(3);
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(1, {
-        progress: 25,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(2, {
-        progress: 50,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(3, {
-        progress: 100,
-        total: 100,
-      });
     });
 
     it("should handle notes with no cards gracefully", async () => {
@@ -321,13 +272,10 @@ describe("DeleteNotesTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.deleteNotes(
-        {
-          notes: [mockNotes.spanish.noteId],
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const rawResult = await tool.deleteNotes({
+        notes: [mockNotes.spanish.noteId],
+        confirmDeletion: true,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -343,13 +291,10 @@ describe("DeleteNotesTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.deleteNotes(
-        {
-          notes: noteIds,
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const rawResult = await tool.deleteNotes({
+        notes: noteIds,
+        confirmDeletion: true,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -364,13 +309,10 @@ describe("DeleteNotesTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.deleteNotes(
-        {
-          notes: [mockNotes.spanish.noteId],
-          confirmDeletion: true,
-        },
-        mockContext,
-      );
+      const rawResult = await tool.deleteNotes({
+        notes: [mockNotes.spanish.noteId],
+        confirmDeletion: true,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert

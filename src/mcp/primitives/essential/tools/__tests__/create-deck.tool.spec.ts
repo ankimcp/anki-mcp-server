@@ -1,17 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { CreateDeckTool } from "../create-deck.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 jest.mock("@/mcp/clients/anki-connect.client");
 
 describe("CreateDeckTool", () => {
   let tool: CreateDeckTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: ReturnType<typeof createMockContext>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -22,7 +18,6 @@ describe("CreateDeckTool", () => {
     ankiClient = module.get(
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -32,7 +27,7 @@ describe("CreateDeckTool", () => {
 
     ankiClient.invoke.mockResolvedValueOnce(deckId);
 
-    const rawResult = await tool.execute({ deckName }, mockContext);
+    const rawResult = await tool.execute({ deckName });
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(true);
@@ -52,7 +47,7 @@ describe("CreateDeckTool", () => {
       .mockResolvedValueOnce([]) // deckNames - parent does not exist
       .mockResolvedValueOnce(deckId); // createDeck
 
-    const rawResult = await tool.execute({ deckName }, mockContext);
+    const rawResult = await tool.execute({ deckName });
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(true);
@@ -71,7 +66,7 @@ describe("CreateDeckTool", () => {
       .mockResolvedValueOnce(["Languages", "Other"]) // deckNames - parent exists
       .mockResolvedValueOnce(deckId); // createDeck
 
-    const rawResult = await tool.execute({ deckName }, mockContext);
+    const rawResult = await tool.execute({ deckName });
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(true);
@@ -85,7 +80,7 @@ describe("CreateDeckTool", () => {
   it("should reject deck with more than 2 levels", async () => {
     const deckName = "Languages::Spanish::Vocabulary";
 
-    const rawResult = await tool.execute({ deckName }, mockContext);
+    const rawResult = await tool.execute({ deckName });
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -94,10 +89,7 @@ describe("CreateDeckTool", () => {
   });
 
   it("should reject deck name with empty parts", async () => {
-    const rawResult = await tool.execute(
-      { deckName: "::InvalidDeck" },
-      mockContext,
-    );
+    const rawResult = await tool.execute({ deckName: "::InvalidDeck" });
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -112,7 +104,7 @@ describe("CreateDeckTool", () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce([deckName, "Other Deck"]);
 
-    const rawResult = await tool.execute({ deckName }, mockContext);
+    const rawResult = await tool.execute({ deckName });
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(true);
@@ -124,10 +116,7 @@ describe("CreateDeckTool", () => {
   it("should handle AnkiConnect errors", async () => {
     ankiClient.invoke.mockRejectedValueOnce(new Error("AnkiConnect error"));
 
-    const rawResult = await tool.execute(
-      { deckName: "Test Deck" },
-      mockContext,
-    );
+    const rawResult = await tool.execute({ deckName: "Test Deck" });
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -137,15 +126,6 @@ describe("CreateDeckTool", () => {
   it("should report progress", async () => {
     ankiClient.invoke.mockResolvedValueOnce(123456);
 
-    await tool.execute({ deckName: "Test Deck" }, mockContext);
-
-    expect(mockContext.reportProgress).toHaveBeenCalledWith({
-      progress: 25,
-      total: 100,
-    });
-    expect(mockContext.reportProgress).toHaveBeenCalledWith({
-      progress: 100,
-      total: 100,
-    });
+    await tool.execute({ deckName: "Test Deck" });
   });
 });

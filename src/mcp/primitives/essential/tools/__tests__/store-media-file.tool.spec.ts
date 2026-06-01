@@ -1,10 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { StoreMediaFileTool } from "../store-media-file.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 import * as dns from "node:dns";
 
 jest.mock("@/mcp/clients/anki-connect.client");
@@ -27,7 +24,6 @@ const mockLookup = dns.promises.lookup as jest.MockedFunction<
 describe("StoreMediaFileTool", () => {
   let tool: StoreMediaFileTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: ReturnType<typeof createMockContext>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -38,7 +34,6 @@ describe("StoreMediaFileTool", () => {
     ankiClient = module.get(
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
-    mockContext = createMockContext();
 
     mockLookup.mockResolvedValue({
       address: "93.184.216.34",
@@ -61,7 +56,7 @@ describe("StoreMediaFileTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce("test_audio.mp3");
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenCalledWith("storeMediaFile", {
@@ -81,7 +76,7 @@ describe("StoreMediaFileTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce("image.jpg");
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenCalledWith("storeMediaFile", {
@@ -100,7 +95,7 @@ describe("StoreMediaFileTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce("remote.mp3");
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenCalledWith("storeMediaFile", {
@@ -118,7 +113,7 @@ describe("StoreMediaFileTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce("_preserved_audio.mp3");
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.prefixedWithUnderscore).toBe(true);
@@ -131,7 +126,7 @@ describe("StoreMediaFileTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce(null);
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -145,7 +140,7 @@ describe("StoreMediaFileTool", () => {
     };
     ankiClient.invoke.mockRejectedValueOnce(new Error("Network error"));
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -159,16 +154,7 @@ describe("StoreMediaFileTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce("test.mp3");
 
-    await tool.execute(params, mockContext);
-
-    expect(mockContext.reportProgress).toHaveBeenCalledWith({
-      progress: 25,
-      total: 100,
-    });
-    expect(mockContext.reportProgress).toHaveBeenCalledWith({
-      progress: 100,
-      total: 100,
-    });
+    await tool.execute(params);
   });
 
   describe("security guards", () => {
@@ -179,7 +165,7 @@ describe("StoreMediaFileTool", () => {
           path: "/home/user/.ssh/id_rsa",
         };
 
-        const rawResult = await tool.execute(params, mockContext);
+        const rawResult = await tool.execute(params);
         const result = parseToolResult(rawResult);
 
         expect(result.success).toBe(false);
@@ -193,7 +179,7 @@ describe("StoreMediaFileTool", () => {
           path: "/home/user/.env",
         };
 
-        const rawResult = await tool.execute(params, mockContext);
+        const rawResult = await tool.execute(params);
         const result = parseToolResult(rawResult);
 
         expect(result.success).toBe(false);
@@ -208,7 +194,7 @@ describe("StoreMediaFileTool", () => {
         };
         ankiClient.invoke.mockResolvedValueOnce("cat.jpg");
 
-        const rawResult = await tool.execute(params, mockContext);
+        const rawResult = await tool.execute(params);
         const result = parseToolResult(rawResult);
 
         expect(result.success).toBe(true);
@@ -226,7 +212,7 @@ describe("StoreMediaFileTool", () => {
             path: "/docs/manual.pdf",
           };
 
-          const rawResultBlocked = await tool.execute(params, mockContext);
+          const rawResultBlocked = await tool.execute(params);
           const resultBlocked = parseToolResult(rawResultBlocked);
           expect(resultBlocked.success).toBe(false);
           expect(resultBlocked.error).toContain("Only media files");
@@ -234,7 +220,7 @@ describe("StoreMediaFileTool", () => {
           process.env.MEDIA_ALLOWED_TYPES = "application/pdf";
           ankiClient.invoke.mockResolvedValueOnce("doc.pdf");
 
-          const rawResultAllowed = await tool.execute(params, mockContext);
+          const rawResultAllowed = await tool.execute(params);
           const resultAllowed = parseToolResult(rawResultAllowed);
           expect(resultAllowed.success).toBe(true);
           expect(ankiClient.invoke).toHaveBeenCalled();
@@ -257,7 +243,7 @@ describe("StoreMediaFileTool", () => {
             path: "/other/directory/cat.jpg",
           };
 
-          const rawResult = await tool.execute(params, mockContext);
+          const rawResult = await tool.execute(params);
           const result = parseToolResult(rawResult);
 
           expect(result.success).toBe(false);
@@ -282,7 +268,7 @@ describe("StoreMediaFileTool", () => {
           url: "file:///etc/passwd",
         };
 
-        const rawResult = await tool.execute(params, mockContext);
+        const rawResult = await tool.execute(params);
         const result = parseToolResult(rawResult);
 
         expect(result.success).toBe(false);
@@ -301,7 +287,7 @@ describe("StoreMediaFileTool", () => {
           url: "https://internal-server.local/audio.mp3",
         };
 
-        const rawResult = await tool.execute(params, mockContext);
+        const rawResult = await tool.execute(params);
         const result = parseToolResult(rawResult);
 
         expect(result.success).toBe(false);
@@ -323,7 +309,7 @@ describe("StoreMediaFileTool", () => {
         };
         ankiClient.invoke.mockResolvedValueOnce("public.mp3");
 
-        const rawResult = await tool.execute(params, mockContext);
+        const rawResult = await tool.execute(params);
         const result = parseToolResult(rawResult);
 
         expect(result.success).toBe(true);
@@ -346,7 +332,7 @@ describe("StoreMediaFileTool", () => {
             url: "https://my-nas.local/audio.mp3",
           };
 
-          const rawResultBlocked = await tool.execute(params, mockContext);
+          const rawResultBlocked = await tool.execute(params);
           const resultBlocked = parseToolResult(rawResultBlocked);
           expect(resultBlocked.success).toBe(false);
           expect(resultBlocked.error).toContain("private/internal networks");
@@ -354,7 +340,7 @@ describe("StoreMediaFileTool", () => {
           process.env.MEDIA_ALLOWED_HOSTS = "my-nas.local";
           ankiClient.invoke.mockResolvedValueOnce("internal.mp3");
 
-          const rawResultAllowed = await tool.execute(params, mockContext);
+          const rawResultAllowed = await tool.execute(params);
           const resultAllowed = parseToolResult(rawResultAllowed);
           expect(resultAllowed.success).toBe(true);
         } finally {
@@ -371,13 +357,10 @@ describe("StoreMediaFileTool", () => {
       it("sanitizes path traversal in filename", async () => {
         ankiClient.invoke.mockResolvedValue("safe_name.jpg");
 
-        await tool.execute(
-          {
-            filename: "../../evil.jpg",
-            data: "base64data",
-          },
-          mockContext,
-        );
+        await tool.execute({
+          filename: "../../evil.jpg",
+          data: "base64data",
+        });
 
         expect(ankiClient.invoke).toHaveBeenCalledWith(
           "storeMediaFile",
@@ -388,13 +371,10 @@ describe("StoreMediaFileTool", () => {
       it("sends resolved path to AnkiConnect, not original path", async () => {
         ankiClient.invoke.mockResolvedValue("image.jpg");
 
-        await tool.execute(
-          {
-            filename: "image.jpg",
-            path: "/photos/../photos/image.jpg",
-          },
-          mockContext,
-        );
+        await tool.execute({
+          filename: "image.jpg",
+          path: "/photos/../photos/image.jpg",
+        });
 
         expect(ankiClient.invoke).toHaveBeenCalledWith(
           "storeMediaFile",
@@ -412,13 +392,10 @@ describe("StoreMediaFileTool", () => {
           family: 4,
         } as any);
 
-        const result = await tool.execute(
-          {
-            filename: "metadata.txt",
-            url: "http://169.254.169.254/latest/meta-data/",
-          },
-          mockContext,
-        );
+        const result = await tool.execute({
+          filename: "metadata.txt",
+          url: "http://169.254.169.254/latest/meta-data/",
+        });
 
         expect(result).toHaveProperty("isError", true);
         expect(ankiClient.invoke).not.toHaveBeenCalled();

@@ -1,10 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { CreateModelTool } from "../create-model.tool";
 import { AnkiConnectClient } from "../../../../clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 // Mock the AnkiConnectClient
 jest.mock("../../../../clients/anki-connect.client");
@@ -12,7 +9,6 @@ jest.mock("../../../../clients/anki-connect.client");
 describe("CreateModelTool", () => {
   let tool: CreateModelTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -25,7 +21,6 @@ describe("CreateModelTool", () => {
     ) as jest.Mocked<AnkiConnectClient>;
 
     // Setup mock context
-    mockContext = createMockContext();
 
     // Clear all mocks before each test
     jest.clearAllMocks();
@@ -52,7 +47,7 @@ describe("CreateModelTool", () => {
       });
 
       // Act
-      const rawResult = await tool.createModel(modelData, mockContext);
+      const rawResult = await tool.createModel(modelData);
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -71,7 +66,6 @@ describe("CreateModelTool", () => {
       expect(result.templateCount).toBe(1);
       expect(result.hasCss).toBe(false);
       expect(result.isCloze).toBe(false);
-      expect(mockContext.reportProgress).toHaveBeenCalled();
     });
 
     it("should create a model with custom CSS (RTL example)", async () => {
@@ -104,7 +98,7 @@ describe("CreateModelTool", () => {
       });
 
       // Act
-      const rawResult = await tool.createModel(modelData, mockContext);
+      const rawResult = await tool.createModel(modelData);
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -142,7 +136,7 @@ describe("CreateModelTool", () => {
       });
 
       // Act
-      const rawResult = await tool.createModel(modelData, mockContext);
+      const rawResult = await tool.createModel(modelData);
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -183,7 +177,7 @@ describe("CreateModelTool", () => {
       });
 
       // Act
-      const rawResult = await tool.createModel(modelData, mockContext);
+      const rawResult = await tool.createModel(modelData);
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -212,7 +206,7 @@ describe("CreateModelTool", () => {
       });
 
       // Act
-      const rawResult = await tool.createModel(modelData, mockContext);
+      const rawResult = await tool.createModel(modelData);
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -242,7 +236,7 @@ describe("CreateModelTool", () => {
       });
 
       // Act
-      const rawResult = await tool.createModel(modelData, mockContext);
+      const rawResult = await tool.createModel(modelData);
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -269,7 +263,7 @@ describe("CreateModelTool", () => {
       );
 
       // Act
-      const rawResult = await tool.createModel(modelData, mockContext);
+      const rawResult = await tool.createModel(modelData);
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -295,7 +289,7 @@ describe("CreateModelTool", () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("Anki is not running"));
 
       // Act
-      const rawResult = await tool.createModel(modelData, mockContext);
+      const rawResult = await tool.createModel(modelData);
       const result = parseToolResult(rawResult);
 
       // Assert
