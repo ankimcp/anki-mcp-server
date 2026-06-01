@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -56,13 +55,15 @@ export class UpdateModelStylingTool {
       idempotentHint: true,
     },
   })
-  async updateModelStyling(
-    { modelName, css }: { modelName: string; css: string },
-    context: Context,
-  ) {
+  async updateModelStyling({
+    modelName,
+    css,
+  }: {
+    modelName: string;
+    css: string;
+  }) {
     try {
       this.logger.log(`Updating styling for model: ${modelName}`);
-      await context.reportProgress({ progress: 10, total: 100 });
 
       // Get current styling for comparison
       let oldStyling: { css: string } | null = null;
@@ -78,8 +79,6 @@ export class UpdateModelStylingTool {
         this.logger.warn(`Could not fetch old styling for ${modelName}`);
       }
 
-      await context.reportProgress({ progress: 40, total: 100 });
-
       // Update the styling
       await this.ankiClient.invoke("updateModelStyling", {
         model: {
@@ -88,11 +87,7 @@ export class UpdateModelStylingTool {
         },
       });
 
-      await context.reportProgress({ progress: 80, total: 100 });
-
       this.logger.log(`Successfully updated styling for model: ${modelName}`);
-
-      await context.reportProgress({ progress: 100, total: 100 });
 
       // Analyze CSS for useful info
       const cssLength = css.length;

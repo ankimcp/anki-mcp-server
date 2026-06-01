@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -35,15 +34,12 @@ export class GuiShowQuestionTool {
       idempotentHint: true,
     },
   })
-  async guiShowQuestion(_args: Record<string, never>, context: Context) {
+  async guiShowQuestion(_args: Record<string, never>) {
     try {
       this.logger.log("Showing question side of current card");
-      await context.reportProgress({ progress: 50, total: 100 });
 
       // Call AnkiConnect guiShowQuestion action
       const inReview = await this.ankiClient.invoke<boolean>("guiShowQuestion");
-
-      await context.reportProgress({ progress: 100, total: 100 });
 
       if (!inReview) {
         this.logger.warn("Not in review mode");

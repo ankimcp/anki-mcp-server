@@ -1,10 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ChangeDeckTool } from "../change-deck.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 jest.mock("@/mcp/clients/anki-connect.client");
 
@@ -19,7 +16,6 @@ function mockCardsInfo(ids: number[]) {
 describe("ChangeDeckTool", () => {
   let tool: ChangeDeckTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: ReturnType<typeof createMockContext>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -30,7 +26,6 @@ describe("ChangeDeckTool", () => {
     ankiClient = module.get(
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -43,7 +38,7 @@ describe("ChangeDeckTool", () => {
       .mockResolvedValueOnce(mockCardsInfo(params.cards)) // cardsInfo validation
       .mockResolvedValueOnce(null); // changeDeck
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "cardsInfo", {
@@ -67,7 +62,7 @@ describe("ChangeDeckTool", () => {
       .mockResolvedValueOnce(mockCardsInfo(params.cards))
       .mockResolvedValueOnce(null);
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenNthCalledWith(2, "changeDeck", {
@@ -88,7 +83,7 @@ describe("ChangeDeckTool", () => {
       .mockResolvedValueOnce(mockCardsInfo(params.cards))
       .mockResolvedValueOnce(null);
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenNthCalledWith(2, "changeDeck", {
@@ -105,7 +100,7 @@ describe("ChangeDeckTool", () => {
       deck: "Test Deck",
     };
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -118,7 +113,7 @@ describe("ChangeDeckTool", () => {
       deck: "",
     };
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -133,7 +128,7 @@ describe("ChangeDeckTool", () => {
     // cardsInfo returns empty object for missing cards
     ankiClient.invoke.mockResolvedValueOnce([{}]);
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     // Only cardsInfo should have been called — changeDeck must NOT fire
@@ -158,7 +153,7 @@ describe("ChangeDeckTool", () => {
       { cardId: 333 },
     ]);
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenCalledTimes(1);
@@ -177,7 +172,7 @@ describe("ChangeDeckTool", () => {
     // All missing
     ankiClient.invoke.mockResolvedValueOnce(bogusIds.map(() => ({})));
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -191,7 +186,7 @@ describe("ChangeDeckTool", () => {
     };
     ankiClient.invoke.mockRejectedValueOnce(new Error("Network error"));
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -207,7 +202,7 @@ describe("ChangeDeckTool", () => {
       .mockResolvedValueOnce(mockCardsInfo(params.cards))
       .mockRejectedValueOnce(new Error("Card not found"));
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -223,15 +218,6 @@ describe("ChangeDeckTool", () => {
       .mockResolvedValueOnce(mockCardsInfo(params.cards))
       .mockResolvedValueOnce(null);
 
-    await tool.execute(params, mockContext);
-
-    expect(mockContext.reportProgress).toHaveBeenCalledWith({
-      progress: 25,
-      total: 100,
-    });
-    expect(mockContext.reportProgress).toHaveBeenCalledWith({
-      progress: 100,
-      total: 100,
-    });
+    await tool.execute(params);
   });
 });

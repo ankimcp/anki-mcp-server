@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -28,14 +27,12 @@ export class ClearUnusedTagsTool {
       idempotentHint: true,
     },
   })
-  async execute(_params: Record<string, never>, context: Context) {
+  async execute(_params: Record<string, never>) {
     try {
       this.logger.log("Executing clearUnusedTags");
-      await context.reportProgress({ progress: 50, total: 100 });
 
       const result = await clearUnusedTags({}, this.ankiClient);
 
-      await context.reportProgress({ progress: 100, total: 100 });
       return result;
     } catch (error) {
       this.logger.error("Failed to execute clearUnusedTags", error);

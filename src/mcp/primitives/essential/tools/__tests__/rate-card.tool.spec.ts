@@ -1,17 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { RateCardTool } from "../rate-card.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 jest.mock("@/mcp/clients/anki-connect.client");
 
 describe("RateCardTool", () => {
   let tool: RateCardTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: ReturnType<typeof createMockContext>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -22,7 +18,6 @@ describe("RateCardTool", () => {
     ankiClient = module.get(
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -44,7 +39,7 @@ describe("RateCardTool", () => {
         },
       ]);
 
-    const rawResult = await tool.rateCard(params, mockContext);
+    const rawResult = await tool.rateCard(params);
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "cardsInfo", {
@@ -69,7 +64,7 @@ describe("RateCardTool", () => {
     // cardsInfo returns an empty object for missing cards
     ankiClient.invoke.mockResolvedValueOnce([{}]);
 
-    const rawResult = await tool.rateCard(params, mockContext);
+    const rawResult = await tool.rateCard(params);
     const result = parseToolResult(rawResult);
 
     // Only the validation call should fire; answerCards must NOT be invoked
@@ -84,10 +79,7 @@ describe("RateCardTool", () => {
   });
 
   it("should reject an invalid rating without hitting AnkiConnect", async () => {
-    const rawResult = await tool.rateCard(
-      { card_id: 1, rating: 7 },
-      mockContext,
-    );
+    const rawResult = await tool.rateCard({ card_id: 1, rating: 7 });
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).not.toHaveBeenCalled();
@@ -102,7 +94,7 @@ describe("RateCardTool", () => {
       .mockResolvedValueOnce([{ cardId: 111 }]) // validation passes
       .mockResolvedValueOnce(false); // answerCards returns false
 
-    const rawResult = await tool.rateCard(params, mockContext);
+    const rawResult = await tool.rateCard(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);

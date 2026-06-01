@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -40,13 +39,9 @@ export class ModelFieldNamesTool {
       idempotentHint: true,
     },
   })
-  async modelFieldNames(
-    { modelName }: { modelName: string },
-    context: Context,
-  ) {
+  async modelFieldNames({ modelName }: { modelName: string }) {
     try {
       this.logger.log(`Retrieving field names for model: ${modelName}`);
-      await context.reportProgress({ progress: 25, total: 100 });
 
       // Get field names for the specified model
       const fieldNames = await this.ankiClient.invoke<string[]>(
@@ -56,11 +51,8 @@ export class ModelFieldNamesTool {
         },
       );
 
-      await context.reportProgress({ progress: 75, total: 100 });
-
       if (!fieldNames) {
         this.logger.warn(`Model not found: ${modelName}`);
-        await context.reportProgress({ progress: 100, total: 100 });
         return createErrorResponse(
           new Error(`Model "${modelName}" not found`),
           {
@@ -72,7 +64,6 @@ export class ModelFieldNamesTool {
 
       if (fieldNames.length === 0) {
         this.logger.warn(`No fields found for model: ${modelName}`);
-        await context.reportProgress({ progress: 100, total: 100 });
         return {
           success: true,
           modelName: modelName,
@@ -82,7 +73,6 @@ export class ModelFieldNamesTool {
         };
       }
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(
         `Found ${fieldNames.length} fields for model ${modelName}`,
       );

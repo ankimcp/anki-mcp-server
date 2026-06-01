@@ -391,6 +391,19 @@ describe("computeRetention", () => {
 });
 
 describe("calculateStreak", () => {
+  // Pin the clock to noon UTC so that .toISOString().split("T")[0] and the
+  // local-time "today" inside calculateStreak always resolve to the same
+  // calendar date, regardless of the host timezone or time of day.
+  const FAKE_NOW = Date.UTC(2026, 2, 15, 12); // 2026-03-15 12:00 UTC
+
+  beforeEach(() => {
+    jest.useFakeTimers({ now: FAKE_NOW });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   describe("no reviews", () => {
     it("should return 0 for empty array", () => {
       const result = calculateStreak([]);

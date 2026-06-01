@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -86,27 +85,23 @@ export class CreateModelTool {
       idempotentHint: false,
     },
   })
-  async createModel(
-    {
-      modelName,
-      inOrderFields,
-      cardTemplates,
-      css,
-      isCloze,
-    }: {
-      modelName: string;
-      inOrderFields: string[];
-      cardTemplates: CardTemplate[];
-      css?: string;
-      isCloze?: boolean;
-    },
-    context: Context,
-  ) {
+  async createModel({
+    modelName,
+    inOrderFields,
+    cardTemplates,
+    css,
+    isCloze,
+  }: {
+    modelName: string;
+    inOrderFields: string[];
+    cardTemplates: CardTemplate[];
+    css?: string;
+    isCloze?: boolean;
+  }) {
     try {
       this.logger.log(
         `Creating model: ${modelName} with ${inOrderFields.length} fields`,
       );
-      await context.reportProgress({ progress: 10, total: 100 });
 
       // Validate field references in templates (warning only, not error)
       const warnings: string[] = [];
@@ -140,8 +135,6 @@ export class CreateModelTool {
         }
       }
 
-      await context.reportProgress({ progress: 30, total: 100 });
-
       // Create the model
       const result = await this.ankiClient.invoke<any>("createModel", {
         modelName,
@@ -151,12 +144,8 @@ export class CreateModelTool {
         isCloze: isCloze ?? false,
       });
 
-      await context.reportProgress({ progress: 80, total: 100 });
-
       // AnkiConnect returns the model configuration on success
       this.logger.log(`Successfully created model: ${modelName}`);
-
-      await context.reportProgress({ progress: 100, total: 100 });
 
       const response: {
         success: boolean;

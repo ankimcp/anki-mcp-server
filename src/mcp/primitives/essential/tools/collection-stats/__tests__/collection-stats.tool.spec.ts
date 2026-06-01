@@ -1,10 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { CollectionStatsTool } from "../collection-stats.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 import { CollectionStatsResult } from "../collection-stats.types";
 
 // Mock the AnkiConnectClient
@@ -13,7 +10,6 @@ jest.mock("@/mcp/clients/anki-connect.client");
 describe("CollectionStatsTool", () => {
   let tool: CollectionStatsTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,7 +22,6 @@ describe("CollectionStatsTool", () => {
     ) as jest.Mocked<AnkiConnectClient>;
 
     // Setup mock context
-    mockContext = createMockContext();
 
     // Clear all mocks before each test
     jest.clearAllMocks();
@@ -102,7 +97,7 @@ describe("CollectionStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute({}, mockContext);
+      const rawResult = await tool.execute({});
       const result = parseToolResult(rawResult) as CollectionStatsResult;
 
       // Assert
@@ -151,7 +146,6 @@ describe("CollectionStatsTool", () => {
       });
 
       // Progress reporting should be called
-      expect(mockContext.reportProgress).toHaveBeenCalled();
     });
 
     it("should include decks silently omitted by getDeckStats (Bug #1 regression)", async () => {
@@ -196,7 +190,7 @@ describe("CollectionStatsTool", () => {
         return Promise.resolve({});
       });
 
-      const rawResult = await tool.execute({}, mockContext);
+      const rawResult = await tool.execute({});
       const result = parseToolResult(rawResult) as CollectionStatsResult;
 
       // per_deck length must match total_decks — even when AnkiConnect omits a deck
@@ -262,7 +256,7 @@ describe("CollectionStatsTool", () => {
         return Promise.resolve({});
       });
 
-      const rawResult = await tool.execute({}, mockContext);
+      const rawResult = await tool.execute({});
       const result = parseToolResult(rawResult) as CollectionStatsResult;
 
       // Arithmetic must close: total === new + learning + review + other
@@ -343,7 +337,7 @@ describe("CollectionStatsTool", () => {
         return Promise.resolve({});
       });
 
-      const rawResult = await tool.execute({}, mockContext);
+      const rawResult = await tool.execute({});
       const result = parseToolResult(rawResult) as CollectionStatsResult;
 
       // per_deck has one entry per deck, each with rolled-up totals.
@@ -397,7 +391,7 @@ describe("CollectionStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute({}, mockContext);
+      const rawResult = await tool.execute({});
       const result = parseToolResult(rawResult) as CollectionStatsResult;
 
       // Assert
@@ -467,7 +461,7 @@ describe("CollectionStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute({}, mockContext);
+      const rawResult = await tool.execute({});
       const result = parseToolResult(rawResult) as CollectionStatsResult;
 
       // Assert
@@ -533,7 +527,7 @@ describe("CollectionStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute({}, mockContext);
+      const rawResult = await tool.execute({});
       const result = parseToolResult(rawResult) as CollectionStatsResult;
 
       // Assert - verify aggregation is accurate
@@ -606,13 +600,10 @@ describe("CollectionStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute(
-        {
-          ease_buckets: customEaseBuckets,
-          interval_buckets: customIntervalBuckets,
-        },
-        mockContext,
-      );
+      const rawResult = await tool.execute({
+        ease_buckets: customEaseBuckets,
+        interval_buckets: customIntervalBuckets,
+      });
       const result = parseToolResult(rawResult) as CollectionStatsResult;
 
       // Assert - check that custom boundaries were used
@@ -660,7 +651,7 @@ describe("CollectionStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute({}, mockContext);
+      const rawResult = await tool.execute({});
       const result = parseToolResult(rawResult) as CollectionStatsResult;
 
       // Assert
@@ -717,7 +708,7 @@ describe("CollectionStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute({}, mockContext);
+      const rawResult = await tool.execute({});
       const result = parseToolResult(rawResult) as CollectionStatsResult;
 
       // Assert - ease values should be divided by 1000
@@ -767,7 +758,7 @@ describe("CollectionStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute({}, mockContext);
+      const rawResult = await tool.execute({});
       const result = parseToolResult(rawResult) as CollectionStatsResult;
 
       // Assert - only positive intervals counted
@@ -782,64 +773,12 @@ describe("CollectionStatsTool", () => {
       );
 
       // Act
-      const rawResult = await tool.execute({}, mockContext);
+      const rawResult = await tool.execute({});
       const result = parseToolResult(rawResult);
 
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toContain("connection refused");
-    });
-
-    it("should call reportProgress correctly", async () => {
-      // Arrange
-      ankiClient.invoke.mockImplementation((action: string) => {
-        if (action === "deckNamesAndIds") {
-          return Promise.resolve({ Test: 1 });
-        }
-
-        if (action === "getDeckStats") {
-          return Promise.resolve({
-            "1": {
-              deck_id: 1,
-              name: "Test",
-              new_count: 0,
-              learn_count: 0,
-              review_count: 5,
-              total_in_deck: 5,
-            },
-          });
-        }
-
-        if (action === "findCards") {
-          return Promise.resolve([1, 2, 3, 4, 5]);
-        }
-
-        if (action === "getEaseFactors") {
-          return Promise.resolve(Array(5).fill(2500));
-        }
-
-        if (action === "getIntervals") {
-          return Promise.resolve(Array(5).fill(15));
-        }
-
-        return Promise.resolve({});
-      });
-
-      // Act
-      await tool.execute({}, mockContext);
-
-      // Assert
-      expect(mockContext.reportProgress).toHaveBeenCalled();
-      const calls = mockContext.reportProgress.mock.calls;
-
-      // Should have multiple progress updates
-      expect(calls.length).toBeGreaterThan(1);
-
-      // First call should be 10%
-      expect(calls[0][0]).toEqual({ progress: 10, total: 100 });
-
-      // Last call should be 100%
-      expect(calls[calls.length - 1][0]).toEqual({ progress: 100, total: 100 });
     });
 
     it("should handle findCards returning empty despite getDeckStats showing cards", async () => {
@@ -870,7 +809,7 @@ describe("CollectionStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute({}, mockContext);
+      const rawResult = await tool.execute({});
       const result = parseToolResult(rawResult) as CollectionStatsResult;
 
       // Assert - should still return counts from getDeckStats

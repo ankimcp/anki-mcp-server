@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -45,10 +44,9 @@ export class ModelStylingTool {
       idempotentHint: true,
     },
   })
-  async modelStyling({ modelName }: { modelName: string }, context: Context) {
+  async modelStyling({ modelName }: { modelName: string }) {
     try {
       this.logger.log(`Retrieving CSS styling for model: ${modelName}`);
-      await context.reportProgress({ progress: 25, total: 100 });
 
       // Get styling for the specified model
       const styling = await this.ankiClient.invoke<{ css: string }>(
@@ -58,11 +56,8 @@ export class ModelStylingTool {
         },
       );
 
-      await context.reportProgress({ progress: 75, total: 100 });
-
       if (!styling || !styling.css) {
         this.logger.warn(`No styling found for model: ${modelName}`);
-        await context.reportProgress({ progress: 100, total: 100 });
         return createErrorResponse(
           new Error(`Model "${modelName}" not found or has no styling`),
           {
@@ -71,8 +66,6 @@ export class ModelStylingTool {
           },
         );
       }
-
-      await context.reportProgress({ progress: 100, total: 100 });
 
       // Parse CSS to find key styling elements
       const css = styling.css;

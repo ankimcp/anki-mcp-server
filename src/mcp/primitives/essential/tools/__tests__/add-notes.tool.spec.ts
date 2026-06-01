@@ -5,10 +5,7 @@ import {
   AnkiConnectError,
   ReadOnlyModeError,
 } from "../../../../clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 jest.mock("../../../../clients/anki-connect.client", () => {
   const actual = jest.requireActual("../../../../clients/anki-connect.client");
@@ -34,13 +31,11 @@ async function createTestModule() {
 describe("AddNotesTool", () => {
   let tool: AddNotesTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: ReturnType<typeof createMockContext>;
 
   beforeEach(async () => {
     const testModule = await createTestModule();
     tool = testModule.tool;
     ankiClient = testModule.ankiClient;
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -54,19 +49,16 @@ describe("AddNotesTool", () => {
         .mockResolvedValueOnce(1003); // addNote #3
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          tags: ["vocab"],
-          notes: [
-            { fields: { Front: "hola", Back: "hello" } },
-            { fields: { Front: "gato", Back: "cat" } },
-            { fields: { Front: "perro", Back: "dog" } },
-          ],
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        tags: ["vocab"],
+        notes: [
+          { fields: { Front: "hola", Back: "hello" } },
+          { fields: { Front: "gato", Back: "cat" } },
+          { fields: { Front: "perro", Back: "dog" } },
+        ],
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -130,18 +122,15 @@ describe("AddNotesTool", () => {
         .mockResolvedValueOnce(1003); // addNote #3 - success
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          notes: [
-            { fields: { Front: "hola", Back: "hello" } },
-            { fields: { Front: "existing", Back: "note" } },
-            { fields: { Front: "perro", Back: "dog" } },
-          ],
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        notes: [
+          { fields: { Front: "hola", Back: "hello" } },
+          { fields: { Front: "existing", Back: "note" } },
+          { fields: { Front: "perro", Back: "dog" } },
+        ],
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -167,18 +156,15 @@ describe("AddNotesTool", () => {
         ); // addNote #3 - error
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          notes: [
-            { fields: { Front: "good", Back: "note" } },
-            { fields: { Front: "dup", Back: "note" } },
-            { fields: { Front: "bad", Back: "note" } },
-          ],
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        notes: [
+          { fields: { Front: "good", Back: "note" } },
+          { fields: { Front: "dup", Back: "note" } },
+          { fields: { Front: "bad", Back: "note" } },
+        ],
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -211,17 +197,14 @@ describe("AddNotesTool", () => {
         .mockResolvedValueOnce(null); // duplicate
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          notes: [
-            { fields: { Front: "dup1", Back: "dup1" } },
-            { fields: { Front: "dup2", Back: "dup2" } },
-          ],
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        notes: [
+          { fields: { Front: "dup1", Back: "dup1" } },
+          { fields: { Front: "dup2", Back: "dup2" } },
+        ],
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -241,17 +224,14 @@ describe("AddNotesTool", () => {
         );
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          notes: [
-            { fields: { Front: "q1", Back: "a1" } },
-            { fields: { Front: "q2", Back: "a2" } },
-          ],
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        notes: [
+          { fields: { Front: "q1", Back: "a1" } },
+          { fields: { Front: "q2", Back: "a2" } },
+        ],
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -270,14 +250,11 @@ describe("AddNotesTool", () => {
         .mockResolvedValueOnce(9999); // addNote
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "Default",
-          modelName: "Basic",
-          notes: [{ fields: { Front: "solo", Back: "single" } }],
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "Default",
+        modelName: "Basic",
+        notes: [{ fields: { Front: "solo", Back: "single" } }],
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -296,14 +273,11 @@ describe("AddNotesTool", () => {
         .mockRejectedValueOnce(new ReadOnlyModeError("addNote"));
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          notes: [{ fields: { Front: "q", Back: "a" } }],
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        notes: [{ fields: { Front: "q", Back: "a" } }],
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -316,17 +290,14 @@ describe("AddNotesTool", () => {
       ankiClient.invoke.mockResolvedValueOnce([]); // modelFieldNames returns empty
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "NonExistentModel",
-          notes: [
-            { fields: { Front: "q1", Back: "a1" } },
-            { fields: { Front: "q2", Back: "a2" } },
-          ],
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "NonExistentModel",
+        notes: [
+          { fields: { Front: "q1", Back: "a1" } },
+          { fields: { Front: "q2", Back: "a2" } },
+        ],
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -343,14 +314,11 @@ describe("AddNotesTool", () => {
       ankiClient.invoke.mockResolvedValueOnce(null); // modelFieldNames returns null
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "GhostModel",
-          notes: [{ fields: { Front: "q", Back: "a" } }],
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "GhostModel",
+        notes: [{ fields: { Front: "q", Back: "a" } }],
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -366,14 +334,11 @@ describe("AddNotesTool", () => {
       ankiClient.invoke.mockResolvedValueOnce(["Front", "Back"]); // modelFieldNames
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          notes: [{ fields: { Back: "answer only" } }], // missing "Front" entirely
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        notes: [{ fields: { Back: "answer only" } }], // missing "Front" entirely
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -393,20 +358,17 @@ describe("AddNotesTool", () => {
         .mockResolvedValueOnce(1001); // addNote
 
       // Act
-      await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          tags: ["shared", "vocab"],
-          notes: [
-            {
-              fields: { Front: "q", Back: "a" },
-              tags: ["vocab", "extra"], // "vocab" overlaps with shared tags
-            },
-          ],
-        },
-        mockContext,
-      );
+      await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        tags: ["shared", "vocab"],
+        notes: [
+          {
+            fields: { Front: "q", Back: "a" },
+            tags: ["vocab", "extra"], // "vocab" overlaps with shared tags
+          },
+        ],
+      });
 
       // Assert - verify the tags passed to addNote are deduplicated
       const addNoteCall = ankiClient.invoke.mock.calls[1];
@@ -424,18 +386,15 @@ describe("AddNotesTool", () => {
       ankiClient.invoke.mockResolvedValueOnce(["Front", "Back"]); // modelFieldNames
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          notes: [
-            { fields: { Front: "valid", Back: "ok" } },
-            { fields: { Front: "", Back: "missing front" } }, // empty sort field
-            { fields: { Front: "   ", Back: "whitespace" } }, // whitespace sort field
-          ],
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        notes: [
+          { fields: { Front: "valid", Back: "ok" } },
+          { fields: { Front: "", Back: "missing front" } }, // empty sort field
+          { fields: { Front: "   ", Back: "whitespace" } }, // whitespace sort field
+        ],
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -456,41 +415,17 @@ describe("AddNotesTool", () => {
         .mockResolvedValueOnce(1002); // addNote #2
 
       // Act
-      await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          notes: [
-            { fields: { Front: "q1", Back: "a1" } },
-            { fields: { Front: "q2", Back: "a2" } },
-          ],
-        },
-        mockContext,
-      );
+      await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        notes: [
+          { fields: { Front: "q1", Back: "a1" } },
+          { fields: { Front: "q2", Back: "a2" } },
+        ],
+      });
 
       // Assert - totalSteps = 2 notes + 2 validation steps = 4
       // Calls: step 0/4, step 1/4, step 2/4, step 3/4, step 4/4
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(5);
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(1, {
-        progress: 0,
-        total: 4,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(2, {
-        progress: 1,
-        total: 4,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(3, {
-        progress: 2,
-        total: 4,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(4, {
-        progress: 3,
-        total: 4,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(5, {
-        progress: 4,
-        total: 4,
-      });
     });
 
     it("should handle duplicate error messages from AnkiConnect", async () => {
@@ -506,17 +441,14 @@ describe("AddNotesTool", () => {
         .mockResolvedValueOnce(1002); // addNote #2 succeeds
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          notes: [
-            { fields: { Front: "dup", Back: "dup" } },
-            { fields: { Front: "new", Back: "new" } },
-          ],
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        notes: [
+          { fields: { Front: "dup", Back: "dup" } },
+          { fields: { Front: "new", Back: "new" } },
+        ],
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -537,16 +469,13 @@ describe("AddNotesTool", () => {
         .mockResolvedValueOnce(1001);
 
       // Act
-      await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          allowDuplicate: true,
-          duplicateScope: "deck",
-          notes: [{ fields: { Front: "q", Back: "a" } }],
-        },
-        mockContext,
-      );
+      await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        allowDuplicate: true,
+        duplicateScope: "deck",
+        notes: [{ fields: { Front: "q", Back: "a" } }],
+      });
 
       // Assert
       const addNoteCall = ankiClient.invoke.mock.calls[1];
@@ -565,15 +494,12 @@ describe("AddNotesTool", () => {
         .mockResolvedValueOnce(1001);
 
       // Act
-      await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          tags: ["shared"],
-          notes: [{ fields: { Front: "q", Back: "a" } }], // no per-note tags
-        },
-        mockContext,
-      );
+      await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        tags: ["shared"],
+        notes: [{ fields: { Front: "q", Back: "a" } }], // no per-note tags
+      });
 
       // Assert
       const addNoteCall = ankiClient.invoke.mock.calls[1];
@@ -589,14 +515,11 @@ describe("AddNotesTool", () => {
         .mockResolvedValueOnce(1001);
 
       // Act
-      await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "Basic",
-          notes: [{ fields: { Front: "q", Back: "a" } }],
-        },
-        mockContext,
-      );
+      await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "Basic",
+        notes: [{ fields: { Front: "q", Back: "a" } }],
+      });
 
       // Assert
       const addNoteCall = ankiClient.invoke.mock.calls[1];
@@ -612,14 +535,11 @@ describe("AddNotesTool", () => {
       );
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "Spanish",
-          modelName: "BadModel",
-          notes: [{ fields: { Front: "q", Back: "a" } }],
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "Spanish",
+        modelName: "BadModel",
+        notes: [{ fields: { Front: "q", Back: "a" } }],
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -635,14 +555,11 @@ describe("AddNotesTool", () => {
         .mockResolvedValueOnce(1001);
 
       // Act
-      const rawResult = await tool.addNotes(
-        {
-          deckName: "My Deck",
-          modelName: "My Model",
-          notes: [{ fields: { Front: "q", Back: "a" } }],
-        },
-        mockContext,
-      );
+      const rawResult = await tool.addNotes({
+        deckName: "My Deck",
+        modelName: "My Model",
+        notes: [{ fields: { Front: "q", Back: "a" } }],
+      });
       const result = parseToolResult(rawResult);
 
       // Assert

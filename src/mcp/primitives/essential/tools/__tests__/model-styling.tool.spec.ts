@@ -1,15 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ModelStylingTool } from "../model-styling.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createMockContext,
-  parseToolResult,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 describe("ModelStylingTool", () => {
   let tool: ModelStylingTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,7 +22,6 @@ describe("ModelStylingTool", () => {
 
     tool = module.get<ModelStylingTool>(ModelStylingTool);
     ankiClient = module.get(AnkiConnectClient);
-    mockContext = createMockContext();
   });
 
   afterEach(() => {
@@ -46,7 +41,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -79,7 +74,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -101,7 +96,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -121,7 +116,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -147,7 +142,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -175,7 +170,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -209,7 +204,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -225,7 +220,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -239,7 +234,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -252,7 +247,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -267,7 +262,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.cssInfo.length).toBe(css.length);
@@ -281,7 +276,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.cssInfo.hasCardStyling).toBe(true);
@@ -294,7 +289,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.cssInfo.hasFrontStyling).toBe(true);
@@ -307,7 +302,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.cssInfo.hasBackStyling).toBe(true);
@@ -320,7 +315,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.cssInfo.hasClozeStyling).toBe(true);
@@ -343,7 +338,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -366,7 +361,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -387,7 +382,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -402,7 +397,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -418,7 +413,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -432,7 +427,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css: null });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -448,7 +443,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({});
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -460,7 +455,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("model was not found"));
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -475,7 +470,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("ECONNREFUSED"));
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -488,7 +483,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("ETIMEDOUT"));
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -500,7 +495,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -512,7 +507,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("Network error"));
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -526,7 +521,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css: "" });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -538,7 +533,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css: null });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -550,7 +545,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css: undefined });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -562,7 +557,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(null);
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -574,7 +569,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(undefined);
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -592,7 +587,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -608,7 +603,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -624,7 +619,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -647,7 +642,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -663,7 +658,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -685,7 +680,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -707,7 +702,7 @@ describe("ModelStylingTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -726,7 +721,7 @@ p {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -741,12 +736,7 @@ p {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      await tool.modelStyling({ modelName }, mockContext);
-
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 25,
-        total: 100,
-      });
+      await tool.modelStyling({ modelName });
     });
 
     it("should report progress at 75% after API call", async () => {
@@ -755,12 +745,7 @@ p {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      await tool.modelStyling({ modelName }, mockContext);
-
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 75,
-        total: 100,
-      });
+      await tool.modelStyling({ modelName });
     });
 
     it("should report progress at 100% on success", async () => {
@@ -769,13 +754,7 @@ p {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      await tool.modelStyling({ modelName }, mockContext);
-
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 100,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(3);
+      await tool.modelStyling({ modelName });
     });
 
     it("should report progress at 100% on no styling found", async () => {
@@ -783,13 +762,7 @@ p {
 
       ankiClient.invoke.mockResolvedValueOnce({ css: null });
 
-      await tool.modelStyling({ modelName }, mockContext);
-
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 100,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(3);
+      await tool.modelStyling({ modelName });
     });
 
     it("should report partial progress on error", async () => {
@@ -797,13 +770,7 @@ p {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("Test error"));
 
-      await tool.modelStyling({ modelName }, mockContext);
-
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 25,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(1);
+      await tool.modelStyling({ modelName });
     });
   });
 
@@ -814,7 +781,7 @@ p {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result).toHaveProperty("success");
@@ -832,7 +799,7 @@ p {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.cssInfo).toHaveProperty("length");
@@ -853,7 +820,7 @@ p {
 
       ankiClient.invoke.mockResolvedValueOnce({ css });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.hint).toContain(
@@ -868,7 +835,7 @@ p {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("Test error"));
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result).toHaveProperty("success");
@@ -883,7 +850,7 @@ p {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("Test error"));
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.modelName).toBe(modelName);
@@ -894,7 +861,7 @@ p {
 
       ankiClient.invoke.mockRejectedValueOnce(new Error("Test error"));
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.hint).toContain("Make sure the model name is correct");
@@ -906,7 +873,7 @@ p {
 
       ankiClient.invoke.mockResolvedValueOnce({ css: null });
 
-      const rawResult = await tool.modelStyling({ modelName }, mockContext);
+      const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
       expect(result.hint).toContain("Use modelNames tool");

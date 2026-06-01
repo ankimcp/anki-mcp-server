@@ -1,10 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { GuiBrowseTool } from "../gui-browse.tool";
 import { AnkiConnectClient } from "../../../../clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 const mockAnkiClient = {
   invoke: jest.fn(),
@@ -12,7 +9,6 @@ const mockAnkiClient = {
 
 describe("GuiBrowseTool", () => {
   let tool: GuiBrowseTool;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,7 +22,6 @@ describe("GuiBrowseTool", () => {
     }).compile();
 
     tool = module.get<GuiBrowseTool>(GuiBrowseTool);
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -39,10 +34,9 @@ describe("GuiBrowseTool", () => {
       const mockCardIds = [1234567890, 9876543210, 1111111111];
       mockAnkiClient.invoke.mockResolvedValue(mockCardIds);
 
-      const rawResult = await tool.guiBrowse(
-        { query: "deck:Spanish tag:verb" },
-        mockContext,
-      );
+      const rawResult = await tool.guiBrowse({
+        query: "deck:Spanish tag:verb",
+      });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -52,23 +46,19 @@ describe("GuiBrowseTool", () => {
       expect(mockAnkiClient.invoke).toHaveBeenCalledWith("guiBrowse", {
         query: "deck:Spanish tag:verb",
       });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(2);
     });
 
     it("should successfully open browser with reorderCards option", async () => {
       const mockCardIds = [1234567890];
       mockAnkiClient.invoke.mockResolvedValue(mockCardIds);
 
-      const rawResult = await tool.guiBrowse(
-        {
-          query: "deck:MyDeck",
-          reorderCards: {
-            order: "ascending",
-            columnId: "noteCrt",
-          },
+      const rawResult = await tool.guiBrowse({
+        query: "deck:MyDeck",
+        reorderCards: {
+          order: "ascending",
+          columnId: "noteCrt",
         },
-        mockContext,
-      );
+      });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -84,10 +74,7 @@ describe("GuiBrowseTool", () => {
     it("should handle empty results", async () => {
       mockAnkiClient.invoke.mockResolvedValue([]);
 
-      const rawResult = await tool.guiBrowse(
-        { query: "deck:NonExistent" },
-        mockContext,
-      );
+      const rawResult = await tool.guiBrowse({ query: "deck:NonExistent" });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -100,10 +87,7 @@ describe("GuiBrowseTool", () => {
       const error = new Error("Invalid query syntax");
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiBrowse(
-        { query: "invalid::query" },
-        mockContext,
-      );
+      const rawResult = await tool.guiBrowse({ query: "invalid::query" });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -115,10 +99,7 @@ describe("GuiBrowseTool", () => {
       const error = new Error("Anki not running");
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiBrowse(
-        { query: "deck:Test" },
-        mockContext,
-      );
+      const rawResult = await tool.guiBrowse({ query: "deck:Test" });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);

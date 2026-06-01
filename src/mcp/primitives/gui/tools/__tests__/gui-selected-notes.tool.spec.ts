@@ -1,10 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { GuiSelectedNotesTool } from "../gui-selected-notes.tool";
 import { AnkiConnectClient } from "../../../../clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 const mockAnkiClient = {
   invoke: jest.fn(),
@@ -12,7 +9,6 @@ const mockAnkiClient = {
 
 describe("GuiSelectedNotesTool", () => {
   let tool: GuiSelectedNotesTool;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,7 +22,6 @@ describe("GuiSelectedNotesTool", () => {
     }).compile();
 
     tool = module.get<GuiSelectedNotesTool>(GuiSelectedNotesTool);
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -39,7 +34,7 @@ describe("GuiSelectedNotesTool", () => {
       const mockNoteIds = [1234567890, 9876543210, 5555555555];
       mockAnkiClient.invoke.mockResolvedValue(mockNoteIds);
 
-      const rawResult = await tool.guiSelectedNotes({}, mockContext);
+      const rawResult = await tool.guiSelectedNotes({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -47,13 +42,12 @@ describe("GuiSelectedNotesTool", () => {
       expect(result.noteCount).toBe(3);
       expect(result.message).toContain("3 selected note");
       expect(mockAnkiClient.invoke).toHaveBeenCalledWith("guiSelectedNotes");
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(2);
     });
 
     it("should handle no selection (empty array)", async () => {
       mockAnkiClient.invoke.mockResolvedValue([]);
 
-      const rawResult = await tool.guiSelectedNotes({}, mockContext);
+      const rawResult = await tool.guiSelectedNotes({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -67,7 +61,7 @@ describe("GuiSelectedNotesTool", () => {
       const error = new Error("Card browser is not open");
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiSelectedNotes({}, mockContext);
+      const rawResult = await tool.guiSelectedNotes({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -79,7 +73,7 @@ describe("GuiSelectedNotesTool", () => {
       const error = new Error("Anki connection lost");
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiSelectedNotes({}, mockContext);
+      const rawResult = await tool.guiSelectedNotes({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);

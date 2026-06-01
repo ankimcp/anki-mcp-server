@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { GuiCurrentCardInfo } from "@/mcp/types/anki.types";
@@ -53,17 +52,14 @@ export class GuiCurrentCardTool {
       idempotentHint: true,
     },
   })
-  async guiCurrentCard(_args: Record<string, never>, context: Context) {
+  async guiCurrentCard(_args: Record<string, never>) {
     try {
       this.logger.log("Getting current card information from GUI");
-      await context.reportProgress({ progress: 50, total: 100 });
 
       // Call AnkiConnect guiCurrentCard action
       const cardInfo = await this.ankiClient.invoke<GuiCurrentCardInfo | null>(
         "guiCurrentCard",
       );
-
-      await context.reportProgress({ progress: 100, total: 100 });
 
       if (!cardInfo) {
         this.logger.log("Not currently in review mode");

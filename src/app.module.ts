@@ -10,23 +10,38 @@ import {
   McpPrimitivesAnkiGuiModule,
   GUI_MCP_TOOLS,
 } from "./mcp/primitives/gui";
-import { AnkiConfigService } from "./anki-config.service";
+import { AppConfigService } from "./app-config.service";
+import {
+  configSchema,
+  transformEnvToConfig,
+  ConfigInput,
+  APP_CONFIG,
+  loadValidatedConfig,
+  CliOverrides,
+} from "@/config";
 import { MCP_ICONS } from "./mcp/mcp-icons";
+import { TunnelMcpService } from "./tunnel/tunnel-mcp.service";
 
 @Module({})
 export class AppModule {
   /**
    * Creates AppModule configured for STDIO transport
+   * @param configInput - Raw config input (merged env + CLI overrides)
    */
-  static forStdio(): DynamicModule {
+  static forStdio(configInput: ConfigInput): DynamicModule {
+    // Parse config once, use everywhere (single source of truth)
+    const validatedConfig = configSchema.parse(
+      transformEnvToConfig(configInput),
+    );
+
     return {
       module: AppModule,
       imports: [
-        // Configuration Module
+        // Configuration Module (uses same validated config)
         ConfigModule.forRoot({
           isGlobal: true,
           cache: true,
-          envFilePath: [".env.local", ".env"],
+          load: [() => validatedConfig],
         }),
 
         // MCP Module with STDIO transport
@@ -41,7 +56,11 @@ export class AppModule {
         McpPrimitivesAnkiEssentialModule.forRoot({
           ankiConfigProvider: {
             provide: ANKI_CONFIG,
-            useClass: AnkiConfigService,
+            useClass: AppConfigService,
+          },
+          appConfigProvider: {
+            provide: APP_CONFIG,
+            useValue: validatedConfig,
           },
         }),
 
@@ -49,27 +68,46 @@ export class AppModule {
         McpPrimitivesAnkiGuiModule.forRoot({
           ankiConfigProvider: {
             provide: ANKI_CONFIG,
-            useClass: AnkiConfigService,
+            useClass: AppConfigService,
+          },
+          appConfigProvider: {
+            provide: APP_CONFIG,
+            useValue: validatedConfig,
           },
         }),
       ],
       // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured.
-      providers: [AnkiConfigService, ...ESSENTIAL_MCP_TOOLS, ...GUI_MCP_TOOLS],
+      providers: [
+        {
+          provide: APP_CONFIG,
+          useValue: validatedConfig,
+        },
+        AppConfigService,
+        ...ESSENTIAL_MCP_TOOLS,
+        ...GUI_MCP_TOOLS,
+      ],
+      exports: [APP_CONFIG, AppConfigService],
     };
   }
 
   /**
    * Creates AppModule configured for HTTP (Streamable HTTP) transport
+   * @param configInput - Raw config input (merged env + CLI overrides)
    */
-  static forHttp(): DynamicModule {
+  static forHttp(configInput: ConfigInput): DynamicModule {
+    // Parse config once, use everywhere (single source of truth)
+    const validatedConfig = configSchema.parse(
+      transformEnvToConfig(configInput),
+    );
+
     return {
       module: AppModule,
       imports: [
-        // Configuration Module
+        // Configuration Module (uses same validated config)
         ConfigModule.forRoot({
           isGlobal: true,
           cache: true,
-          envFilePath: [".env.local", ".env"],
+          load: [() => validatedConfig],
         }),
 
         // MCP Module with Streamable HTTP transport
@@ -85,7 +123,11 @@ export class AppModule {
         McpPrimitivesAnkiEssentialModule.forRoot({
           ankiConfigProvider: {
             provide: ANKI_CONFIG,
-            useClass: AnkiConfigService,
+            useClass: AppConfigService,
+          },
+          appConfigProvider: {
+            provide: APP_CONFIG,
+            useValue: validatedConfig,
           },
         }),
 
@@ -93,12 +135,93 @@ export class AppModule {
         McpPrimitivesAnkiGuiModule.forRoot({
           ankiConfigProvider: {
             provide: ANKI_CONFIG,
-            useClass: AnkiConfigService,
+            useClass: AppConfigService,
+          },
+          appConfigProvider: {
+            provide: APP_CONFIG,
+            useValue: validatedConfig,
           },
         }),
       ],
       // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured.
-      providers: [AnkiConfigService, ...ESSENTIAL_MCP_TOOLS, ...GUI_MCP_TOOLS],
+      providers: [
+        {
+          provide: APP_CONFIG,
+          useValue: validatedConfig,
+        },
+        AppConfigService,
+        ...ESSENTIAL_MCP_TOOLS,
+        ...GUI_MCP_TOOLS,
+      ],
+      exports: [APP_CONFIG, AppConfigService],
+    };
+  }
+
+  /**
+   * Creates AppModule configured for Tunnel transport (in-memory MCP service)
+   * @param cliOverrides - Optional CLI argument overrides
+   */
+  static forTunnel(cliOverrides?: CliOverrides): DynamicModule {
+    // Use loadValidatedConfig to parse CLI overrides + env
+    const validatedConfig = loadValidatedConfig(cliOverrides);
+
+    return {
+      module: AppModule,
+      imports: [
+        // Configuration Module (uses same validated config)
+        ConfigModule.forRoot({
+          isGlobal: true,
+          cache: true,
+          load: [() => validatedConfig],
+        }),
+
+        // MCP Module with NO transport (TunnelMcpService handles transport via InMemoryTransport)
+        // Using empty array prevents StdioService from blocking stdin in watch mode
+        McpModule.forRoot({
+          name: process.env.MCP_SERVER_NAME || "anki-mcp-server",
+          version: process.env.MCP_SERVER_VERSION || "1.0.0",
+          transport: [],
+          icons: MCP_ICONS,
+        }),
+
+        // Import MCP primitives with config
+        McpPrimitivesAnkiEssentialModule.forRoot({
+          ankiConfigProvider: {
+            provide: ANKI_CONFIG,
+            useClass: AppConfigService,
+          },
+          appConfigProvider: {
+            provide: APP_CONFIG,
+            useValue: validatedConfig,
+          },
+        }),
+
+        // Import GUI primitives with config
+        McpPrimitivesAnkiGuiModule.forRoot({
+          ankiConfigProvider: {
+            provide: ANKI_CONFIG,
+            useClass: AppConfigService,
+          },
+          appConfigProvider: {
+            provide: APP_CONFIG,
+            useValue: validatedConfig,
+          },
+        }),
+      ],
+      providers: [
+        // Provide validated config for type-safe injection
+        {
+          provide: APP_CONFIG,
+          useValue: validatedConfig,
+        },
+        AppConfigService,
+        // Custom tunnel MCP service (instead of StdioModule)
+        TunnelMcpService,
+        // MCP-Nest requires tools in root module providers for discovery
+        ...ESSENTIAL_MCP_TOOLS,
+        ...GUI_MCP_TOOLS,
+      ],
+      exports: [APP_CONFIG, AppConfigService, TunnelMcpService],
     };
   }
 }

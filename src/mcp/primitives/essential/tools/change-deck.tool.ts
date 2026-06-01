@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -33,7 +32,7 @@ export class ChangeDeckTool {
       idempotentHint: true,
     },
   })
-  async execute(params: { cards: number[]; deck: string }, context: Context) {
+  async execute(params: { cards: number[]; deck: string }) {
     try {
       this.logger.log(
         `Executing changeDeck: ${params.cards?.length ?? 0} card(s) -> ${params.deck}`,
@@ -46,14 +45,11 @@ export class ChangeDeckTool {
         throw new Error("deck name is required for changeDeck action");
       }
 
-      await context.reportProgress({ progress: 25, total: 100 });
-
       const result = await changeDeck(
         { cards: params.cards, deck: params.deck },
         this.ankiClient,
       );
 
-      await context.reportProgress({ progress: 100, total: 100 });
       return result;
     } catch (error) {
       this.logger.error("Failed to execute changeDeck", error);

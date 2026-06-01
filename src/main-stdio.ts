@@ -1,6 +1,12 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import { createPinoLogger, createLoggerService } from "./bootstrap";
+import {
+  createPinoLogger,
+  createLoggerService,
+  LOG_DESTINATION,
+} from "./bootstrap";
+import { createCli } from "./cli/cli-output";
+import { buildConfigInput } from "./config";
 
 /**
  * Parse minimal CLI args for STDIO mode.
@@ -23,24 +29,29 @@ function parseStdioArgs(): { readOnly: boolean; ankiConnect?: string } {
   return { readOnly, ankiConnect };
 }
 
+// STDIO mode has no --debug flag of its own; stack traces are off by default.
+const cli = createCli(false);
+
 async function bootstrap() {
   // Parse CLI args for STDIO mode
   const cliOptions = parseStdioArgs();
 
-  // Set environment variables from CLI options (if provided)
-  if (cliOptions.readOnly) {
-    process.env.READ_ONLY = "true";
-  }
-  if (cliOptions.ankiConnect) {
-    process.env.ANKI_CONNECT_URL = cliOptions.ankiConnect;
-  }
+  // Build config input from env + CLI overrides (no process.env mutation)
+  const configInput = buildConfigInput({
+    ankiConnect: cliOptions.ankiConnect,
+    readOnly: cliOptions.readOnly,
+  });
 
-  // Create logger that writes to stderr (fd 2) for STDIO mode
-  const pinoLogger = createPinoLogger(2);
+  // Create logger that writes to stderr for STDIO mode (keeps stdout clear for MCP protocol)
+  // Log level comes from configInput (LOG_LEVEL env variable)
+  const pinoLogger = createPinoLogger(
+    LOG_DESTINATION.STDERR,
+    configInput.LOG_LEVEL || "info",
+  );
   const loggerService = createLoggerService(pinoLogger);
 
   // STDIO mode - create application context (no HTTP server)
-  await NestFactory.createApplicationContext(AppModule.forStdio(), {
+  await NestFactory.createApplicationContext(AppModule.forStdio(configInput), {
     logger: loggerService,
     bufferLogs: true,
   });
@@ -56,6 +67,9 @@ async function bootstrap() {
 }
 
 bootstrap().catch((err) => {
-  console.error("Failed to start MCP STDIO server:", err);
+  cli.error(
+    `Failed to start MCP STDIO server: ${err instanceof Error ? err.message : String(err)}`,
+    err instanceof Error ? err : undefined,
+  );
   process.exit(1);
 });

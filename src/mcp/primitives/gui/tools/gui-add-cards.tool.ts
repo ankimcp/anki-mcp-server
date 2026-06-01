@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -50,22 +49,18 @@ export class GuiAddCardsTool {
       idempotentHint: true,
     },
   })
-  async guiAddCards(
-    {
-      note,
-    }: {
-      note: {
-        deckName: string;
-        modelName: string;
-        fields: Record<string, string>;
-        tags?: string[];
-      };
-    },
-    context: Context,
-  ) {
+  async guiAddCards({
+    note,
+  }: {
+    note: {
+      deckName: string;
+      modelName: string;
+      fields: Record<string, string>;
+      tags?: string[];
+    };
+  }) {
     try {
       this.logger.log(`Opening Add Cards dialog for deck "${note.deckName}"`);
-      await context.reportProgress({ progress: 25, total: 100 });
 
       // Validate fields are not empty
       const emptyFields = Object.entries(note.fields).filter(
@@ -84,15 +79,12 @@ export class GuiAddCardsTool {
         );
       }
 
-      await context.reportProgress({ progress: 50, total: 100 });
-
       // Call AnkiConnect guiAddCards action
       const noteId = await this.ankiClient.invoke<number | null>(
         "guiAddCards",
         { note },
       );
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(`Add Cards dialog opened, potential note ID: ${noteId}`);
 
       return {

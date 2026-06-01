@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -46,21 +45,17 @@ export class GetTagsTool {
       idempotentHint: true,
     },
   })
-  async getTags({ pattern }: { pattern?: string }, context: Context) {
+  async getTags({ pattern }: { pattern?: string }) {
     try {
       this.logger.log(
         `Retrieving tags from Anki${pattern ? ` (filter: ${pattern})` : ""}`,
       );
-      await context.reportProgress({ progress: 25, total: 100 });
 
       // Get all tags from AnkiConnect
       const allTags = await this.ankiClient.invoke<string[]>("getTags");
 
-      await context.reportProgress({ progress: 75, total: 100 });
-
       if (!allTags || allTags.length === 0) {
         this.logger.log("No tags found");
-        await context.reportProgress({ progress: 100, total: 100 });
         return {
           success: true,
           message: "No tags found in Anki collection",
@@ -78,7 +73,6 @@ export class GetTagsTool {
         );
       }
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(
         `Found ${tags.length} tags${pattern ? ` (filtered from ${allTags.length})` : ""}`,
       );

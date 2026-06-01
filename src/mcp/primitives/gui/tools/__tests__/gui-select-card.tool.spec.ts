@@ -1,10 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { GuiSelectCardTool } from "../gui-select-card.tool";
 import { AnkiConnectClient } from "../../../../clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 const mockAnkiClient = {
   invoke: jest.fn(),
@@ -12,7 +9,6 @@ const mockAnkiClient = {
 
 describe("GuiSelectCardTool", () => {
   let tool: GuiSelectCardTool;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,7 +22,6 @@ describe("GuiSelectCardTool", () => {
     }).compile();
 
     tool = module.get<GuiSelectCardTool>(GuiSelectCardTool);
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -38,10 +33,7 @@ describe("GuiSelectCardTool", () => {
     it("should successfully select a card in open browser", async () => {
       mockAnkiClient.invoke.mockResolvedValue(true);
 
-      const rawResult = await tool.guiSelectCard(
-        { card: 1234567890 },
-        mockContext,
-      );
+      const rawResult = await tool.guiSelectCard({ card: 1234567890 });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -50,16 +42,12 @@ describe("GuiSelectCardTool", () => {
       expect(mockAnkiClient.invoke).toHaveBeenCalledWith("guiSelectCard", {
         card: 1234567890,
       });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(2);
     });
 
     it("should handle browser not open (returns false)", async () => {
       mockAnkiClient.invoke.mockResolvedValue(false);
 
-      const rawResult = await tool.guiSelectCard(
-        { card: 1234567890 },
-        mockContext,
-      );
+      const rawResult = await tool.guiSelectCard({ card: 1234567890 });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -71,10 +59,7 @@ describe("GuiSelectCardTool", () => {
       const error = new Error("Card not found in current view");
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiSelectCard(
-        { card: 9999999999 },
-        mockContext,
-      );
+      const rawResult = await tool.guiSelectCard({ card: 9999999999 });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -86,10 +71,7 @@ describe("GuiSelectCardTool", () => {
       const error = new Error("Connection failed");
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiSelectCard(
-        { card: 1234567890 },
-        mockContext,
-      );
+      const rawResult = await tool.guiSelectCard({ card: 1234567890 });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);

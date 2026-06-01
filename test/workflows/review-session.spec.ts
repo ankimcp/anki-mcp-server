@@ -6,10 +6,7 @@ import { GetDueCardsTool } from "../../src/mcp/primitives/essential";
 import { PresentCardTool } from "../../src/mcp/primitives/essential";
 import { RateCardTool } from "../../src/mcp/primitives/essential";
 import { mockCards, mockDecks } from "../../src/test-fixtures/mock-data";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../src/test-fixtures/test-helpers";
+import { parseToolResult } from "../../src/test-fixtures/test-helpers";
 
 jest.mock("../../src/mcp/clients/anki-connect.client");
 
@@ -20,7 +17,6 @@ describe("Review Session Workflow", () => {
   let getDueCardsTool: GetDueCardsTool;
   let presentCardTool: PresentCardTool;
   let rateCardTool: RateCardTool;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -43,8 +39,6 @@ describe("Review Session Workflow", () => {
     presentCardTool = module.get<PresentCardTool>(PresentCardTool);
     rateCardTool = module.get<RateCardTool>(RateCardTool);
 
-    mockContext = createMockContext();
-
     jest.clearAllMocks();
   });
 
@@ -60,7 +54,7 @@ describe("Review Session Workflow", () => {
         },
       );
 
-      const syncRawResult = await syncTool.sync({}, mockContext);
+      const syncRawResult = await syncTool.sync({});
       const syncResult = parseToolResult(syncRawResult);
       expect(syncResult.success).toBe(true);
       expect(syncResult.message).toContain("Successfully synchronized");
@@ -84,10 +78,9 @@ describe("Review Session Workflow", () => {
         },
       );
 
-      const decksRawResult = await listDecksTool.execute(
-        { includeStats: true },
-        mockContext,
-      );
+      const decksRawResult = await listDecksTool.execute({
+        includeStats: true,
+      });
       const decksResult = parseToolResult(decksRawResult);
       expect(decksResult.success).toBe(true);
       expect(decksResult.decks).toHaveLength(2);
@@ -124,10 +117,9 @@ describe("Review Session Workflow", () => {
         },
       );
 
-      const dueCardsRawResult = await getDueCardsTool.getDueCards(
-        { deck_name: "Spanish" },
-        mockContext,
-      );
+      const dueCardsRawResult = await getDueCardsTool.getDueCards({
+        deck_name: "Spanish",
+      });
       const dueCardsResult = parseToolResult(dueCardsRawResult);
       expect(dueCardsResult.success).toBe(true);
       expect(dueCardsResult.cards).toHaveLength(3);
@@ -143,13 +135,10 @@ describe("Review Session Workflow", () => {
         },
       );
 
-      const presentRawResult = await presentCardTool.presentCard(
-        {
-          card_id: dueCardIds[0],
-          show_answer: false,
-        },
-        mockContext,
-      );
+      const presentRawResult = await presentCardTool.presentCard({
+        card_id: dueCardIds[0],
+        show_answer: false,
+      });
       const presentResult = parseToolResult(presentRawResult);
       expect(presentResult.success).toBe(true);
       expect(presentResult.card.front).toBeDefined();
@@ -157,13 +146,10 @@ describe("Review Session Workflow", () => {
       expect(presentResult.instruction).toContain("Question shown");
 
       // Step 5: Show answer
-      const presentWithAnswerRawResult = await presentCardTool.presentCard(
-        {
-          card_id: dueCardIds[0],
-          show_answer: true,
-        },
-        mockContext,
-      );
+      const presentWithAnswerRawResult = await presentCardTool.presentCard({
+        card_id: dueCardIds[0],
+        show_answer: true,
+      });
       const presentWithAnswerResult = parseToolResult(
         presentWithAnswerRawResult,
       );
@@ -190,13 +176,10 @@ describe("Review Session Workflow", () => {
         },
       );
 
-      const rateRawResult = await rateCardTool.rateCard(
-        {
-          card_id: dueCardIds[0],
-          rating: 3, // Good
-        },
-        mockContext,
-      );
+      const rateRawResult = await rateCardTool.rateCard({
+        card_id: dueCardIds[0],
+        rating: 3, // Good
+      });
       const rateResult = parseToolResult(rateRawResult);
       expect(rateResult.success).toBe(true);
       expect(rateResult.rating).toBe(3);
@@ -214,13 +197,10 @@ describe("Review Session Workflow", () => {
           },
         );
 
-        const cardRawResult = await presentCardTool.presentCard(
-          {
-            card_id: dueCardIds[i],
-            show_answer: true,
-          },
-          mockContext,
-        );
+        const cardRawResult = await presentCardTool.presentCard({
+          card_id: dueCardIds[i],
+          show_answer: true,
+        });
         const cardResult = parseToolResult(cardRawResult);
         expect(cardResult.success).toBe(true);
 
@@ -244,13 +224,10 @@ describe("Review Session Workflow", () => {
         );
 
         const rating = i % 2 === 0 ? 2 : 3; // Alternate between Hard and Good
-        const ratingRawResult = await rateCardTool.rateCard(
-          {
-            card_id: dueCardIds[i],
-            rating: rating,
-          },
-          mockContext,
-        );
+        const ratingRawResult = await rateCardTool.rateCard({
+          card_id: dueCardIds[i],
+          rating: rating,
+        });
         const ratingResult = parseToolResult(ratingRawResult);
         expect(ratingResult.success).toBe(true);
       }
@@ -265,7 +242,7 @@ describe("Review Session Workflow", () => {
         },
       );
 
-      const finalSyncRawResult = await syncTool.sync({}, mockContext);
+      const finalSyncRawResult = await syncTool.sync({});
       const finalSyncResult = parseToolResult(finalSyncRawResult);
       expect(finalSyncResult.success).toBe(true);
     });
@@ -273,7 +250,7 @@ describe("Review Session Workflow", () => {
     it("should handle empty review queue gracefully", async () => {
       // Sync
       ankiClient.invoke.mockResolvedValueOnce(null);
-      await syncTool.sync({}, mockContext);
+      await syncTool.sync({});
 
       // Get due cards - none available
       ankiClient.invoke.mockImplementation(
@@ -285,10 +262,9 @@ describe("Review Session Workflow", () => {
         },
       );
 
-      const dueCardsRawResult = await getDueCardsTool.getDueCards(
-        { deck_name: "Spanish" },
-        mockContext,
-      );
+      const dueCardsRawResult = await getDueCardsTool.getDueCards({
+        deck_name: "Spanish",
+      });
       const dueCardsResult = parseToolResult(dueCardsRawResult);
       expect(dueCardsResult.success).toBe(true);
       expect(dueCardsResult.cards).toHaveLength(0);
@@ -296,7 +272,7 @@ describe("Review Session Workflow", () => {
 
       // Final sync even with no reviews
       ankiClient.invoke.mockResolvedValueOnce(null);
-      const finalSyncRawResult = await syncTool.sync({}, mockContext);
+      const finalSyncRawResult = await syncTool.sync({});
       const finalSyncResult = parseToolResult(finalSyncRawResult);
       expect(finalSyncResult.success).toBe(true);
     });
@@ -304,7 +280,7 @@ describe("Review Session Workflow", () => {
     it("should handle review with all decks", async () => {
       // Step 1: Sync
       ankiClient.invoke.mockResolvedValueOnce(null);
-      await syncTool.sync({}, mockContext);
+      await syncTool.sync({});
 
       // Step 2: Get due cards from all decks (no deckName parameter)
       const mixedDueCards = [
@@ -328,7 +304,6 @@ describe("Review Session Workflow", () => {
 
       const allDueCardsRawResult = await getDueCardsTool.getDueCards(
         {}, // No deck specified
-        mockContext,
       );
       const allDueCardsResult = parseToolResult(allDueCardsRawResult);
       expect(allDueCardsResult.success).toBe(true);
@@ -372,69 +347,14 @@ describe("Review Session Workflow", () => {
           },
         );
 
-        const rawResult = await rateCardTool.rateCard(
-          {
-            card_id: mockCards.dueCard.cardId,
-            rating: testCase.rating,
-          },
-          mockContext,
-        );
+        const rawResult = await rateCardTool.rateCard({
+          card_id: mockCards.dueCard.cardId,
+          rating: testCase.rating,
+        });
         const result = parseToolResult(rawResult);
         expect(result.success).toBe(true);
         expect(result.rating).toBe(testCase.rating);
       }
-    });
-
-    it("should track progress throughout review session", async () => {
-      // Verify progress reporting is called at each step
-      const progressCalls: any[] = [];
-      const trackingContext = {
-        reportProgress: jest.fn((progress) => {
-          progressCalls.push(progress);
-          return Promise.resolve();
-        }),
-        log: {
-          debug: jest.fn(),
-          error: jest.fn(),
-          info: jest.fn(),
-          warn: jest.fn(),
-        },
-        mcpServer: {} as any,
-        mcpRequest: {} as any,
-      };
-
-      // Sync
-      ankiClient.invoke.mockResolvedValueOnce(null);
-      await syncTool.sync({}, trackingContext);
-      expect(trackingContext.reportProgress).toHaveBeenCalled();
-
-      // List decks using listDecks
-      ankiClient.invoke
-        .mockResolvedValueOnce(["Deck1"])
-        .mockResolvedValueOnce({});
-      await listDecksTool.execute({ includeStats: true }, trackingContext);
-      expect(trackingContext.reportProgress).toHaveBeenCalled();
-
-      // Get due cards
-      ankiClient.invoke
-        .mockResolvedValueOnce([1, 2, 3])
-        .mockResolvedValueOnce([mockCards.dueCard]);
-      const rawTrackingResult = await getDueCardsTool.getDueCards(
-        { deck_name: "Deck1" },
-        trackingContext,
-      );
-      parseToolResult(rawTrackingResult); // Just parse to ensure it works
-      expect(trackingContext.reportProgress).toHaveBeenCalled();
-
-      // Verify progress values are sensible
-      const progressValues = progressCalls.filter(
-        (p) => p.progress !== undefined,
-      );
-      expect(progressValues.length).toBeGreaterThan(0);
-      progressValues.forEach((p) => {
-        expect(p.progress).toBeGreaterThanOrEqual(0);
-        expect(p.progress).toBeLessThanOrEqual(100);
-      });
     });
   });
 });

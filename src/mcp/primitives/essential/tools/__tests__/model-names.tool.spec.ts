@@ -1,15 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ModelNamesTool } from "../model-names.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createMockContext,
-  parseToolResult,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 describe("ModelNamesTool", () => {
   let tool: ModelNamesTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,7 +22,6 @@ describe("ModelNamesTool", () => {
 
     tool = module.get<ModelNamesTool>(ModelNamesTool);
     ankiClient = module.get(AnkiConnectClient);
-    mockContext = createMockContext();
   });
 
   afterEach(() => {
@@ -39,7 +34,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -63,7 +58,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -86,7 +81,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -105,7 +100,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -119,7 +114,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -140,7 +135,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.commonTypes.basic).toBe("Basic");
@@ -156,7 +151,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.commonTypes.basic).toBe("Basic");
@@ -176,7 +171,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.commonTypes.basic).toBe("Basic");
@@ -191,7 +186,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.commonTypes.basic).toBeNull();
@@ -204,7 +199,7 @@ describe("ModelNamesTool", () => {
     it("should handle AnkiConnect connection error", async () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("ECONNREFUSED"));
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -217,7 +212,7 @@ describe("ModelNamesTool", () => {
     it("should handle generic AnkiConnect error", async () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("Unknown error"));
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -230,7 +225,7 @@ describe("ModelNamesTool", () => {
     it("should handle permission errors", async () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("Permission denied"));
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -243,7 +238,7 @@ describe("ModelNamesTool", () => {
     it("should handle timeout errors", async () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("Request timeout"));
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -260,7 +255,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -278,7 +273,7 @@ describe("ModelNamesTool", () => {
     it("should handle null response from AnkiConnect", async () => {
       ankiClient.invoke.mockResolvedValueOnce(null);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -290,7 +285,7 @@ describe("ModelNamesTool", () => {
     it("should handle undefined response from AnkiConnect", async () => {
       ankiClient.invoke.mockResolvedValueOnce(undefined);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -304,7 +299,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -317,7 +312,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -331,7 +326,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -344,7 +339,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -359,33 +354,13 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      await tool.modelNames({}, mockContext);
-
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 25,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 75,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 100,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(3);
+      await tool.modelNames({});
     });
 
     it("should report progress even when retrieval fails", async () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("Failed"));
 
-      await tool.modelNames({}, mockContext);
-
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 25,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(1);
+      await tool.modelNames({});
     });
   });
 
@@ -395,7 +370,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result).toHaveProperty("success");
@@ -409,7 +384,7 @@ describe("ModelNamesTool", () => {
     it("should return correct structure on error", async () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("Connection error"));
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result).toHaveProperty("success");
@@ -423,7 +398,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result).not.toHaveProperty("hint");
@@ -432,7 +407,7 @@ describe("ModelNamesTool", () => {
     it("should include connection hint on error", async () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("Connection error"));
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.hint).toBe(
@@ -447,7 +422,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.message).toBe("Found 3 note types");
@@ -458,7 +433,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.message).toBe("Found 2 note types");
@@ -469,7 +444,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       expect(result.message).toBe("No note types found in Anki");
@@ -480,7 +455,7 @@ describe("ModelNamesTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(modelNames);
 
-      const rawResult = await tool.modelNames({}, mockContext);
+      const rawResult = await tool.modelNames({});
       const result = parseToolResult(rawResult);
 
       // Note: The actual implementation uses "note types" (plural) even for 1 model

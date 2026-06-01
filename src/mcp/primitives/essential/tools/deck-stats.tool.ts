@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -99,17 +98,13 @@ export class DeckStatsTool {
       idempotentHint: true,
     },
   })
-  async execute(
-    params: {
-      deck: string;
-      easeBuckets?: number[];
-      intervalBuckets?: number[];
-    },
-    context: Context,
-  ) {
+  async execute(params: {
+    deck: string;
+    easeBuckets?: number[];
+    intervalBuckets?: number[];
+  }) {
     try {
       this.logger.log(`Executing deckStats for deck: ${params.deck}`);
-      await context.reportProgress({ progress: 10, total: 100 });
 
       const result = await deckStats(
         {
@@ -118,12 +113,8 @@ export class DeckStatsTool {
           intervalBuckets: params.intervalBuckets,
         },
         this.ankiClient,
-        async (progress) => {
-          await context.reportProgress({ progress, total: 100 });
-        },
       );
 
-      await context.reportProgress({ progress: 100, total: 100 });
       return result;
     } catch (error) {
       this.logger.error("Failed to execute deckStats", error);

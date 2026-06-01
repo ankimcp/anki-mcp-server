@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, CardPresentation } from "@/mcp/types/anki.types";
@@ -55,17 +54,19 @@ export class PresentCardTool {
       idempotentHint: true,
     },
   })
-  async presentCard(
-    { card_id, show_answer }: { card_id: number; show_answer?: boolean },
-    context: Context,
-  ) {
+  async presentCard({
+    card_id,
+    show_answer,
+  }: {
+    card_id: number;
+    show_answer?: boolean;
+  }) {
     try {
       const showAnswer = show_answer || false;
 
       this.logger.log(
         `Retrieving card ${card_id} for presentation (show_answer: ${showAnswer})`,
       );
-      await context.reportProgress({ progress: 25, total: 100 });
 
       // Get detailed card information
       const cardsInfo = await this.ankiClient.invoke<AnkiCard[]>("cardsInfo", {
@@ -79,8 +80,6 @@ export class PresentCardTool {
           { cardId: card_id },
         );
       }
-
-      await context.reportProgress({ progress: 75, total: 100 });
 
       const card = cardsInfo[0];
       const { front, back } = extractCardContent(card.fields);
@@ -106,7 +105,6 @@ export class PresentCardTool {
         presentation.back = back || card.answer || "";
       }
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(`Retrieved card ${card_id} for presentation`);
 
       const instruction = !showAnswer

@@ -1,15 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { GetTagsTool } from "../get-tags.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  createMockContext,
-  parseToolResult,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 describe("GetTagsTool", () => {
   let tool: GetTagsTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,7 +22,6 @@ describe("GetTagsTool", () => {
 
     tool = module.get<GetTagsTool>(GetTagsTool);
     ankiClient = module.get(AnkiConnectClient);
-    mockContext = createMockContext();
   });
 
   afterEach(() => {
@@ -39,7 +34,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -54,7 +49,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -68,7 +63,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -90,7 +85,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(allTags);
 
-      const rawResult = await tool.getTags({ pattern: "roman" }, mockContext);
+      const rawResult = await tool.getTags({ pattern: "roman" });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -110,7 +105,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(allTags);
 
-      const rawResult = await tool.getTags({ pattern: "VOCAB" }, mockContext);
+      const rawResult = await tool.getTags({ pattern: "VOCAB" });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -123,10 +118,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(allTags);
 
-      const rawResult = await tool.getTags(
-        { pattern: "nonexistent" },
-        mockContext,
-      );
+      const rawResult = await tool.getTags({ pattern: "nonexistent" });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -144,7 +136,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(allTags);
 
-      const rawResult = await tool.getTags({ pattern: "verb" }, mockContext);
+      const rawResult = await tool.getTags({ pattern: "verb" });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -157,7 +149,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.filtered).toBeUndefined();
@@ -169,7 +161,7 @@ describe("GetTagsTool", () => {
     it("should handle AnkiConnect connection error", async () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("ECONNREFUSED"));
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -182,7 +174,7 @@ describe("GetTagsTool", () => {
     it("should handle generic AnkiConnect error", async () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("Unknown error"));
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -195,7 +187,7 @@ describe("GetTagsTool", () => {
     it("should handle timeout errors", async () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("Request timeout"));
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
@@ -209,7 +201,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -221,7 +213,7 @@ describe("GetTagsTool", () => {
     it("should handle null response from AnkiConnect", async () => {
       ankiClient.invoke.mockResolvedValueOnce(null);
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -233,7 +225,7 @@ describe("GetTagsTool", () => {
     it("should handle undefined response from AnkiConnect", async () => {
       ankiClient.invoke.mockResolvedValueOnce(undefined);
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -247,7 +239,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -260,7 +252,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -273,7 +265,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({ pattern: "日本語" }, mockContext);
+      const rawResult = await tool.getTags({ pattern: "日本語" });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -287,7 +279,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -300,7 +292,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -314,7 +306,7 @@ describe("GetTagsTool", () => {
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
       // Empty string pattern should match all tags
-      const rawResult = await tool.getTags({ pattern: "" }, mockContext);
+      const rawResult = await tool.getTags({ pattern: "" });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -329,33 +321,13 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      await tool.getTags({}, mockContext);
-
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 25,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 75,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 100,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(3);
+      await tool.getTags({});
     });
 
     it("should report progress even when retrieval fails", async () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("Failed"));
 
-      await tool.getTags({}, mockContext);
-
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 25,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(1);
+      await tool.getTags({});
     });
 
     it("should report progress with pattern filtering", async () => {
@@ -363,9 +335,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      await tool.getTags({ pattern: "roman" }, mockContext);
-
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(3);
+      await tool.getTags({ pattern: "roman" });
     });
   });
 
@@ -375,7 +345,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result).toHaveProperty("success");
@@ -388,7 +358,7 @@ describe("GetTagsTool", () => {
     it("should return correct structure on error", async () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("Connection error"));
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result).toHaveProperty("success");
@@ -402,7 +372,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({ pattern: "roman" }, mockContext);
+      const rawResult = await tool.getTags({ pattern: "roman" });
       const result = parseToolResult(rawResult);
 
       expect(result).toHaveProperty("filtered");
@@ -416,7 +386,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({}, mockContext);
+      const rawResult = await tool.getTags({});
       const result = parseToolResult(rawResult);
 
       expect(result).not.toHaveProperty("hint");
@@ -436,7 +406,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(existingTags);
 
-      const rawResult = await tool.getTags({ pattern: "roman" }, mockContext);
+      const rawResult = await tool.getTags({ pattern: "roman" });
       const result = parseToolResult(rawResult);
 
       // User can now see all Roman-related tag variations
@@ -458,7 +428,7 @@ describe("GetTagsTool", () => {
 
       ankiClient.invoke.mockResolvedValueOnce(tags);
 
-      const rawResult = await tool.getTags({ pattern: "spanish" }, mockContext);
+      const rawResult = await tool.getTags({ pattern: "spanish" });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);

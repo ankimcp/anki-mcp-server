@@ -5,10 +5,7 @@ import {
   AnkiConnectError,
 } from "../../../../clients/anki-connect.client";
 import { mockNotes } from "../../../../../test-fixtures/mock-data";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 import * as dns from "node:dns";
 
 jest.mock("../../../../clients/anki-connect.client");
@@ -32,7 +29,6 @@ const mockLookup = dns.promises.lookup as jest.MockedFunction<
 describe("UpdateNoteFieldsTool", () => {
   let tool: UpdateNoteFieldsTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -43,8 +39,6 @@ describe("UpdateNoteFieldsTool", () => {
     ankiClient = module.get(
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
-
-    mockContext = createMockContext();
 
     jest.clearAllMocks();
 
@@ -69,15 +63,12 @@ describe("UpdateNoteFieldsTool", () => {
         .mockResolvedValueOnce(null); // updateNoteFields call
 
       // Act
-      const rawResult = await tool.updateNoteFields(
-        {
-          note: {
-            id: noteId,
-            fields: updatedFields,
-          },
+      const rawResult = await tool.updateNoteFields({
+        note: {
+          id: noteId,
+          fields: updatedFields,
         },
-        mockContext,
-      );
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -112,15 +103,12 @@ describe("UpdateNoteFieldsTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.updateNoteFields(
-        {
-          note: {
-            id: noteId,
-            fields: htmlFields,
-          },
+      const rawResult = await tool.updateNoteFields({
+        note: {
+          id: noteId,
+          fields: htmlFields,
         },
-        mockContext,
-      );
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -139,15 +127,12 @@ describe("UpdateNoteFieldsTool", () => {
       const noteId = 1234567890;
 
       // Act
-      const rawResult = await tool.updateNoteFields(
-        {
-          note: {
-            id: noteId,
-            fields: {},
-          },
+      const rawResult = await tool.updateNoteFields({
+        note: {
+          id: noteId,
+          fields: {},
         },
-        mockContext,
-      );
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -163,15 +148,12 @@ describe("UpdateNoteFieldsTool", () => {
       ankiClient.invoke.mockResolvedValueOnce([]); // Empty notesInfo response
 
       // Act
-      const rawResult = await tool.updateNoteFields(
-        {
-          note: {
-            id: noteId,
-            fields: { Front: "Test" },
-          },
+      const rawResult = await tool.updateNoteFields({
+        note: {
+          id: noteId,
+          fields: { Front: "Test" },
         },
-        mockContext,
-      );
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -193,15 +175,12 @@ describe("UpdateNoteFieldsTool", () => {
       ankiClient.invoke.mockResolvedValueOnce([mockNotes.spanish]);
 
       // Act
-      const rawResult = await tool.updateNoteFields(
-        {
-          note: {
-            id: noteId,
-            fields: invalidFields,
-          },
+      const rawResult = await tool.updateNoteFields({
+        note: {
+          id: noteId,
+          fields: invalidFields,
         },
-        mockContext,
-      );
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -226,15 +205,12 @@ describe("UpdateNoteFieldsTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.updateNoteFields(
-        {
-          note: {
-            id: noteId,
-            fields: partialUpdate,
-          },
+      const rawResult = await tool.updateNoteFields({
+        note: {
+          id: noteId,
+          fields: partialUpdate,
         },
-        mockContext,
-      );
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -271,10 +247,7 @@ describe("UpdateNoteFieldsTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.updateNoteFields(
-        { note: noteWithMedia },
-        mockContext,
-      );
+      const rawResult = await tool.updateNoteFields({ note: noteWithMedia });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -292,15 +265,12 @@ describe("UpdateNoteFieldsTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.updateNoteFields(
-        {
-          note: {
-            id: noteId,
-            fields: { Front: "Updated" },
-          },
+      const rawResult = await tool.updateNoteFields({
+        note: {
+          id: noteId,
+          fields: { Front: "Updated" },
         },
-        mockContext,
-      );
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -315,15 +285,12 @@ describe("UpdateNoteFieldsTool", () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("fetch failed"));
 
       // Act
-      const rawResult = await tool.updateNoteFields(
-        {
-          note: {
-            id: 123,
-            fields: { Front: "Test" },
-          },
+      const rawResult = await tool.updateNoteFields({
+        note: {
+          id: 123,
+          fields: { Front: "Test" },
         },
-        mockContext,
-      );
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -342,15 +309,12 @@ describe("UpdateNoteFieldsTool", () => {
         );
 
       // Act
-      const rawResult = await tool.updateNoteFields(
-        {
-          note: {
-            id: noteId,
-            fields: { Front: "Test" },
-          },
+      const rawResult = await tool.updateNoteFields({
+        note: {
+          id: noteId,
+          fields: { Front: "Test" },
         },
-        mockContext,
-      );
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -367,30 +331,14 @@ describe("UpdateNoteFieldsTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      await tool.updateNoteFields(
-        {
-          note: {
-            id: mockNotes.spanish.noteId,
-            fields: { Front: "Test" },
-          },
+      await tool.updateNoteFields({
+        note: {
+          id: mockNotes.spanish.noteId,
+          fields: { Front: "Test" },
         },
-        mockContext,
-      );
+      });
 
       // Assert
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(3);
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(1, {
-        progress: 25,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(2, {
-        progress: 50,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(3, {
-        progress: 100,
-        total: 100,
-      });
     });
 
     it("should preserve model name in response", async () => {
@@ -400,15 +348,12 @@ describe("UpdateNoteFieldsTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.updateNoteFields(
-        {
-          note: {
-            id: mockNotes.japanese.noteId,
-            fields: { Front: "Updated" },
-          },
+      const rawResult = await tool.updateNoteFields({
+        note: {
+          id: mockNotes.japanese.noteId,
+          fields: { Front: "Updated" },
         },
-        mockContext,
-      );
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -423,22 +368,19 @@ describe("UpdateNoteFieldsTool", () => {
   describe("security guards", () => {
     describe("audio URL validation", () => {
       it("should reject file:// URLs in audio[].url", async () => {
-        const rawResult = await tool.updateNoteFields(
-          {
-            note: {
-              id: mockNotes.spanish.noteId,
-              fields: { Front: "Test" },
-              audio: [
-                {
-                  url: "file:///etc/passwd",
-                  filename: "evil.mp3",
-                  fields: ["Front"],
-                },
-              ],
-            },
+        const rawResult = await tool.updateNoteFields({
+          note: {
+            id: mockNotes.spanish.noteId,
+            fields: { Front: "Test" },
+            audio: [
+              {
+                url: "file:///etc/passwd",
+                filename: "evil.mp3",
+                fields: ["Front"],
+              },
+            ],
           },
-          mockContext,
-        );
+        });
         const result = parseToolResult(rawResult);
 
         expect(result.success).toBe(false);
@@ -453,22 +395,19 @@ describe("UpdateNoteFieldsTool", () => {
           family: 4,
         } as any);
 
-        const rawResult = await tool.updateNoteFields(
-          {
-            note: {
-              id: mockNotes.spanish.noteId,
-              fields: { Front: "Test" },
-              audio: [
-                {
-                  url: "https://internal.corp/secret.mp3",
-                  filename: "audio.mp3",
-                  fields: ["Front"],
-                },
-              ],
-            },
+        const rawResult = await tool.updateNoteFields({
+          note: {
+            id: mockNotes.spanish.noteId,
+            fields: { Front: "Test" },
+            audio: [
+              {
+                url: "https://internal.corp/secret.mp3",
+                filename: "audio.mp3",
+                fields: ["Front"],
+              },
+            ],
           },
-          mockContext,
-        );
+        });
         const result = parseToolResult(rawResult);
 
         expect(result.success).toBe(false);
@@ -488,22 +427,19 @@ describe("UpdateNoteFieldsTool", () => {
           .mockResolvedValueOnce([mockNotes.spanish]) // notesInfo
           .mockResolvedValueOnce(null); // updateNoteFields
 
-        const rawResult = await tool.updateNoteFields(
-          {
-            note: {
-              id: mockNotes.spanish.noteId,
-              fields: { Front: "Test" },
-              audio: [
-                {
-                  url: "https://cdn.example.com/pronunciation.mp3",
-                  filename: "pronunciation.mp3",
-                  fields: ["Front"],
-                },
-              ],
-            },
+        const rawResult = await tool.updateNoteFields({
+          note: {
+            id: mockNotes.spanish.noteId,
+            fields: { Front: "Test" },
+            audio: [
+              {
+                url: "https://cdn.example.com/pronunciation.mp3",
+                filename: "pronunciation.mp3",
+                fields: ["Front"],
+              },
+            ],
           },
-          mockContext,
-        );
+        });
         const result = parseToolResult(rawResult);
 
         expect(result.success).toBe(true);
@@ -516,27 +452,24 @@ describe("UpdateNoteFieldsTool", () => {
           .mockResolvedValueOnce({ address: "93.184.216.34", family: 4 })
           .mockResolvedValueOnce({ address: "192.168.1.1", family: 4 });
 
-        const result = await tool.updateNoteFields(
-          {
-            note: {
-              id: 1234567890,
-              fields: { Front: "test" },
-              audio: [
-                {
-                  url: "https://safe.com/audio1.mp3",
-                  filename: "safe.mp3",
-                  fields: ["Front"],
-                },
-                {
-                  url: "http://evil.internal/steal.mp3",
-                  filename: "evil.mp3",
-                  fields: ["Back"],
-                },
-              ],
-            },
+        const result = await tool.updateNoteFields({
+          note: {
+            id: 1234567890,
+            fields: { Front: "test" },
+            audio: [
+              {
+                url: "https://safe.com/audio1.mp3",
+                filename: "safe.mp3",
+                fields: ["Front"],
+              },
+              {
+                url: "http://evil.internal/steal.mp3",
+                filename: "evil.mp3",
+                fields: ["Back"],
+              },
+            ],
           },
-          mockContext,
-        );
+        });
 
         expect(result).toHaveProperty("isError", true);
         expect(ankiClient.invoke).not.toHaveBeenCalledWith(
@@ -548,22 +481,19 @@ describe("UpdateNoteFieldsTool", () => {
 
     describe("picture URL validation", () => {
       it("should reject file:// URLs in picture[].url", async () => {
-        const rawResult = await tool.updateNoteFields(
-          {
-            note: {
-              id: mockNotes.spanish.noteId,
-              fields: { Front: "Test" },
-              picture: [
-                {
-                  url: "file:///etc/shadow",
-                  filename: "evil.jpg",
-                  fields: ["Back"],
-                },
-              ],
-            },
+        const rawResult = await tool.updateNoteFields({
+          note: {
+            id: mockNotes.spanish.noteId,
+            fields: { Front: "Test" },
+            picture: [
+              {
+                url: "file:///etc/shadow",
+                filename: "evil.jpg",
+                fields: ["Back"],
+              },
+            ],
           },
-          mockContext,
-        );
+        });
         const result = parseToolResult(rawResult);
 
         expect(result.success).toBe(false);
@@ -577,22 +507,19 @@ describe("UpdateNoteFieldsTool", () => {
           family: 4,
         } as any);
 
-        const rawResult = await tool.updateNoteFields(
-          {
-            note: {
-              id: mockNotes.spanish.noteId,
-              fields: { Front: "Test" },
-              picture: [
-                {
-                  url: "https://admin-panel.internal/logo.png",
-                  filename: "image.jpg",
-                  fields: ["Back"],
-                },
-              ],
-            },
+        const rawResult = await tool.updateNoteFields({
+          note: {
+            id: mockNotes.spanish.noteId,
+            fields: { Front: "Test" },
+            picture: [
+              {
+                url: "https://admin-panel.internal/logo.png",
+                filename: "image.jpg",
+                fields: ["Back"],
+              },
+            ],
           },
-          mockContext,
-        );
+        });
         const result = parseToolResult(rawResult);
 
         expect(result.success).toBe(false);
@@ -612,22 +539,19 @@ describe("UpdateNoteFieldsTool", () => {
           .mockResolvedValueOnce([mockNotes.spanish]) // notesInfo
           .mockResolvedValueOnce(null); // updateNoteFields
 
-        const rawResult = await tool.updateNoteFields(
-          {
-            note: {
-              id: mockNotes.spanish.noteId,
-              fields: { Front: "Test" },
-              picture: [
-                {
-                  url: "https://images.example.com/photo.jpg",
-                  filename: "photo.jpg",
-                  fields: ["Back"],
-                },
-              ],
-            },
+        const rawResult = await tool.updateNoteFields({
+          note: {
+            id: mockNotes.spanish.noteId,
+            fields: { Front: "Test" },
+            picture: [
+              {
+                url: "https://images.example.com/photo.jpg",
+                filename: "photo.jpg",
+                fields: ["Back"],
+              },
+            ],
           },
-          mockContext,
-        );
+        });
         const result = parseToolResult(rawResult);
 
         expect(result.success).toBe(true);
@@ -642,29 +566,26 @@ describe("UpdateNoteFieldsTool", () => {
           .mockResolvedValueOnce({ address: "93.184.216.34", family: 4 })
           .mockResolvedValueOnce({ address: "10.0.0.1", family: 4 });
 
-        const result = await tool.updateNoteFields(
-          {
-            note: {
-              id: 1234567890,
-              fields: { Front: "test" },
-              audio: [
-                {
-                  url: "https://safe.com/audio.mp3",
-                  filename: "audio.mp3",
-                  fields: ["Front"],
-                },
-              ],
-              picture: [
-                {
-                  url: "http://internal-server/secret.png",
-                  filename: "secret.png",
-                  fields: ["Back"],
-                },
-              ],
-            },
+        const result = await tool.updateNoteFields({
+          note: {
+            id: 1234567890,
+            fields: { Front: "test" },
+            audio: [
+              {
+                url: "https://safe.com/audio.mp3",
+                filename: "audio.mp3",
+                fields: ["Front"],
+              },
+            ],
+            picture: [
+              {
+                url: "http://internal-server/secret.png",
+                filename: "secret.png",
+                fields: ["Back"],
+              },
+            ],
           },
-          mockContext,
-        );
+        });
 
         expect(result).toHaveProperty("isError", true);
         expect(ankiClient.invoke).not.toHaveBeenCalledWith(
@@ -699,30 +620,31 @@ describe("UpdateNoteFieldsTool", () => {
           return null;
         });
 
-        await tool.updateNoteFields(
-          {
-            note: {
-              id: 1234567890,
-              fields: { Front: "test" },
-              audio: [
-                {
-                  url: "https://safe.com/audio.mp3",
-                  filename: "../../evil.mp3",
-                  fields: ["Front"],
-                },
-              ],
-            },
+        await tool.updateNoteFields({
+          note: {
+            id: 1234567890,
+            fields: { Front: "test" },
+            audio: [
+              {
+                url: "https://safe.com/audio.mp3",
+                filename: "../../evil.mp3",
+                fields: ["Front"],
+              },
+            ],
           },
-          mockContext,
-        );
+        });
 
         // Verify the filename was sanitized in the AnkiConnect call
-        const updateCall = ankiClient.invoke.mock.calls.find(
-          (call: any[]) => call[0] === "updateNoteFields",
+        expect(ankiClient.invoke).toHaveBeenCalledWith(
+          "updateNoteFields",
+          expect.objectContaining({
+            note: expect.objectContaining({
+              audio: expect.arrayContaining([
+                expect.objectContaining({ filename: "evil.mp3" }),
+              ]),
+            }),
+          }),
         );
-        if (updateCall) {
-          expect(updateCall[1].note.audio[0].filename).toBe("evil.mp3");
-        }
       });
     });
   });

@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -37,19 +36,15 @@ export class ModelNamesTool {
       idempotentHint: true,
     },
   })
-  async modelNames(_args: Record<string, never>, context: Context) {
+  async modelNames(_args: Record<string, never>) {
     try {
       this.logger.log("Retrieving model names from Anki");
-      await context.reportProgress({ progress: 25, total: 100 });
 
       // Get list of model names from AnkiConnect
       const modelNames = await this.ankiClient.invoke<string[]>("modelNames");
 
-      await context.reportProgress({ progress: 75, total: 100 });
-
       if (!modelNames || modelNames.length === 0) {
         this.logger.log("No models found");
-        await context.reportProgress({ progress: 100, total: 100 });
         return {
           success: true,
           message: "No note types found in Anki",
@@ -63,7 +58,6 @@ export class ModelNamesTool {
         };
       }
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(`Found ${modelNames.length} models`);
 
       return {

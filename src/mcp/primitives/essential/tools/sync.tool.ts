@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -32,16 +31,14 @@ export class SyncTool {
       openWorldHint: true,
     },
   })
-  async sync(_args: Record<string, never>, context: Context) {
+  async sync(_args: Record<string, never>) {
     try {
       this.logger.log("Synchronizing Anki collection with AnkiWeb");
-      await context.reportProgress({ progress: 25, total: 100 });
 
       // Call AnkiConnect sync action
       await this.ankiClient.invoke("sync");
 
       this.logger.log("Anki sync completed successfully");
-      await context.reportProgress({ progress: 100, total: 100 });
 
       return {
         success: true,

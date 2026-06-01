@@ -2,10 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { GetDueCardsTool } from "../get-due-cards.tool";
 import { AnkiConnectClient } from "../../../../clients/anki-connect.client";
 import { mockCards } from "../../../../../test-fixtures/mock-data";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 import { AnkiCard } from "../../../../types/anki.types";
 
 // Mock the AnkiConnectClient
@@ -14,7 +11,6 @@ jest.mock("../../../../clients/anki-connect.client");
 describe("GetDueCardsTool", () => {
   let tool: GetDueCardsTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -27,7 +23,6 @@ describe("GetDueCardsTool", () => {
     ) as jest.Mocked<AnkiConnectClient>;
 
     // Setup mock context
-    mockContext = createMockContext();
 
     // Clear all mocks before each test
     jest.clearAllMocks();
@@ -59,7 +54,7 @@ describe("GetDueCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo); // cardsInfo
 
       // Act
-      const rawResult = await tool.getDueCards({}, mockContext);
+      const rawResult = await tool.getDueCards({});
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -76,7 +71,6 @@ describe("GetDueCardsTool", () => {
       expect(result.total).toBe(2);
       expect(result.returned).toBe(2);
       expect(result.message).toContain("Found 2 due cards");
-      expect(mockContext.reportProgress).toHaveBeenCalled();
     });
 
     it("should exclude learning cards when include_learning is false", async () => {
@@ -86,10 +80,7 @@ describe("GetDueCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo);
 
       // Act
-      const rawResult = await tool.getDueCards(
-        { include_learning: false },
-        mockContext,
-      );
+      const rawResult = await tool.getDueCards({ include_learning: false });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -107,10 +98,7 @@ describe("GetDueCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo); // cardsInfo
 
       // Act
-      const rawResult = await tool.getDueCards(
-        { include_new: true },
-        mockContext,
-      );
+      const rawResult = await tool.getDueCards({ include_new: true });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -133,10 +121,10 @@ describe("GetDueCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo); // cardsInfo
 
       // Act
-      const rawResult = await tool.getDueCards(
-        { include_learning: false, include_new: true },
-        mockContext,
-      );
+      const rawResult = await tool.getDueCards({
+        include_learning: false,
+        include_new: true,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -153,10 +141,7 @@ describe("GetDueCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo);
 
       // Act
-      const rawResult = await tool.getDueCards(
-        { deck_name: "Spanish" },
-        mockContext,
-      );
+      const rawResult = await tool.getDueCards({ deck_name: "Spanish" });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -172,7 +157,7 @@ describe("GetDueCardsTool", () => {
       ankiClient.invoke.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       // Act
-      await tool.getDueCards({ deck_name: 'Deck with "quotes"' }, mockContext);
+      await tool.getDueCards({ deck_name: 'Deck with "quotes"' });
 
       // Assert
       expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "findCards", {
@@ -192,7 +177,7 @@ describe("GetDueCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo.slice(0, 5));
 
       // Act
-      const rawResult = await tool.getDueCards({ limit: 5 }, mockContext);
+      const rawResult = await tool.getDueCards({ limit: 5 });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -216,7 +201,7 @@ describe("GetDueCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo);
 
       // Act
-      await tool.getDueCards({ limit: 100 }, mockContext);
+      await tool.getDueCards({ limit: 100 });
 
       // Assert - should only request 50 cards max
       expect(ankiClient.invoke).toHaveBeenNthCalledWith(2, "cardsInfo", {
@@ -229,7 +214,7 @@ describe("GetDueCardsTool", () => {
       ankiClient.invoke.mockResolvedValueOnce([]);
 
       // Act
-      const rawResult = await tool.getDueCards({}, mockContext);
+      const rawResult = await tool.getDueCards({});
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -237,10 +222,6 @@ describe("GetDueCardsTool", () => {
       expect(result.message).toBe("No cards are due for review");
       expect(result.cards).toEqual([]);
       expect(result.total).toBe(0);
-      expect(mockContext.reportProgress).toHaveBeenCalledWith({
-        progress: 100,
-        total: 100,
-      });
     });
 
     it("should handle network errors gracefully", async () => {
@@ -249,7 +230,7 @@ describe("GetDueCardsTool", () => {
       ankiClient.invoke.mockRejectedValueOnce(networkError);
 
       // Act
-      const rawResult = await tool.getDueCards({}, mockContext);
+      const rawResult = await tool.getDueCards({});
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -267,7 +248,7 @@ describe("GetDueCardsTool", () => {
         );
 
       // Act
-      const rawResult = await tool.getDueCards({}, mockContext);
+      const rawResult = await tool.getDueCards({});
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -282,7 +263,7 @@ describe("GetDueCardsTool", () => {
         .mockResolvedValueOnce([mockCardsInfo[0]]);
 
       // Act
-      const rawResult = await tool.getDueCards({}, mockContext);
+      const rawResult = await tool.getDueCards({});
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -306,22 +287,9 @@ describe("GetDueCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo);
 
       // Act
-      await tool.getDueCards({}, mockContext);
+      await tool.getDueCards({});
 
       // Assert
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(3);
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(1, {
-        progress: 10,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(2, {
-        progress: 50,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(3, {
-        progress: 100,
-        total: 100,
-      });
     });
 
     it("should combine deck filter with include_new", async () => {
@@ -332,10 +300,10 @@ describe("GetDueCardsTool", () => {
         .mockResolvedValueOnce([mockCardsInfo[1]]); // cardsInfo
 
       // Act
-      const rawResult = await tool.getDueCards(
-        { deck_name: "Japanese::JLPT N5", include_new: true },
-        mockContext,
-      );
+      const rawResult = await tool.getDueCards({
+        deck_name: "Japanese::JLPT N5",
+        include_new: true,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -360,7 +328,7 @@ describe("GetDueCardsTool", () => {
         .mockResolvedValueOnce(mockCardsInfo);
 
       // Act
-      await tool.getDueCards({}, mockContext);
+      await tool.getDueCards({});
 
       // Assert - should only request 10 cards by default
       expect(ankiClient.invoke).toHaveBeenNthCalledWith(2, "cardsInfo", {

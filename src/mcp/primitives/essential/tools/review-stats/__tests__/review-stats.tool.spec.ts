@@ -1,19 +1,19 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ReviewStatsTool } from "../review-stats.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 import { ReviewStatsResult } from "../review-stats.types";
 
 // Mock the AnkiConnectClient
 jest.mock("@/mcp/clients/anki-connect.client");
 
+// Noon UTC -- ensures .toISOString().split("T")[0] and local-time "today"
+// inside calculateStreak resolve to the same calendar date in any timezone.
+const FAKE_NOW = Date.UTC(2026, 2, 15, 12); // 2026-03-15 12:00 UTC
+
 describe("ReviewStatsTool", () => {
   let tool: ReviewStatsTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,7 +26,6 @@ describe("ReviewStatsTool", () => {
     ) as jest.Mocked<AnkiConnectClient>;
 
     // Setup mock context
-    mockContext = createMockContext();
 
     // Clear all mocks before each test
     jest.clearAllMocks();
@@ -123,10 +122,11 @@ describe("ReviewStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute(
-        { deck: deckName, start_date: startDate, end_date: endDate },
-        mockContext,
-      );
+      const rawResult = await tool.execute({
+        deck: deckName,
+        start_date: startDate,
+        end_date: endDate,
+      });
       const result = parseToolResult(rawResult) as ReviewStatsResult;
 
       // Assert
@@ -167,7 +167,6 @@ describe("ReviewStatsTool", () => {
       });
 
       // Progress reporting should be called
-      expect(mockContext.reportProgress).toHaveBeenCalled();
     });
 
     it("should handle no reviews in date range", async () => {
@@ -185,10 +184,11 @@ describe("ReviewStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute(
-        { deck: deckName, start_date: startDate, end_date: endDate },
-        mockContext,
-      );
+      const rawResult = await tool.execute({
+        deck: deckName,
+        start_date: startDate,
+        end_date: endDate,
+      });
       const result = parseToolResult(rawResult) as ReviewStatsResult;
 
       // Assert
@@ -276,10 +276,10 @@ describe("ReviewStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute(
-        { deck: deckName, start_date: startDate },
-        mockContext,
-      );
+      const rawResult = await tool.execute({
+        deck: deckName,
+        start_date: startDate,
+      });
       const result = parseToolResult(rawResult) as ReviewStatsResult;
 
       // Assert
@@ -293,149 +293,163 @@ describe("ReviewStatsTool", () => {
     });
 
     it("should calculate streak accurately", async () => {
-      // Arrange
-      const deckName = "Streak";
-      const today = new Date();
-      const todayStr = today.toISOString().split("T")[0];
+      // Pin the clock so streak date logic is deterministic
+      jest.useFakeTimers({ now: FAKE_NOW });
 
-      // Create dates for continuous streak
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split("T")[0];
+      try {
+        // Arrange
+        const deckName = "Streak";
+        const today = new Date();
+        const todayStr = today.toISOString().split("T")[0];
 
-      const twoDaysAgo = new Date(today);
-      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-      const twoDaysAgoStr = twoDaysAgo.toISOString().split("T")[0];
+        // Create dates for continuous streak
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split("T")[0];
 
-      ankiClient.invoke.mockImplementation((action: string) => {
-        if (action === "cardReviews") {
-          // Create reviews across 3 days
-          const twoDaysAgoTimestamp = new Date(twoDaysAgoStr).getTime();
-          const yesterdayTimestamp = new Date(yesterdayStr).getTime();
-          const todayTimestamp = new Date(todayStr).getTime();
+        const twoDaysAgo = new Date(today);
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+        const twoDaysAgoStr = twoDaysAgo.toISOString().split("T")[0];
 
-          const reviews: any[] = [];
-          // Day 1
-          for (let i = 0; i < 10; i++) {
-            reviews.push([
-              twoDaysAgoTimestamp + i,
-              i,
-              -1,
-              3,
-              4,
-              -60,
-              2500,
-              6157,
-              0,
-            ]);
+        ankiClient.invoke.mockImplementation((action: string) => {
+          if (action === "cardReviews") {
+            // Create reviews across 3 days
+            const twoDaysAgoTimestamp = new Date(twoDaysAgoStr).getTime();
+            const yesterdayTimestamp = new Date(yesterdayStr).getTime();
+            const todayTimestamp = new Date(todayStr).getTime();
+
+            const reviews: any[] = [];
+            // Day 1
+            for (let i = 0; i < 10; i++) {
+              reviews.push([
+                twoDaysAgoTimestamp + i,
+                i,
+                -1,
+                3,
+                4,
+                -60,
+                2500,
+                6157,
+                0,
+              ]);
+            }
+            // Day 2
+            for (let i = 0; i < 15; i++) {
+              reviews.push([
+                yesterdayTimestamp + i,
+                10 + i,
+                -1,
+                3,
+                4,
+                -60,
+                2500,
+                6157,
+                0,
+              ]);
+            }
+            // Day 3
+            for (let i = 0; i < 20; i++) {
+              reviews.push([
+                todayTimestamp + i,
+                25 + i,
+                -1,
+                3,
+                4,
+                -60,
+                2500,
+                6157,
+                0,
+              ]);
+            }
+
+            return Promise.resolve(reviews);
           }
-          // Day 2
-          for (let i = 0; i < 15; i++) {
-            reviews.push([
-              yesterdayTimestamp + i,
-              10 + i,
-              -1,
-              3,
-              4,
-              -60,
-              2500,
-              6157,
-              0,
-            ]);
-          }
-          // Day 3
-          for (let i = 0; i < 20; i++) {
-            reviews.push([
-              todayTimestamp + i,
-              25 + i,
-              -1,
-              3,
-              4,
-              -60,
-              2500,
-              6157,
-              0,
-            ]);
-          }
 
-          return Promise.resolve(reviews);
-        }
+          return Promise.resolve({});
+        });
 
-        return Promise.resolve({});
-      });
+        // Act
+        const rawResult = await tool.execute({
+          deck: deckName,
+          start_date: twoDaysAgoStr,
+        });
+        const result = parseToolResult(rawResult) as ReviewStatsResult;
 
-      // Act
-      const rawResult = await tool.execute(
-        { deck: deckName, start_date: twoDaysAgoStr },
-        mockContext,
-      );
-      const result = parseToolResult(rawResult) as ReviewStatsResult;
-
-      // Assert - should have 3-day streak
-      expect(result.summary.streak).toBe(3);
+        // Assert - should have 3-day streak
+        expect(result.summary.streak).toBe(3);
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it("should handle broken streak", async () => {
-      // Arrange
-      const deckName = "Broken";
-      const today = new Date();
-      const todayStr = today.toISOString().split("T")[0];
+      // Pin the clock so streak date logic is deterministic
+      jest.useFakeTimers({ now: FAKE_NOW });
 
-      const twoDaysAgo = new Date(today);
-      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-      const twoDaysAgoStr = twoDaysAgo.toISOString().split("T")[0];
+      try {
+        // Arrange
+        const deckName = "Broken";
+        const today = new Date();
+        const todayStr = today.toISOString().split("T")[0];
 
-      ankiClient.invoke.mockImplementation((action: string) => {
-        if (action === "cardReviews") {
-          // Gap in reviews (no yesterday)
-          const twoDaysAgoTimestamp = new Date(twoDaysAgoStr).getTime();
-          const todayTimestamp = new Date(todayStr).getTime();
+        const twoDaysAgo = new Date(today);
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+        const twoDaysAgoStr = twoDaysAgo.toISOString().split("T")[0];
 
-          const reviews: any[] = [];
-          // Day 1
-          for (let i = 0; i < 10; i++) {
-            reviews.push([
-              twoDaysAgoTimestamp + i,
-              i,
-              -1,
-              3,
-              4,
-              -60,
-              2500,
-              6157,
-              0,
-            ]);
+        ankiClient.invoke.mockImplementation((action: string) => {
+          if (action === "cardReviews") {
+            // Gap in reviews (no yesterday)
+            const twoDaysAgoTimestamp = new Date(twoDaysAgoStr).getTime();
+            const todayTimestamp = new Date(todayStr).getTime();
+
+            const reviews: any[] = [];
+            // Day 1
+            for (let i = 0; i < 10; i++) {
+              reviews.push([
+                twoDaysAgoTimestamp + i,
+                i,
+                -1,
+                3,
+                4,
+                -60,
+                2500,
+                6157,
+                0,
+              ]);
+            }
+            // Day 3 (no day 2)
+            for (let i = 0; i < 20; i++) {
+              reviews.push([
+                todayTimestamp + i,
+                10 + i,
+                -1,
+                3,
+                4,
+                -60,
+                2500,
+                6157,
+                0,
+              ]);
+            }
+
+            return Promise.resolve(reviews);
           }
-          // Day 3 (no day 2)
-          for (let i = 0; i < 20; i++) {
-            reviews.push([
-              todayTimestamp + i,
-              10 + i,
-              -1,
-              3,
-              4,
-              -60,
-              2500,
-              6157,
-              0,
-            ]);
-          }
 
-          return Promise.resolve(reviews);
-        }
+          return Promise.resolve({});
+        });
 
-        return Promise.resolve({});
-      });
+        // Act
+        const rawResult = await tool.execute({
+          deck: deckName,
+          start_date: twoDaysAgoStr,
+        });
+        const result = parseToolResult(rawResult) as ReviewStatsResult;
 
-      // Act
-      const rawResult = await tool.execute(
-        { deck: deckName, start_date: twoDaysAgoStr },
-        mockContext,
-      );
-      const result = parseToolResult(rawResult) as ReviewStatsResult;
-
-      // Assert - streak should be 1 (only today)
-      expect(result.summary.streak).toBe(1);
+        // Assert - streak should be 1 (only today)
+        expect(result.summary.streak).toBe(1);
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it("should filter reviews by deck correctly", async () => {
@@ -486,10 +500,11 @@ describe("ReviewStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute(
-        { start_date: startDate, end_date: endDate, deck: deckName },
-        mockContext,
-      );
+      const rawResult = await tool.execute({
+        start_date: startDate,
+        end_date: endDate,
+        deck: deckName,
+      });
       const result = parseToolResult(rawResult) as ReviewStatsResult;
 
       // Assert
@@ -532,10 +547,10 @@ describe("ReviewStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute(
-        { deck: deckName, start_date: startDate },
-        mockContext,
-      );
+      const rawResult = await tool.execute({
+        deck: deckName,
+        start_date: startDate,
+      });
       const result = parseToolResult(rawResult) as ReviewStatsResult;
 
       // Assert - each button type should be counted once
@@ -563,10 +578,10 @@ describe("ReviewStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute(
-        { deck: deckName, start_date: startDate },
-        mockContext,
-      );
+      const rawResult = await tool.execute({
+        deck: deckName,
+        start_date: startDate,
+      });
       const result = parseToolResult(rawResult) as ReviewStatsResult;
 
       // Assert - end date should be set to today
@@ -643,10 +658,11 @@ describe("ReviewStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute(
-        { deck: deckName, start_date: startDate, end_date: "2026-01-13" },
-        mockContext,
-      );
+      const rawResult = await tool.execute({
+        deck: deckName,
+        start_date: startDate,
+        end_date: "2026-01-13",
+      });
       const result = parseToolResult(rawResult) as ReviewStatsResult;
 
       // Assert
@@ -697,10 +713,11 @@ describe("ReviewStatsTool", () => {
       });
 
       // Act
-      const rawResult = await tool.execute(
-        { deck: deckName, start_date: startDate, end_date: "2026-01-12" },
-        mockContext,
-      );
+      const rawResult = await tool.execute({
+        deck: deckName,
+        start_date: startDate,
+        end_date: "2026-01-12",
+      });
       const result = parseToolResult(rawResult) as ReviewStatsResult;
 
       // Assert - min should be 5, not 0
@@ -715,48 +732,15 @@ describe("ReviewStatsTool", () => {
       );
 
       // Act
-      const rawResult = await tool.execute(
-        { deck: deckName, start_date: "2026-01-10" },
-        mockContext,
-      );
+      const rawResult = await tool.execute({
+        deck: deckName,
+        start_date: "2026-01-10",
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toContain("failed to fetch reviews");
-    });
-
-    it("should call reportProgress correctly", async () => {
-      // Arrange
-      const startDate = "2026-01-10";
-      const deckName = "Progress";
-
-      ankiClient.invoke.mockImplementation((action: string) => {
-        if (action === "cardReviews") {
-          return Promise.resolve([]);
-        }
-
-        return Promise.resolve({});
-      });
-
-      // Act
-      await tool.execute(
-        { deck: deckName, start_date: startDate },
-        mockContext,
-      );
-
-      // Assert
-      expect(mockContext.reportProgress).toHaveBeenCalled();
-      const calls = mockContext.reportProgress.mock.calls;
-
-      // Should have multiple progress updates
-      expect(calls.length).toBeGreaterThan(1);
-
-      // First call should be 10%
-      expect(calls[0][0]).toEqual({ progress: 10, total: 100 });
-
-      // Last call should be 100%
-      expect(calls[calls.length - 1][0]).toEqual({ progress: 100, total: 100 });
     });
   });
 });

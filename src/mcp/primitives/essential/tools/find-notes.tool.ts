@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -45,21 +44,17 @@ export class FindNotesTool {
       idempotentHint: true,
     },
   })
-  async findNotes({ query }: { query: string }, context: Context) {
+  async findNotes({ query }: { query: string }) {
     try {
       this.logger.log(`Searching for notes with query: "${query}"`);
-      await context.reportProgress({ progress: 25, total: 100 });
 
       // Call AnkiConnect findNotes action
       const noteIds = await this.ankiClient.invoke<number[]>("findNotes", {
         query: query,
       });
 
-      await context.reportProgress({ progress: 75, total: 100 });
-
       if (!noteIds || noteIds.length === 0) {
         this.logger.log("No notes found matching the query");
-        await context.reportProgress({ progress: 100, total: 100 });
 
         return {
           success: true,
@@ -71,7 +66,6 @@ export class FindNotesTool {
         };
       }
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(`Found ${noteIds.length} notes matching the query`);
 
       return {

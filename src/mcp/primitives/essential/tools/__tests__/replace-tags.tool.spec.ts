@@ -1,17 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ReplaceTagsTool } from "../replace-tags.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 jest.mock("@/mcp/clients/anki-connect.client");
 
 describe("ReplaceTagsTool", () => {
   let tool: ReplaceTagsTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: ReturnType<typeof createMockContext>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -22,7 +18,6 @@ describe("ReplaceTagsTool", () => {
     ankiClient = module.get(
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -34,7 +29,7 @@ describe("ReplaceTagsTool", () => {
     };
     ankiClient.invoke.mockResolvedValueOnce(null);
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenCalledWith("replaceTags", {
@@ -55,7 +50,7 @@ describe("ReplaceTagsTool", () => {
       replaceWithTag: "new-tag",
     };
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -69,7 +64,7 @@ describe("ReplaceTagsTool", () => {
       replaceWithTag: "",
     };
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -83,7 +78,7 @@ describe("ReplaceTagsTool", () => {
       replaceWithTag: "new-tag",
     };
 
-    const rawResult = await tool.execute(params, mockContext);
+    const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);

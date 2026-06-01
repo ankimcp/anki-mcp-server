@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import {
@@ -52,10 +51,7 @@ export class RateCardTool {
       idempotentHint: false,
     },
   })
-  async rateCard(
-    { card_id, rating }: { card_id: number; rating: number },
-    context: Context,
-  ) {
+  async rateCard({ card_id, rating }: { card_id: number; rating: number }) {
     try {
       // Validate rating
       if (!Number.isInteger(rating) || rating < 1 || rating > 4) {
@@ -68,7 +64,6 @@ export class RateCardTool {
       }
 
       this.logger.log(`Rating card ${card_id} with rating ${rating}`);
-      await context.reportProgress({ progress: 25, total: 100 });
 
       // Validate the card ID exists before answering. AnkiConnect's
       // `answerCards` returns `true` even for bogus IDs, so we must
@@ -114,7 +109,6 @@ export class RateCardTool {
       const ratingDesc = getRatingDescription(rating);
 
       this.logger.log(`Card ${card_id} rated as ${ratingDesc}`);
-      await context.reportProgress({ progress: 75, total: 100 });
 
       // Get updated card info after rating
       const cardsInfo = await this.ankiClient.invoke<any[]>("cardsInfo", {
@@ -130,8 +124,6 @@ export class RateCardTool {
           factor: card.factor || 2500,
         };
       }
-
-      await context.reportProgress({ progress: 100, total: 100 });
 
       return {
         success: true,

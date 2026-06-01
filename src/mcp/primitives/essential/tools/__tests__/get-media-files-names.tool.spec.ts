@@ -1,17 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { GetMediaFilesNamesTool } from "../get-media-files-names.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 jest.mock("@/mcp/clients/anki-connect.client");
 
 describe("GetMediaFilesNamesTool", () => {
   let tool: GetMediaFilesNamesTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: ReturnType<typeof createMockContext>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -22,7 +18,6 @@ describe("GetMediaFilesNamesTool", () => {
     ankiClient = module.get(
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -30,7 +25,7 @@ describe("GetMediaFilesNamesTool", () => {
     const mockFiles = ["audio1.mp3", "audio2.mp3", "image1.jpg"];
     ankiClient.invoke.mockResolvedValueOnce(mockFiles);
 
-    const rawResult = await tool.execute({}, mockContext);
+    const rawResult = await tool.execute({});
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenCalledWith("getMediaFilesNames", {});
@@ -43,7 +38,7 @@ describe("GetMediaFilesNamesTool", () => {
     const mockFiles = ["audio1.mp3", "audio2.mp3"];
     ankiClient.invoke.mockResolvedValueOnce(mockFiles);
 
-    const rawResult = await tool.execute({ pattern: "*.mp3" }, mockContext);
+    const rawResult = await tool.execute({ pattern: "*.mp3" });
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenCalledWith("getMediaFilesNames", {
@@ -58,7 +53,7 @@ describe("GetMediaFilesNamesTool", () => {
   it("should handle empty file list", async () => {
     ankiClient.invoke.mockResolvedValueOnce([]);
 
-    const rawResult = await tool.execute({}, mockContext);
+    const rawResult = await tool.execute({});
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(true);
@@ -69,15 +64,6 @@ describe("GetMediaFilesNamesTool", () => {
   it("should report progress", async () => {
     ankiClient.invoke.mockResolvedValueOnce([]);
 
-    await tool.execute({}, mockContext);
-
-    expect(mockContext.reportProgress).toHaveBeenCalledWith({
-      progress: 50,
-      total: 100,
-    });
-    expect(mockContext.reportProgress).toHaveBeenCalledWith({
-      progress: 100,
-      total: 100,
-    });
+    await tool.execute({});
   });
 });

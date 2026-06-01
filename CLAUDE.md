@@ -14,9 +14,11 @@ MCP server enabling AI assistants to interact with Anki via AnkiConnect. Built w
 
 ```bash
 # Build & Run
-npm run build                    # Build → dist/ (both entry points)
+npm run build                    # Build → dist/ (all three entry points)
 npm run start:dev:stdio          # STDIO mode with watch
 npm run start:dev:http           # HTTP mode with watch
+
+npm run start:dev:tunnel         # Tunnel mode with watch + debug
 
 # Testing
 npm test                         # All tests
@@ -39,12 +41,13 @@ npm run inspector:http           # Inspector against HTTP transport
 
 ### Entry Points
 
-Two entry points compiled in a single build:
+Three entry points compiled in a single build:
 
 | Mode | Entry | Use Case | Logging |
 |------|-------|----------|---------|
 | STDIO | `dist/main-stdio.js` | Claude Desktop, MCP clients | stderr |
 | HTTP | `dist/main-http.js` | Web-based AI (ChatGPT, claude.ai) | stdout |
+| Tunnel | `dist/main-tunnel.js` | Remote access via WebSocket tunnel | stderr |
 
 ### Core Files
 
@@ -52,12 +55,23 @@ Two entry points compiled in a single build:
 src/
 ├── main-stdio.ts            # STDIO bootstrap: NestFactory.createApplicationContext()
 ├── main-http.ts             # HTTP bootstrap: NestFactory.create() + guards
-├── app.module.ts            # Root module with forStdio()/forHttp() factories
+├── main-tunnel.ts           # Tunnel bootstrap: auth commands + WebSocket tunnel
+├── app.module.ts            # Root module with forStdio()/forHttp()/forTunnel() factories
 ├── bootstrap.ts             # Shared logger setup (pino → NestJS LoggerService)
-├── cli.ts                   # Commander CLI (--port, --host, --anki-connect, --ngrok, --read-only)
-├── anki-config.service.ts   # IAnkiConfig implementation (reads env vars via ConfigService)
-├── http/guards/             # Origin validation guard (DNS rebinding protection)
-├── services/ngrok.service.ts # Ngrok tunnel management (spawns ngrok, polls for URL)
+├── cli.ts                   # Commander entrypoint: option parsing, subcommand dispatch
+├── cli/cli-output.ts        # User-facing print helpers (cli.success/error/info/box) — separate from cli.ts so non-CLI code can use it without pulling in Commander
+├── app-config.service.ts    # IAnkiConfig implementation (reads from validated AppConfig)
+├── config/                  # Zod-validated config system (schema, factory, APP_CONFIG token)
+├── services/ngrok.service.ts # Optional ngrok subprocess for HTTP-mode public tunneling
+├── http/guards/             # HTTP-only guards (Origin allowlist)
+├── tunnel/                  # Tunnel mode: WebSocket client, OAuth device flow, credentials
+│   ├── tunnel.client.ts     # WebSocket client for tunnel server
+│   ├── tunnel-mcp.service.ts # Bridges MCP ↔ tunnel via InMemoryTransport
+│   ├── in-memory.transport.ts # MCP transport that connects to TunnelClient in-process
+│   ├── tunnel.protocol.ts   # WS message type definitions (request/response/ping/error)
+│   ├── device-flow.service.ts # OAuth device flow authentication
+│   ├── credentials.service.ts # Persistent credential storage
+│   └── commands/            # CLI command handlers (login, logout, tunnel)
 └── mcp/
     ├── clients/anki-connect.client.ts  # HTTP client using ky (retries, error handling, read-only guard)
     ├── config/anki-config.interface.ts # ANKI_CONFIG injection token + IAnkiConfig interface
@@ -70,13 +84,15 @@ src/
 ### Module System
 
 ```
-AppModule.forStdio()/forHttp()
-  → McpModule.forRoot()           # STDIO or STREAMABLE_HTTP transport
+AppModule.forStdio()/forHttp()/forTunnel()
+  → McpModule.forRoot()           # STDIO, STREAMABLE_HTTP, or empty transport (tunnel)
   → McpPrimitivesAnkiEssentialModule.forRoot()
   → McpPrimitivesAnkiGuiModule.forRoot()
 ```
 
 All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`. MCP-Nest 1.9.0+ requires tools to also be listed in `AppModule.providers` (see `ESSENTIAL_MCP_TOOLS` and `GUI_MCP_TOOLS` arrays).
+
+**Tunnel mode** uses `McpModule.forRoot({ transport: [] })` -- no built-in transport. Instead, `TunnelMcpService` connects an `InMemoryTransport` to the MCP server, and `TunnelClient` bridges it to the remote tunnel server over WebSocket.
 
 ### Key Patterns
 
@@ -87,8 +103,10 @@ All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`. 
 **Read-only mode**: `AnkiConnectClient` enforces read-only mode by checking actions against a `WRITE_ACTIONS` set before sending requests. Throws `ReadOnlyModeError`. Review/scheduling operations are always allowed.
 
 **Config system**: Two injection tokens:
-- `ANKI_CONFIG` — Symbol token for AnkiConnect-specific config (IAnkiConfig interface). Provided via `useClass: AnkiConfigService` in each module's `forRoot()`. Modules can swap the config provider for testing.
-- `ConfigModule` — NestJS config module reads environment variables. `AnkiConfigService` reads from it and sanitizes MCPB config values.
+- `APP_CONFIG` — validated `AppConfig` object (Zod schema in `src/config/config.schema.ts`). Provided as `useValue` after parsing env + CLI overrides.
+- `ANKI_CONFIG` — AnkiConnect-specific config interface. Provided via `useClass: AppConfigService` in each module's `forRoot()`. Modules can swap the config provider for testing.
+
+**Environment Configuration**: All `process.env.*` reads go through `buildConfigInput()` in `src/config/config.factory.ts`. CLI args override env vars in memory (no `process.env` mutation). Services inject `AppConfigService` for type-safe access.
 
 ### Upstream AnkiConnect Quirks
 
@@ -98,6 +116,13 @@ These are upstream behaviors that shape tool design — surface them in tool des
 - **Model CSS is per-note-type, not per-note.** Use `modelStyling` to fetch CSS for a model; `notesInfo` tells you which model each note uses. `updateNoteFields` should preserve inline styles.
 - **`sync` relies on the desktop app being logged into AnkiWeb.** There's no API path to authenticate — surface a helpful error hint.
 - **`deleteNotes` is irreversible and cascades to all cards** of the note. The tool requires explicit `confirmDeletion: true`.
+
+### Build & Tooling Notes
+
+- **NestJS CLI** builds the project (`nest build`). Asset copying is configured in `nest-cli.json` — all `**/*.md` files in `src/` are copied to `dist/`. This matters for prompt templates that reference markdown files.
+- **ESLint flat config** (`eslint.config.mjs`) — not legacy `.eslintrc`. Uses `typescript-eslint` + Prettier integration.
+- **TypeScript**: `strict: true`, target ES2023, `nodenext` module resolution. Path aliases are resolved by both `tsconfig.json` and Jest's `moduleNameMapper`.
+- **Zod 4** (`^4.3.6`) — not Zod 3. Some patterns like `z.preprocess` in `config.schema.ts` are Zod 3 holdovers that still work but may need migration.
 
 ### Path Aliases
 
@@ -110,6 +135,40 @@ These are upstream behaviors that shape tool design — surface them in tool des
 - **`@modelcontextprotocol/sdk`** — Pinned to exact version (`1.29.0`). Don't bump without testing MCP protocol compatibility.
 - **TypeScript** — `strict: true`, `module: "nodenext"`, target `ES2023`. Path aliases (`@/`, `@test/`) handle most imports.
 - **ESLint** — Flat config (`eslint.config.mjs`), not legacy `.eslintrc`.
+
+
+### Logging Guidelines
+
+**Two types of output - don't mix them:**
+
+1. **CLI Output** (user-facing, clean, no timestamps):
+   ```typescript
+   import { cli } from '@/cli/cli-output';
+
+   cli.success('Connected to Anki');      // ✓ Connected to Anki
+   cli.error('Connection failed');         // ✗ Connection failed
+   cli.info('Starting server...');         // Starting server...
+   cli.box('Tunnel URL', 'https://...');   // Boxed message
+   cli.blank();                            // Empty line
+   ```
+
+2. **Logger** (internal logging, with timestamps and levels):
+   ```typescript
+   import { Logger } from '@nestjs/common';
+
+   private readonly logger = new Logger(MyService.name);
+
+   this.logger.log('Info message');
+   this.logger.warn('Warning message');
+   this.logger.error('Error message');
+   this.logger.debug('Debug message');
+   ```
+
+**When to use which:**
+- `cli.*` → User-facing output in CLI commands (tunnel, login, logout, startup banners)
+- `Logger` → Internal service logging, debugging, warnings
+
+**Never use raw `console.log/error/warn`** - use `cli.*` or `Logger` instead.
 
 ## Adding New Tools
 
@@ -157,6 +216,8 @@ See `src/mcp/primitives/essential/tools/sync.tool.ts` for minimal example.
 Three distinct tiers — pick the right one for the change:
 
 - **Unit** — `src/**/__tests__/*.spec.ts`, colocated with source. Mock `AnkiConnectClient`. Fast, run on every push.
+  - Tool-level tests live next to each tool (e.g. `src/mcp/primitives/essential/tools/__tests__/`).
+  - App-level wiring tests live in `src/__tests__/` (`app-config.service.spec.ts`, `cli.spec.ts`, `main-http.spec.ts`) — bootstrap, CLI parsing, config validation.
 - **Workflows** — `test/workflows/*.spec.ts` (e.g., `note-management.spec.ts`, `review-session.spec.ts`). Multi-tool scenarios still against a mocked client. Use for cross-tool invariants.
 - **E2E** — `test/e2e/*.e2e-spec.ts`. Hits a real Anki + AnkiConnect running in Docker. Covers both STDIO and HTTP transports.
 
@@ -214,9 +275,11 @@ Bundle uses STDIO entry point. Key gotchas:
 
 Node.js requirement: `>=20.19.0 <21.0.0 || >=22.12.0` (Node 21 not supported — `require(esm)` was never backported)
 
-Key environment variables (all have defaults):
+Key environment variables (all have defaults, see `src/config/config.schema.ts`):
 - `ANKI_CONNECT_URL` — AnkiConnect URL (default: `http://localhost:8765`)
 - `ANKI_CONNECT_API_KEY` — Optional AnkiConnect API key
+- `TUNNEL_SERVER_URL` — Tunnel server WebSocket URL (default: `wss://tunnel.ankimcp.ai`)
+- `TUNNEL_AUTH_URL`, `TUNNEL_AUTH_REALM`, `TUNNEL_AUTH_CLIENT_ID` — OAuth/OIDC settings for tunnel auth
 - `LOG_LEVEL` — `debug|info|warn|error` (default: `info`)
 - `READ_ONLY` — `true|1` to block write operations (enforced in `AnkiConnectClient`)
 

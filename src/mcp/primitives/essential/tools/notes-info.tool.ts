@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -60,21 +59,17 @@ export class NotesInfoTool {
       idempotentHint: true,
     },
   })
-  async notesInfo({ notes }: { notes: number[] }, context: Context) {
+  async notesInfo({ notes }: { notes: number[] }) {
     try {
       this.logger.log(`Getting information for ${notes.length} note(s)`);
-      await context.reportProgress({ progress: 25, total: 100 });
 
       // Call AnkiConnect notesInfo action
       const notesData = await this.ankiClient.invoke<any[]>("notesInfo", {
         notes: notes,
       });
 
-      await context.reportProgress({ progress: 75, total: 100 });
-
       if (!notesData || notesData.length === 0) {
         this.logger.warn("No note information returned");
-        await context.reportProgress({ progress: 100, total: 100 });
 
         return createErrorResponse(new Error("No note information found"), {
           requestedNotes: notes,
@@ -95,8 +90,6 @@ export class NotesInfoTool {
       // Filter out any null results (deleted notes)
       const validNotes = transformedNotes.filter((note) => note.noteId);
       const deletedCount = notes.length - validNotes.length;
-
-      await context.reportProgress({ progress: 100, total: 100 });
 
       const message =
         deletedCount > 0

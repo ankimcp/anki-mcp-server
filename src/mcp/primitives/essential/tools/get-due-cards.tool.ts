@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, SimplifiedCard } from "@/mcp/types/anki.types";
@@ -71,27 +70,23 @@ export class GetDueCardsTool {
       idempotentHint: true,
     },
   })
-  async getDueCards(
-    {
-      deck_name,
-      limit,
-      include_learning = true,
-      include_new = false,
-    }: {
-      deck_name?: string;
-      limit?: number;
-      include_learning?: boolean;
-      include_new?: boolean;
-    },
-    context: Context,
-  ) {
+  async getDueCards({
+    deck_name,
+    limit,
+    include_learning = true,
+    include_new = false,
+  }: {
+    deck_name?: string;
+    limit?: number;
+    include_learning?: boolean;
+    include_new?: boolean;
+  }) {
     try {
       const cardLimit = Math.min(limit || 10, 50);
 
       this.logger.log(
         `Getting due cards from deck: ${deck_name || "all"}, limit: ${cardLimit}`,
       );
-      await context.reportProgress({ progress: 10, total: 100 });
 
       // Build search query for due cards
       // Always exclude suspended cards, include due cards, optionally learning and new
@@ -117,7 +112,6 @@ export class GetDueCardsTool {
 
       if (cardIds.length === 0) {
         this.logger.log("No due cards found");
-        await context.reportProgress({ progress: 100, total: 100 });
         return {
           success: true,
           message: "No cards are due for review",
@@ -125,8 +119,6 @@ export class GetDueCardsTool {
           total: 0,
         };
       }
-
-      await context.reportProgress({ progress: 50, total: 100 });
 
       // When include_new is true, the result set mixes "new" and actually-due
       // cards. Fetch the new-only subset so we can report honest counts instead
@@ -180,7 +172,6 @@ export class GetDueCardsTool {
         };
       });
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(
         `Retrieved ${dueCards.length} cards out of ${cardIds.length} total`,
       );

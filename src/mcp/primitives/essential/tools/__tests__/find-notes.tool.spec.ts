@@ -5,17 +5,13 @@ import {
   AnkiConnectError,
 } from "../../../../clients/anki-connect.client";
 import { mockQueries } from "../../../../../test-fixtures/mock-data";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 jest.mock("../../../../clients/anki-connect.client");
 
 describe("FindNotesTool", () => {
   let tool: FindNotesTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -27,8 +23,6 @@ describe("FindNotesTool", () => {
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
 
-    mockContext = createMockContext();
-
     jest.clearAllMocks();
   });
 
@@ -39,10 +33,9 @@ describe("FindNotesTool", () => {
       ankiClient.invoke.mockResolvedValueOnce(noteIds);
 
       // Act
-      const rawResult = await tool.findNotes(
-        { query: mockQueries.valid.deckSpecific },
-        mockContext,
-      );
+      const rawResult = await tool.findNotes({
+        query: mockQueries.valid.deckSpecific,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -60,10 +53,7 @@ describe("FindNotesTool", () => {
       ankiClient.invoke.mockResolvedValueOnce([]);
 
       // Act
-      const rawResult = await tool.findNotes(
-        { query: "deck:NonExistent" },
-        mockContext,
-      );
+      const rawResult = await tool.findNotes({ query: "deck:NonExistent" });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -85,7 +75,7 @@ describe("FindNotesTool", () => {
       ankiClient.invoke.mockResolvedValueOnce(largeNoteIdArray);
 
       // Act
-      const rawResult = await tool.findNotes({ query: "is:due" }, mockContext);
+      const rawResult = await tool.findNotes({ query: "is:due" });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -103,10 +93,9 @@ describe("FindNotesTool", () => {
       ankiClient.invoke.mockResolvedValueOnce(noteIds);
 
       // Act
-      const rawResult = await tool.findNotes(
-        { query: mockQueries.valid.combined },
-        mockContext,
-      );
+      const rawResult = await tool.findNotes({
+        query: mockQueries.valid.combined,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -123,10 +112,9 @@ describe("FindNotesTool", () => {
       ankiClient.invoke.mockRejectedValueOnce(queryError);
 
       // Act
-      const rawResult = await tool.findNotes(
-        { query: mockQueries.invalid.malformed },
-        mockContext,
-      );
+      const rawResult = await tool.findNotes({
+        query: mockQueries.invalid.malformed,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -144,10 +132,7 @@ describe("FindNotesTool", () => {
       ankiClient.invoke.mockRejectedValueOnce(new Error("fetch failed"));
 
       // Act
-      const rawResult = await tool.findNotes(
-        { query: "deck:Spanish" },
-        mockContext,
-      );
+      const rawResult = await tool.findNotes({ query: "deck:Spanish" });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -174,10 +159,7 @@ describe("FindNotesTool", () => {
         ankiClient.invoke.mockResolvedValueOnce([1502298033753]);
 
         // Act
-        const rawResult = await tool.findNotes(
-          { query: testCase.query },
-          mockContext,
-        );
+        const rawResult = await tool.findNotes({ query: testCase.query });
         const result = parseToolResult(rawResult);
 
         // Assert
@@ -194,22 +176,9 @@ describe("FindNotesTool", () => {
       ankiClient.invoke.mockResolvedValueOnce([1, 2, 3]);
 
       // Act
-      await tool.findNotes({ query: "deck:Test" }, mockContext);
+      await tool.findNotes({ query: "deck:Test" });
 
       // Assert
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(3);
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(1, {
-        progress: 25,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(2, {
-        progress: 75,
-        total: 100,
-      });
-      expect(mockContext.reportProgress).toHaveBeenNthCalledWith(3, {
-        progress: 100,
-        total: 100,
-      });
     });
 
     it("should handle null or undefined results", async () => {
@@ -217,10 +186,7 @@ describe("FindNotesTool", () => {
       ankiClient.invoke.mockResolvedValueOnce(null as any);
 
       // Act
-      const rawResult = await tool.findNotes(
-        { query: "deck:Test" },
-        mockContext,
-      );
+      const rawResult = await tool.findNotes({ query: "deck:Test" });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -238,7 +204,7 @@ describe("FindNotesTool", () => {
       ankiClient.invoke.mockResolvedValueOnce([1, 2]);
 
       // Act
-      const rawResult = await tool.findNotes({ query }, mockContext);
+      const rawResult = await tool.findNotes({ query });
       const result = parseToolResult(rawResult);
 
       // Assert

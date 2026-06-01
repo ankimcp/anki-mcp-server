@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -52,10 +51,13 @@ export class DeleteNotesTool {
       idempotentHint: true,
     },
   })
-  async deleteNotes(
-    { notes, confirmDeletion }: { notes: number[]; confirmDeletion: boolean },
-    context: Context,
-  ) {
+  async deleteNotes({
+    notes,
+    confirmDeletion,
+  }: {
+    notes: number[];
+    confirmDeletion: boolean;
+  }) {
     try {
       // Safety check - require explicit confirmation
       if (!confirmDeletion) {
@@ -68,7 +70,6 @@ export class DeleteNotesTool {
       }
 
       this.logger.log(`Deleting ${notes.length} note(s)`);
-      await context.reportProgress({ progress: 25, total: 100 });
 
       // First, get info about the notes to be deleted (for logging and confirmation)
       const notesInfo = await this.ankiClient.invoke<any[]>("notesInfo", {
@@ -81,7 +82,6 @@ export class DeleteNotesTool {
 
       if (validNoteIds.length === 0) {
         this.logger.warn("No valid notes found to delete");
-        await context.reportProgress({ progress: 100, total: 100 });
 
         return {
           success: true,
@@ -100,14 +100,11 @@ export class DeleteNotesTool {
         0,
       );
 
-      await context.reportProgress({ progress: 50, total: 100 });
-
       // Call AnkiConnect deleteNotes action
       await this.ankiClient.invoke<null>("deleteNotes", {
         notes: validNoteIds,
       });
 
-      await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(
         `Successfully deleted ${validNoteIds.length} note(s) and ${totalCards} card(s)`,
       );

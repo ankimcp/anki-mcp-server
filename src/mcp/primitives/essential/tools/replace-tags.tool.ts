@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Tool } from "@rekog/mcp-nest";
-import type { Context } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -39,14 +38,11 @@ export class ReplaceTagsTool {
       idempotentHint: true,
     },
   })
-  async execute(
-    params: {
-      notes: number[];
-      tagToReplace: string;
-      replaceWithTag: string;
-    },
-    context: Context,
-  ) {
+  async execute(params: {
+    notes: number[];
+    tagToReplace: string;
+    replaceWithTag: string;
+  }) {
     try {
       this.logger.log(
         `Executing replaceTags on ${params.notes?.length ?? 0} note(s)`,
@@ -62,8 +58,6 @@ export class ReplaceTagsTool {
         throw new Error("replaceWithTag is required for replaceTags action");
       }
 
-      await context.reportProgress({ progress: 25, total: 100 });
-
       const result = await replaceTags(
         {
           notes: params.notes,
@@ -73,7 +67,6 @@ export class ReplaceTagsTool {
         this.ankiClient,
       );
 
-      await context.reportProgress({ progress: 100, total: 100 });
       return result;
     } catch (error) {
       this.logger.error("Failed to execute replaceTags", error);

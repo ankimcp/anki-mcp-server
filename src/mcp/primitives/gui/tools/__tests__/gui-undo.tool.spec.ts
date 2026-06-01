@@ -1,10 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { GuiUndoTool } from "../gui-undo.tool";
 import { AnkiConnectClient } from "../../../../clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 const mockAnkiClient = {
   invoke: jest.fn(),
@@ -12,7 +9,6 @@ const mockAnkiClient = {
 
 describe("GuiUndoTool", () => {
   let tool: GuiUndoTool;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,7 +22,6 @@ describe("GuiUndoTool", () => {
     }).compile();
 
     tool = module.get<GuiUndoTool>(GuiUndoTool);
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -38,20 +33,19 @@ describe("GuiUndoTool", () => {
     it("should successfully undo last action", async () => {
       mockAnkiClient.invoke.mockResolvedValue(true);
 
-      const rawResult = await tool.guiUndo({}, mockContext);
+      const rawResult = await tool.guiUndo({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
       expect(result.undone).toBe(true);
       expect(result.message).toContain("Last action undone successfully");
       expect(mockAnkiClient.invoke).toHaveBeenCalledWith("guiUndo");
-      expect(mockContext.reportProgress).toHaveBeenCalledTimes(2);
     });
 
     it("should handle nothing to undo (returns false)", async () => {
       mockAnkiClient.invoke.mockResolvedValue(false);
 
-      const rawResult = await tool.guiUndo({}, mockContext);
+      const rawResult = await tool.guiUndo({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
@@ -63,7 +57,7 @@ describe("GuiUndoTool", () => {
       const error = new Error("Undo failed");
       mockAnkiClient.invoke.mockRejectedValue(error);
 
-      const rawResult = await tool.guiUndo({}, mockContext);
+      const rawResult = await tool.guiUndo({});
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);

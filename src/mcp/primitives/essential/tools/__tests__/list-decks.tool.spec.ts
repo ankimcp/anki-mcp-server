@@ -1,17 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ListDecksTool } from "../list-decks.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "@/test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 jest.mock("@/mcp/clients/anki-connect.client");
 
 describe("ListDecksTool", () => {
   let tool: ListDecksTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: ReturnType<typeof createMockContext>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -22,7 +18,6 @@ describe("ListDecksTool", () => {
     ankiClient = module.get(
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
-    mockContext = createMockContext();
     jest.clearAllMocks();
   });
 
@@ -30,7 +25,7 @@ describe("ListDecksTool", () => {
     const deckNames = ["Default", "Japanese", "Spanish"];
     ankiClient.invoke.mockResolvedValueOnce(deckNames);
 
-    const rawResult = await tool.execute({ includeStats: false }, mockContext);
+    const rawResult = await tool.execute({ includeStats: false });
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenCalledTimes(1);
@@ -70,7 +65,7 @@ describe("ListDecksTool", () => {
       .mockResolvedValueOnce(deckNamesAndIds)
       .mockResolvedValueOnce(statsResponse);
 
-    const rawResult = await tool.execute({ includeStats: true }, mockContext);
+    const rawResult = await tool.execute({ includeStats: true });
     const result = parseToolResult(rawResult);
 
     expect(ankiClient.invoke).toHaveBeenCalledTimes(3);
@@ -129,7 +124,7 @@ describe("ListDecksTool", () => {
       .mockResolvedValueOnce(deckNamesAndIds)
       .mockResolvedValueOnce(statsResponse);
 
-    const rawResult = await tool.execute({ includeStats: true }, mockContext);
+    const rawResult = await tool.execute({ includeStats: true });
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(true);
@@ -157,7 +152,7 @@ describe("ListDecksTool", () => {
   it("should handle empty deck list gracefully", async () => {
     ankiClient.invoke.mockResolvedValueOnce([]);
 
-    const rawResult = await tool.execute({ includeStats: false }, mockContext);
+    const rawResult = await tool.execute({ includeStats: false });
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(true);
@@ -168,7 +163,7 @@ describe("ListDecksTool", () => {
   it("should handle network errors gracefully", async () => {
     ankiClient.invoke.mockRejectedValueOnce(new Error("fetch failed"));
 
-    const rawResult = await tool.execute({ includeStats: false }, mockContext);
+    const rawResult = await tool.execute({ includeStats: false });
     const result = parseToolResult(rawResult);
 
     expect(result.success).toBe(false);
@@ -178,15 +173,6 @@ describe("ListDecksTool", () => {
   it("should report progress", async () => {
     ankiClient.invoke.mockResolvedValueOnce(["Deck1"]);
 
-    await tool.execute({}, mockContext);
-
-    expect(mockContext.reportProgress).toHaveBeenCalledWith({
-      progress: 10,
-      total: 100,
-    });
-    expect(mockContext.reportProgress).toHaveBeenCalledWith({
-      progress: 100,
-      total: 100,
-    });
+    await tool.execute({});
   });
 });

@@ -1,10 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { UpdateModelStylingTool } from "../update-model-styling.tool";
 import { AnkiConnectClient } from "../../../../clients/anki-connect.client";
-import {
-  parseToolResult,
-  createMockContext,
-} from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 // Mock the AnkiConnectClient
 jest.mock("../../../../clients/anki-connect.client");
@@ -12,7 +9,6 @@ jest.mock("../../../../clients/anki-connect.client");
 describe("UpdateModelStylingTool", () => {
   let tool: UpdateModelStylingTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
-  let mockContext: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -25,7 +21,6 @@ describe("UpdateModelStylingTool", () => {
     ) as jest.Mocked<AnkiConnectClient>;
 
     // Setup mock context
-    mockContext = createMockContext();
 
     // Clear all mocks before each test
     jest.clearAllMocks();
@@ -42,10 +37,10 @@ describe("UpdateModelStylingTool", () => {
         .mockResolvedValueOnce(null); // updateModelStyling call
 
       // Act
-      const rawResult = await tool.updateModelStyling(
-        { modelName: "Basic", css: newCss },
-        mockContext,
-      );
+      const rawResult = await tool.updateModelStyling({
+        modelName: "Basic",
+        css: newCss,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -69,7 +64,6 @@ describe("UpdateModelStylingTool", () => {
       expect(result.cssLength).toBe(newCss.length);
       expect(result.oldCssLength).toBe(oldCss.length);
       expect(result.cssLengthChange).toBe(newCss.length - oldCss.length);
-      expect(mockContext.reportProgress).toHaveBeenCalled();
     });
 
     it("should detect RTL support in CSS", async () => {
@@ -86,10 +80,10 @@ describe("UpdateModelStylingTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.updateModelStyling(
-        { modelName: "Basic RTL", css: rtlCss },
-        mockContext,
-      );
+      const rawResult = await tool.updateModelStyling({
+        modelName: "Basic RTL",
+        css: rtlCss,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -107,10 +101,10 @@ describe("UpdateModelStylingTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.updateModelStyling(
-        { modelName: "Test", css: rtlCss },
-        mockContext,
-      );
+      const rawResult = await tool.updateModelStyling({
+        modelName: "Test",
+        css: rtlCss,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -130,10 +124,10 @@ describe("UpdateModelStylingTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.updateModelStyling(
-        { modelName: "Test", css: complexCss },
-        mockContext,
-      );
+      const rawResult = await tool.updateModelStyling({
+        modelName: "Test",
+        css: complexCss,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -154,10 +148,10 @@ describe("UpdateModelStylingTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.updateModelStyling(
-        { modelName: "Basic", css: newCss },
-        mockContext,
-      );
+      const rawResult = await tool.updateModelStyling({
+        modelName: "Basic",
+        css: newCss,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -177,10 +171,10 @@ describe("UpdateModelStylingTool", () => {
         .mockRejectedValueOnce(new Error("model not found"));
 
       // Act
-      const rawResult = await tool.updateModelStyling(
-        { modelName: "NonExistent", css: newCss },
-        mockContext,
-      );
+      const rawResult = await tool.updateModelStyling({
+        modelName: "NonExistent",
+        css: newCss,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -198,10 +192,10 @@ describe("UpdateModelStylingTool", () => {
         .mockRejectedValueOnce(new Error("Anki is not running"));
 
       // Act
-      const rawResult = await tool.updateModelStyling(
-        { modelName: "Basic", css: newCss },
-        mockContext,
-      );
+      const rawResult = await tool.updateModelStyling({
+        modelName: "Basic",
+        css: newCss,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -219,10 +213,10 @@ describe("UpdateModelStylingTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.updateModelStyling(
-        { modelName: "Basic", css: emptyCss },
-        mockContext,
-      );
+      const rawResult = await tool.updateModelStyling({
+        modelName: "Basic",
+        css: emptyCss,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -244,10 +238,10 @@ describe("UpdateModelStylingTool", () => {
         .mockResolvedValueOnce(null);
 
       // Act
-      const rawResult = await tool.updateModelStyling(
-        { modelName: "Hebrew", css: unicodeCss },
-        mockContext,
-      );
+      const rawResult = await tool.updateModelStyling({
+        modelName: "Hebrew",
+        css: unicodeCss,
+      });
       const result = parseToolResult(rawResult);
 
       // Assert
