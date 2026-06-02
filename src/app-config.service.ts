@@ -64,14 +64,6 @@ export class AppConfigService implements IAnkiConfig {
 
   // ===== Auth Configuration =====
 
-  get authUrl(): string {
-    return this.config.auth.url;
-  }
-
-  get authRealm(): string {
-    return this.config.auth.realm;
-  }
-
   get authClientId(): string {
     return this.config.auth.clientId;
   }

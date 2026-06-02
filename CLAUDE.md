@@ -279,7 +279,7 @@ Key environment variables (all have defaults, see `src/config/config.schema.ts`)
 - `ANKI_CONNECT_URL` — AnkiConnect URL (default: `http://localhost:8765`)
 - `ANKI_CONNECT_API_KEY` — Optional AnkiConnect API key
 - `TUNNEL_SERVER_URL` — Tunnel server WebSocket URL (default: `wss://tunnel.ankimcp.ai`)
-- `TUNNEL_AUTH_URL`, `TUNNEL_AUTH_REALM`, `TUNNEL_AUTH_CLIENT_ID` — OAuth/OIDC settings for tunnel auth
+- `TUNNEL_AUTH_CLIENT_ID` — OAuth/OIDC client ID for tunnel auth
 - `LOG_LEVEL` — `debug|info|warn|error` (default: `info`)
 - `READ_ONLY` — `true|1` to block write operations (enforced in `AnkiConnectClient`)
 

@@ -12,8 +12,6 @@ describe("Config Schema", () => {
         ANKI_CONNECT_API_KEY: "test-key",
         ANKI_CONNECT_API_VERSION: "6",
         ANKI_CONNECT_TIMEOUT: "10000",
-        TUNNEL_AUTH_URL: "https://auth.example.com",
-        TUNNEL_AUTH_REALM: "test-realm",
         TUNNEL_AUTH_CLIENT_ID: "test-client",
         TUNNEL_SERVER_URL: "wss://tunnel.example.com",
         LOG_LEVEL: "debug",
@@ -32,8 +30,6 @@ describe("Config Schema", () => {
           timeout: "10000",
         },
         auth: {
-          url: "https://auth.example.com",
-          realm: "test-realm",
           clientId: "test-client",
         },
         tunnel: {
@@ -57,8 +53,6 @@ describe("Config Schema", () => {
           timeout: undefined,
         },
         auth: {
-          url: undefined,
-          realm: undefined,
           clientId: undefined,
         },
         tunnel: {
@@ -89,8 +83,6 @@ describe("Config Schema", () => {
             timeout: 5000,
           },
           auth: {
-            url: "https://keycloak.anatoly.dev",
-            realm: "ankimcp-dev",
             clientId: "ankimcp-cli",
           },
           tunnel: {
@@ -300,8 +292,6 @@ describe("Config Schema", () => {
       it("should accept valid auth config", () => {
         const config = configSchema.parse({
           auth: {
-            url: "https://auth.example.com",
-            realm: "test-realm",
             clientId: "test-client",
           },
           ankiConnect: {},
@@ -309,22 +299,8 @@ describe("Config Schema", () => {
         });
 
         expect(config.auth).toEqual({
-          url: "https://auth.example.com",
-          realm: "test-realm",
           clientId: "test-client",
         });
-      });
-
-      it("should reject invalid auth URL", () => {
-        expect(() =>
-          configSchema.parse({
-            auth: {
-              url: "not-a-url",
-            },
-            ankiConnect: {},
-            tunnel: {},
-          }),
-        ).toThrow(ZodError);
       });
     });
 
@@ -397,8 +373,6 @@ describe("Config Schema", () => {
           ANKI_CONNECT_API_KEY: "secret-key",
           ANKI_CONNECT_API_VERSION: "6",
           ANKI_CONNECT_TIMEOUT: "5000",
-          TUNNEL_AUTH_URL: "https://keycloak.anatoly.dev",
-          TUNNEL_AUTH_REALM: "ankimcp-dev",
           TUNNEL_AUTH_CLIENT_ID: "ankimcp-cli",
           TUNNEL_SERVER_URL: "wss://tunnel.ankimcp.ai",
           LOG_LEVEL: "info",
@@ -418,8 +392,6 @@ describe("Config Schema", () => {
             timeout: 5000,
           },
           auth: {
-            url: "https://keycloak.anatoly.dev",
-            realm: "ankimcp-dev",
             clientId: "ankimcp-cli",
           },
           tunnel: {

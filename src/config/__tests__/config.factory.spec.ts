@@ -26,8 +26,6 @@ describe("Config Factory", () => {
       process.env.ANKI_CONNECT_API_KEY = "test-key";
       process.env.ANKI_CONNECT_API_VERSION = "7";
       process.env.ANKI_CONNECT_TIMEOUT = "10000";
-      process.env.TUNNEL_AUTH_URL = "https://auth.test";
-      process.env.TUNNEL_AUTH_REALM = "test-realm";
       process.env.TUNNEL_AUTH_CLIENT_ID = "test-client";
       process.env.TUNNEL_SERVER_URL = "wss://tunnel.test";
       process.env.LOG_LEVEL = "debug";
@@ -43,8 +41,6 @@ describe("Config Factory", () => {
         ANKI_CONNECT_API_KEY: "test-key",
         ANKI_CONNECT_API_VERSION: "7",
         ANKI_CONNECT_TIMEOUT: "10000",
-        TUNNEL_AUTH_URL: "https://auth.test",
-        TUNNEL_AUTH_REALM: "test-realm",
         TUNNEL_AUTH_CLIENT_ID: "test-client",
         TUNNEL_SERVER_URL: "wss://tunnel.test",
         LOG_LEVEL: "debug",
@@ -60,8 +56,6 @@ describe("Config Factory", () => {
       delete process.env.ANKI_CONNECT_API_KEY;
       delete process.env.ANKI_CONNECT_API_VERSION;
       delete process.env.ANKI_CONNECT_TIMEOUT;
-      delete process.env.TUNNEL_AUTH_URL;
-      delete process.env.TUNNEL_AUTH_REALM;
       delete process.env.TUNNEL_AUTH_CLIENT_ID;
       delete process.env.TUNNEL_SERVER_URL;
       delete process.env.LOG_LEVEL;
@@ -76,8 +70,6 @@ describe("Config Factory", () => {
       expect(result.ANKI_CONNECT_API_KEY).toBeUndefined();
       expect(result.ANKI_CONNECT_API_VERSION).toBeUndefined();
       expect(result.ANKI_CONNECT_TIMEOUT).toBeUndefined();
-      expect(result.TUNNEL_AUTH_URL).toBeUndefined();
-      expect(result.TUNNEL_AUTH_REALM).toBeUndefined();
       expect(result.TUNNEL_AUTH_CLIENT_ID).toBeUndefined();
       expect(result.TUNNEL_SERVER_URL).toBeUndefined();
       expect(result.LOG_LEVEL).toBeUndefined();
@@ -238,7 +230,7 @@ describe("Config Factory", () => {
       process.env.HOST = "127.0.0.1";
       process.env.NODE_ENV = "production";
       process.env.ANKI_CONNECT_URL = "http://localhost:8765";
-      process.env.TUNNEL_AUTH_URL = "https://auth.test";
+      process.env.TUNNEL_AUTH_CLIENT_ID = "test-client";
       process.env.TUNNEL_SERVER_URL = "wss://tunnel.test";
       process.env.LOG_LEVEL = "info";
 
@@ -254,7 +246,7 @@ describe("Config Factory", () => {
           timeout: 5000, // default
         },
         auth: {
-          url: "https://auth.test",
+          clientId: "test-client",
         },
         tunnel: {
           serverUrl: "wss://tunnel.test",
@@ -284,7 +276,7 @@ describe("Config Factory", () => {
       delete process.env.HOST;
       delete process.env.NODE_ENV;
       delete process.env.ANKI_CONNECT_URL;
-      delete process.env.TUNNEL_AUTH_URL;
+      delete process.env.TUNNEL_AUTH_CLIENT_ID;
       delete process.env.TUNNEL_SERVER_URL;
       delete process.env.LOG_LEVEL;
 
@@ -295,7 +287,7 @@ describe("Config Factory", () => {
       expect(config.host).toBe("127.0.0.1");
       expect(config.nodeEnv).toBe("development");
       expect(config.ankiConnect.url).toBe("http://localhost:8765");
-      expect(config.auth.url).toBe("https://keycloak.anatoly.dev");
+      expect(config.auth.clientId).toBe("ankimcp-cli");
       expect(config.tunnel.serverUrl).toBe("wss://tunnel.ankimcp.ai");
       expect(config.logLevel).toBe("info");
     });

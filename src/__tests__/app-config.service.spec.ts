@@ -14,8 +14,6 @@ describe("AppConfigService", () => {
       timeout: 5000,
     },
     auth: {
-      url: "https://keycloak.anatoly.dev",
-      realm: "ankimcp-dev",
       clientId: "ankimcp-cli",
     },
     tunnel: {
@@ -109,20 +107,6 @@ describe("AppConfigService", () => {
   });
 
   describe("auth configuration", () => {
-    it("should return authUrl from config", () => {
-      const service = createService({
-        auth: { ...defaultConfig.auth, url: "https://auth.example.com" },
-      });
-      expect(service.authUrl).toBe("https://auth.example.com");
-    });
-
-    it("should return authRealm from config", () => {
-      const service = createService({
-        auth: { ...defaultConfig.auth, realm: "test-realm" },
-      });
-      expect(service.authRealm).toBe("test-realm");
-    });
-
     it("should return authClientId from config", () => {
       const service = createService({
         auth: { ...defaultConfig.auth, clientId: "test-client" },
@@ -157,8 +141,6 @@ describe("AppConfigService", () => {
       expect(service.ankiConnectUrl).toBe("http://localhost:8765");
       expect(service.ankiConnectApiVersion).toBe(6);
       expect(service.ankiConnectTimeout).toBe(5000);
-      expect(service.authUrl).toBe("https://keycloak.anatoly.dev");
-      expect(service.authRealm).toBe("ankimcp-dev");
       expect(service.authClientId).toBe("ankimcp-cli");
       expect(service.tunnelServerUrl).toBe("wss://tunnel.ankimcp.ai");
       expect(service.logLevel).toBe("info");

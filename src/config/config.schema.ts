@@ -20,8 +20,6 @@ export const configSchema = z.object({
 
   // Auth (generic, not Keycloak-specific)
   auth: z.object({
-    url: z.string().url().default("https://keycloak.anatoly.dev"),
-    realm: z.string().default("ankimcp-dev"),
     clientId: z.string().default("ankimcp-cli"),
   }),
 
@@ -65,8 +63,6 @@ export function transformEnvToConfig(env: Record<string, any>): any {
       timeout: env.ANKI_CONNECT_TIMEOUT,
     },
     auth: {
-      url: env.TUNNEL_AUTH_URL,
-      realm: env.TUNNEL_AUTH_REALM,
       clientId: env.TUNNEL_AUTH_CLIENT_ID,
     },
     tunnel: {
