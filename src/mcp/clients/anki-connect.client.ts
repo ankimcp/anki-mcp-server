@@ -77,7 +77,7 @@ export class AnkiConnectClient {
 
     // Create ky client with configuration
     this.client = ky.create({
-      prefixUrl: config.ankiConnectUrl,
+      prefix: config.ankiConnectUrl,
       timeout: config.ankiConnectTimeout,
       headers: {
         "Content-Type": "application/json",
@@ -90,14 +90,14 @@ export class AnkiConnectClient {
       },
       hooks: {
         beforeRequest: [
-          (request) => {
+          ({ request }) => {
             this.logger.debug(
               `AnkiConnect request: ${request.method} ${request.url}`,
             );
           },
         ],
         afterResponse: [
-          (_request, _options, response) => {
+          ({ response }) => {
             this.logger.debug(
               `AnkiConnect response: ${response.status} ${response.statusText}`,
             );

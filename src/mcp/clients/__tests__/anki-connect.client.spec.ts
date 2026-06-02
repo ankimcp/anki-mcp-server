@@ -96,7 +96,7 @@ describe("AnkiConnectClient", () => {
         statusCodes: [408, 413, 429, 500, 502, 503, 504],
         backoffLimit: 3000,
       },
-      prefixUrl: "http://localhost:8765",
+      prefix: "http://localhost:8765",
       onDownloadProgress: () => {},
       onUploadProgress: () => {},
     };
@@ -145,7 +145,7 @@ describe("AnkiConnectClient", () => {
       expect(client).toBeDefined();
       expect((ky as any).create).toHaveBeenCalledWith(
         expect.objectContaining({
-          prefixUrl: "http://localhost:8765",
+          prefix: "http://localhost:8765",
           timeout: 5000,
           headers: {
             "Content-Type": "application/json",
@@ -184,7 +184,7 @@ describe("AnkiConnectClient", () => {
 
       expect((ky as any).create).toHaveBeenCalledWith(
         expect.objectContaining({
-          prefixUrl: "http://custom-host:9999",
+          prefix: "http://custom-host:9999",
           timeout: 10000,
         }),
       );

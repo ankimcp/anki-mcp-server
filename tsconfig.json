@@ -5,14 +5,15 @@
     "moduleResolution": "nodenext",
     "target": "ES2023",
     "lib": ["ES2023"],
+    "types": ["node", "jest"],
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
+    "rootDir": ".",
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
@@ -25,8 +26,8 @@
     "isolatedModules": true,
     "resolvePackageJsonExports": true,
     "paths": {
-      "@/*": ["src/*"],
-      "@test/*": ["test/*"]
+      "@/*": ["./src/*"],
+      "@test/*": ["./test/*"]
     }
   },
   "exclude": ["node_modules", "dist"]

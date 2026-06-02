@@ -94,7 +94,7 @@ Just tell Claude where the image is, and it will handle the upload automatically
 ## Prerequisites
 
 - [Anki](https://apps.ankiweb.net/) with [AnkiConnect](https://github.com/FooSoft/anki-connect) plugin installed
-- Node.js 20.19.0+
+- Node.js 22.12.0+
 
 ## Installation
 
@@ -493,16 +493,16 @@ If you see an error like:
 Error [ERR_REQUIRE_ESM]: require() of ES Module not supported
 ```
 
-This means your Node.js version is not supported. The server requires **Node.js 20.19.0+ or 22.12.0+**.
+This means your Node.js version is not supported. The server requires **Node.js 22.12.0+**.
 
-> **Note:** Node.js 21.x is not supported. The `require(esm)` feature was added in Node 22 and backported to Node 20.17+, but was never available in Node 21. See [#16](https://github.com/ankimcp/anki-mcp-server/issues/16) for details.
+> **Note:** The minimum supported runtime is Node.js 22.12.0. Node.js 20 (Iron) reached end-of-life on 2026-04-30 and is no longer supported.
 
 **Check your version:**
 ```bash
 node --version
 ```
 
-**Solution:** Update Node.js to version 20.19.0+ or 22.12.0+. You can download it from [nodejs.org](https://nodejs.org/) or use a version manager like [nvm](https://github.com/nvm-sh/nvm).
+**Solution:** Update Node.js to version 22.12.0+. You can download it from [nodejs.org](https://nodejs.org/) or use a version manager like [nvm](https://github.com/nvm-sh/nvm).
 
 ## Development
 

@@ -23,6 +23,7 @@ jest.mock("ky", () => {
     public response: any;
     public request: any;
     public options: any;
+    public data: any;
 
     constructor(response: any, request: any, options?: any) {
       const code =
@@ -37,6 +38,10 @@ jest.mock("ky", () => {
       this.response = response;
       this.request = request;
       this.options = options;
+      // ky v2 pre-parses the response body onto error.data.
+      // Mirror that here using the stashed _jsonData (undefined when
+      // the body is empty/unparseable, matching ky v2 semantics).
+      this.data = response?._jsonData;
     }
   }
 
@@ -83,7 +88,8 @@ describe("DeviceFlowService", () => {
       redirected: false,
       type: "basic" as const,
       url: "https://auth.ankimcp.ai/realms/ankimcp/protocol/openid-connect/token",
-      clone: () => mockResponse as Response,
+      _jsonData: jsonData,
+      clone: () => mockResponse as unknown as Response,
       body: null,
       bodyUsed: false,
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
@@ -91,7 +97,7 @@ describe("DeviceFlowService", () => {
       formData: () => Promise.resolve({} as FormData),
       json: () => Promise.resolve(jsonData || {}),
       text: () => Promise.resolve(JSON.stringify(jsonData || {})),
-    } as Response;
+    } as unknown as Response;
     return mockResponse;
   };
 
@@ -633,7 +639,7 @@ describe("DeviceFlowService", () => {
       const mockResponseWithError = {
         ...mockResponse,
         json: () => Promise.reject(new Error("JSON parse error")),
-      } as Response;
+      } as unknown as Response;
 
       const mockHttpError = new HTTPError(
         mockResponseWithError,
@@ -912,7 +918,7 @@ describe("DeviceFlowService", () => {
         {
           ...createMockResponse(400, "Bad Request"),
           json: () => Promise.reject(new Error("Parse error")),
-        },
+        } as unknown as Response,
         createMockRequest(),
         createMockOptions(),
       );

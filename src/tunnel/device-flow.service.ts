@@ -58,6 +58,25 @@ export class DeviceFlowError extends Error {
 }
 
 /**
+ * Type guard for the pre-parsed `error.data` body on a ky HTTPError.
+ *
+ * In ky v2, the response body is consumed automatically and exposed via
+ * `error.data` (typed `T | string | undefined`). When the body is empty or
+ * cannot be parsed, `error.data` is `undefined` rather than a rejected
+ * promise, so callers must guard before treating it as an error payload.
+ */
+function isDeviceFlowErrorResponse(
+  data: unknown,
+): data is DeviceFlowErrorResponse {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "error" in data &&
+    typeof (data as { error: unknown }).error === "string"
+  );
+}
+
+/**
  * Service for handling OAuth Device Flow authentication via Tunnel Service
  * Implements RFC 8628: OAuth 2.0 Device Authorization Grant
  *
@@ -94,7 +113,7 @@ export class DeviceFlowService {
       },
       hooks: {
         beforeRequest: [
-          (request) => {
+          ({ request }) => {
             this.logger.debug(
               `Device Flow request: ${request.method} ${request.url}`,
             );
@@ -188,57 +207,50 @@ export class DeviceFlowService {
         this.logger.log("Token received successfully");
         return response;
       } catch (error) {
-        // Handle expected polling errors
-        if (error instanceof HTTPError) {
-          try {
-            const errorResponse =
-              (await error.response.json()) as DeviceFlowErrorResponse;
+        // Handle expected polling errors. In ky v2 the response body is
+        // pre-parsed onto `error.data`; if it isn't a recognizable OAuth
+        // error payload we fall through to generic HTTP error handling.
+        if (error instanceof HTTPError && isDeviceFlowErrorResponse(error.data)) {
+          const errorResponse = error.data;
 
-            switch (errorResponse.error) {
-              case "authorization_pending":
-                // User hasn't authorized yet - continue polling
-                this.logger.debug("Authorization pending, continuing poll...");
-                continue;
+          switch (errorResponse.error) {
+            case "authorization_pending":
+              // User hasn't authorized yet - continue polling
+              this.logger.debug("Authorization pending, continuing poll...");
+              continue;
 
-              case "slow_down":
-                // Increase polling interval by 5 seconds
-                currentInterval += 5000;
-                this.logger.debug(
-                  `Slow down requested, new interval: ${currentInterval / 1000}s`,
-                );
-                continue;
+            case "slow_down":
+              // Increase polling interval by 5 seconds
+              currentInterval += 5000;
+              this.logger.debug(
+                `Slow down requested, new interval: ${currentInterval / 1000}s`,
+              );
+              continue;
 
-              case "expired_token":
-                throw new DeviceFlowError(
-                  "Device code has expired. Please restart the login process.",
-                  "expired_token",
-                  errorResponse.error_description,
-                );
+            case "expired_token":
+              throw new DeviceFlowError(
+                "Device code has expired. Please restart the login process.",
+                "expired_token",
+                errorResponse.error_description,
+              );
 
-              case "access_denied":
-                throw new DeviceFlowError(
-                  "User denied authorization.",
-                  "access_denied",
-                  errorResponse.error_description,
-                );
+            case "access_denied":
+              throw new DeviceFlowError(
+                "User denied authorization.",
+                "access_denied",
+                errorResponse.error_description,
+              );
 
-              default:
-                throw new DeviceFlowError(
-                  `Authorization failed: ${errorResponse.error}`,
-                  errorResponse.error,
-                  errorResponse.error_description,
-                );
-            }
-          } catch (parseError) {
-            // If we can't parse the error response, treat it as a generic HTTP error
-            if (parseError instanceof DeviceFlowError) {
-              throw parseError;
-            }
-            throw this.handleError(error, "pollForToken");
+            default:
+              throw new DeviceFlowError(
+                `Authorization failed: ${errorResponse.error}`,
+                errorResponse.error,
+                errorResponse.error_description,
+              );
           }
         }
 
-        // Handle other errors (network, timeout, etc.)
+        // Handle other errors (network, timeout, unparseable HTTP errors, etc.)
         throw this.handleError(error, "pollForToken");
       }
     }
@@ -280,23 +292,19 @@ export class DeviceFlowService {
       this.logger.log("Token refreshed successfully");
       return response;
     } catch (error) {
-      // Check if refresh token is invalid/expired
-      if (error instanceof HTTPError && error.response.status === 400) {
-        try {
-          const errorResponse =
-            (await error.response.json()) as DeviceFlowErrorResponse;
-          if (errorResponse.error === "invalid_grant") {
-            throw new DeviceFlowError(
-              "Refresh token is invalid or expired. Please login again.",
-              "invalid_grant",
-              errorResponse.error_description,
-            );
-          }
-        } catch (parseError) {
-          if (parseError instanceof DeviceFlowError) {
-            throw parseError;
-          }
-        }
+      // Check if refresh token is invalid/expired. In ky v2 the response body
+      // is pre-parsed onto `error.data`.
+      if (
+        error instanceof HTTPError &&
+        error.response.status === 400 &&
+        isDeviceFlowErrorResponse(error.data) &&
+        error.data.error === "invalid_grant"
+      ) {
+        throw new DeviceFlowError(
+          "Refresh token is invalid or expired. Please login again.",
+          "invalid_grant",
+          error.data.error_description,
+        );
       }
 
       throw this.handleError(error, "refreshToken");

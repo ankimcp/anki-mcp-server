@@ -273,7 +273,7 @@ Bundle uses STDIO entry point. Key gotchas:
 
 ## Environment
 
-Node.js requirement: `>=20.19.0 <21.0.0 || >=22.12.0` (Node 21 not supported — `require(esm)` was never backported)
+Node.js requirement: `>=22.12.0` (Node 20 reached end-of-life on 2026-04-30; oldest supported LTS is Node 22)
 
 Key environment variables (all have defaults, see `src/config/config.schema.ts`):
 - `ANKI_CONNECT_URL` — AnkiConnect URL (default: `http://localhost:8765`)
