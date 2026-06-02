@@ -30,6 +30,29 @@ function displayBox(cli: Cli, title: string, url: string): void {
 }
 
 /**
+ * Derive the web dashboard URL from the public tunnel URL.
+ *
+ * The dashboard lives on the `web.` sibling of the tunnel host — e.g.
+ * `https://tunnel.ankimcp.ai/<uuid>` becomes `https://web.ankimcp.ai`. We swap
+ * the host of the *actual* tunnel URL (the one the server handed back), not a
+ * config value, so a custom or self-hosted tunnel server still yields a
+ * consistent `web.` dashboard host.
+ *
+ * The result is the bare origin only — the per-tunnel uuid path is dropped, as
+ * the box is just a link to the web GUI, not a deep link.
+ *
+ * Only a leading `tunnel.` label is swapped; the swap is anchored so it never
+ * matches inside the path. Hosts without a leading `tunnel.` label (e.g.
+ * `localhost`) are left unchanged, so the dashboard host equals the tunnel
+ * host in that case.
+ */
+export function deriveDashboardUrl(tunnelUrl: string): string {
+  const url = new URL(tunnelUrl);
+  url.hostname = url.hostname.replace(/^tunnel\./, "web.");
+  return url.origin;
+}
+
+/**
  * Format connection errors with user-friendly messages.
  *
  * The `tunnelUrl` argument is the resolved URL the caller is actually using
@@ -363,8 +386,12 @@ export async function handleTunnel(
       return await gracefulExit(1);
     }
 
-    // Step 5: Display tunnel URL in a nice box
+    // Step 5: Display tunnel URL and the web dashboard URL in nice boxes.
+    // The dashboard URL is derived from the live tunnel URL by swapping the
+    // host (`tunnel.` → `web.`) so it stays consistent with self-hosted servers.
     displayBox(cli, "🚇 Tunnel URL", publicUrl);
+    cli.blank();
+    displayBox(cli, "🌐 Dashboard", deriveDashboardUrl(publicUrl));
     cli.blank();
     cli.info("Tunnel is active. Press Ctrl+C to disconnect.");
     cli.blank();
