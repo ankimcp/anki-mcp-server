@@ -160,6 +160,11 @@
     "transformIgnorePatterns": [
       "node_modules/(?!(commander|ky|mime|unified|remark-parse|unist-util-visit|mdast-util-to-string|micromark.*|decode-named-character-reference|character-entities|unist-.*|vfile.*|bail|is-plain-obj|trough|devlop|mdast.*|hast.*)/)"
     ],
+    "modulePathIgnorePatterns": [
+      "<rootDir>/dist",
+      "<rootDir>/dist-stdio",
+      "<rootDir>/dist-http"
+    ],
     "forceExit": true
   },
   "packageManager": "npm@11.16.0",

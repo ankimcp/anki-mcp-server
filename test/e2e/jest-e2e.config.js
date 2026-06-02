@@ -11,6 +11,13 @@ module.exports = {
     "^@/(.*)$": "<rootDir>/src/$1",
     "^@test/(.*)$": "<rootDir>/test/$1",
   },
+  // Keep compiled output out of the haste map so manual mocks
+  // (e.g. __mocks__/anki-connect.client) aren't indexed twice.
+  modulePathIgnorePatterns: [
+    "<rootDir>/dist",
+    "<rootDir>/dist-stdio",
+    "<rootDir>/dist-http",
+  ],
   // E2E tests need longer timeouts
   testTimeout: 60000,
   // Run sequentially to avoid race conditions
