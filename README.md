@@ -1,16 +1,5 @@
 # Anki MCP Server
 
-> **⚠️ IMPORTANT: Project Renamed (v0.8.2+)**
->
-> This project has been renamed and moved:
-> - **Package**: `anki-mcp-http` → `@ankimcp/anki-mcp-server`
-> - **Commands**: `anki-mcp-http` → `ankimcp` or `anki-mcp-server`
-> - **Repository**: `anki-mcp/anki-mcp-desktop` → `ankimcp/anki-mcp-server`
->
-> The old `anki-mcp-http` package continues to be published for backward compatibility but is deprecated. Please migrate to the new package.
->
-> **[Read more about this change →](https://ankimcp.ai/blog/organization-and-naming-update/)**
-
 [![Tests](https://github.com/ankimcp/anki-mcp-server/actions/workflows/test.yml/badge.svg)](https://github.com/ankimcp/anki-mcp-server/actions/workflows/test.yml)
 [![npm version](https://badge.fury.io/js/@ankimcp%2Fanki-mcp-server.svg)](https://www.npmjs.com/package/@ankimcp/anki-mcp-server)
 
@@ -46,38 +35,43 @@ Three representative prompts showing the tool flows this server enables:
 
 ## Available Tools
 
-### Review & Study
-- `sync` - Sync with AnkiWeb
-- `get_due_cards` - Get cards for review
-- `present_card` - Show card for review
-- `rate_card` - Rate card performance
+The server exposes **42 MCP tools** — 31 essential tools for everyday Anki operations and 11 GUI tools that drive the Anki desktop interface for note editing/creation workflows.
 
-### Deck Management
-- `listDecks` - List all decks with optional statistics
-- `deckStats` - Get comprehensive deck statistics (counts, ease/interval distributions)
-- `createDeck` - Create a new empty deck (max 2 levels: "Parent::Child")
-- `changeDeck` - Move cards to a different deck
+### Essential Tools
 
-### Note Management
-- `addNote` - Create a single note
-- `addNotes` - Create multiple notes in batch (up to 100, partial success supported)
-- `findNotes` - Search for notes using Anki query syntax
-- `notesInfo` - Get detailed information about notes (fields, tags, CSS)
-- `updateNoteFields` - Update existing note fields (CSS-aware, supports HTML)
-- `deleteNotes` - Delete notes and their cards
+#### Review & Study
+- `sync` - Sync with AnkiWeb to pull latest data and push changes
+- `get_due_cards` - Get cards that are due for review, optionally filtered by deck
+- `get_cards` - Get cards with flexible filtering by state (due, new, learning, suspended, buried) and deck
+- `present_card` - Show a card for review with its question/front side
+- `rate_card` - Rate card performance (Again, Hard, Good, Easy) and schedule the next review
 
-### Tag Management
-- `getTags` - Discover all tags in the collection (use first to avoid duplication)
-- `addTags` - Add space-separated tags to notes
-- `removeTags` - Remove space-separated tags from notes
-- `replaceTags` - Rename a tag across notes
-- `clearUnusedTags` - Remove orphaned tags from the collection (destructive)
+#### Deck Management
+- `listDecks` - List all decks, optionally with per-deck card-count statistics
+- `deckStats` - Get comprehensive statistics for a single deck (counts, ease/interval distributions)
+- `createDeck` - Create a new empty deck (supports `Parent::Child`, max 2 levels)
+- `changeDeck` - Move cards to a different deck (created if it doesn't exist)
 
-### Media Management
-- `getMediaFilesNames` - List media files with optional pattern filtering
-- `retrieveMediaFile` - Download media as base64
-- `storeMediaFile` - Upload media from base64 data, file paths, or URLs
-- `deleteMediaFile` - Remove media files (destructive)
+#### Note Management
+- `addNote` - Create a single note with specified fields and tags
+- `addNotes` - Batch-create up to 100 notes sharing a deck and model (partial success supported)
+- `findNotes` - Search for notes using Anki query syntax (`deck:`, `tag:`, `is:due`, etc.)
+- `notesInfo` - Get detailed information about notes (fields, tags, CSS styling)
+- `updateNoteFields` - Update existing note fields (CSS-aware, supports HTML content)
+- `deleteNotes` - Delete notes and all associated cards (destructive, requires confirmation)
+
+#### Tag Management
+- `getTags` - Get all tags in the collection (use first to avoid duplication)
+- `addTags` - Add space-separated tags to specified notes
+- `removeTags` - Remove space-separated tags from specified notes
+- `replaceTags` - Rename a tag across specified notes
+- `clearUnusedTags` - Remove orphaned tags not used by any notes (destructive)
+
+#### Media Management
+- `getMediaFilesNames` - List media files in `collection.media`, optionally filtered by pattern
+- `retrieveMediaFile` - Download a media file as base64 content
+- `storeMediaFile` - Upload media from base64 data, an absolute file path, or a URL
+- `deleteMediaFile` - Remove a media file from `collection.media` (destructive)
 
 **💡 Best Practice for Images:**
 - ✅ **Use file paths** (e.g., `/Users/you/image.png`) - Fast and efficient
@@ -86,10 +80,32 @@ Three representative prompts showing the tool flows this server enables:
 
 Just tell Claude where the image is, and it will handle the upload automatically using the most efficient method.
 
-### Model/Template Management
-- `modelNames` - List note types
-- `modelFieldNames` - Get fields for a note type
-- `modelStyling` - Get CSS styling for a note type
+#### Model/Template Management
+- `modelNames` - List all available note types/models
+- `modelFieldNames` - Get field names for a specific note type
+- `modelStyling` - Get CSS styling information for a note type
+- `createModel` - Create a new note type with custom fields, card templates, and CSS (e.g., RTL models)
+- `updateModelStyling` - Update the CSS styling for an existing note type (applies to all its cards)
+
+#### Statistics
+- `collection_stats` - Aggregated statistics across all decks with per-deck breakdown
+- `review_stats` - Review history analysis (temporal patterns, retention metrics, study streaks)
+
+### GUI Tools
+
+Tools that drive the Anki desktop interface. Intended for note editing/creation and deck-management workflows, **not** for review sessions.
+
+- `guiBrowse` - Open the Card Browser and search for cards
+- `guiSelectCard` - Select a specific card in the Card Browser
+- `guiSelectedNotes` - Get IDs of notes currently selected in the Card Browser
+- `guiAddCards` - Open the Add Cards dialog with preset note details
+- `guiEditNote` - Open the note editor for a specific note
+- `guiDeckOverview` - Open the Deck Overview dialog for a specific deck
+- `guiDeckBrowser` - Open the Deck Browser dialog
+- `guiCurrentCard` - Get info about the current card in review mode
+- `guiShowQuestion` - Show the question side of the current card
+- `guiShowAnswer` - Show the answer side of the current card
+- `guiUndo` - Undo the last action in Anki
 
 ## Prerequisites
 
@@ -98,10 +114,11 @@ Just tell Claude where the image is, and it will handle the upload automatically
 
 ## Installation
 
-This server works in two modes:
+This server works in three modes:
 
 - **Local mode (STDIO)** - For Claude Desktop on your computer (recommended for most users)
-- **Remote mode (HTTP)** - For web-based AI assistants like ChatGPT or Claude.ai
+- **Remote mode (HTTP)** - For web-based AI assistants like ChatGPT or Claude.ai, exposed via your own tunnel (e.g. ngrok)
+- **Tunnel mode** - For web-based AI assistants, using the managed AnkiMCP tunnel service with authentication (no ngrok needed)
 
 ### Option 1: MCPB Bundle (Recommended - Local Mode)
 
@@ -335,7 +352,53 @@ ngrok http 3000
 
 **Security note:** Anyone with your ngrok URL can access your Anki, so keep that URL private!
 
-### Option 4: Manual Installation from Source (Local Mode)
+### Option 4: Tunnel Mode (Managed Remote Access)
+
+Like HTTP mode, tunnel mode lets web-based AI assistants reach your **local** Anki — but instead of running your own ngrok tunnel, the server connects out to the managed AnkiMCP tunnel service (`wss://tunnel.ankimcp.ai`) over a WebSocket and is assigned a public URL. Authentication is built in, so the endpoint isn't open to anyone who guesses the URL.
+
+**When to use it (vs. STDIO / HTTP):**
+- **STDIO** - local desktop MCP clients (Claude Desktop, Cursor, Cline, Zed).
+- **HTTP** - remote AI, but you run and manage your own public tunnel (`--ngrok`) and there is no authentication.
+- **Tunnel** - remote AI with a managed, authenticated tunnel. You log in once; no ngrok account or separate tunnel process required.
+
+**Log in (OAuth device flow):**
+
+Tunnel mode uses the OAuth 2.0 Device Authorization Grant. Logging in opens your browser to a verification page where you enter a short code; on success, credentials are saved to `~/.ankimcp/credentials.json` (file permissions `0600`).
+
+```bash
+# Pre-authenticate (optional — --tunnel will trigger this automatically if needed)
+ankimcp --login
+npx @ankimcp/anki-mcp-server --login
+
+# Clear saved credentials
+ankimcp --logout
+```
+
+**Start the tunnel:**
+
+```bash
+# Connect to the managed tunnel service (wss://tunnel.ankimcp.ai)
+ankimcp --tunnel
+npx @ankimcp/anki-mcp-server --tunnel
+
+# Override the tunnel server URL (must be ws:// or wss://) — e.g. for self-hosting
+ankimcp --tunnel wss://my-tunnel.example.com
+```
+
+If no credentials exist, `--tunnel` automatically starts the login flow first, then continues to the tunnel. This auto-login requires an interactive terminal — when stdout is not a TTY (systemd, headless Docker, CI), the server fast-fails and asks you to run `ankimcp --login` first. Once connected, the public tunnel URL is printed; press Ctrl+C to disconnect. Share that URL with your AI assistant.
+
+**Tunnel-mode environment variables:**
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TUNNEL_SERVER_URL` | Tunnel server WebSocket URL (the `--tunnel`/`--login` flag value overrides this) | `wss://tunnel.ankimcp.ai` |
+| `TUNNEL_AUTH_CLIENT_ID` | OAuth client ID for the device flow. Advanced — only needed when pointing at a self-hosted tunnel/auth service. | (built-in) |
+
+The device-flow auth endpoints (`/auth/device`, `/auth/token`) are derived from `TUNNEL_SERVER_URL`, so pointing `--tunnel` (or `TUNNEL_SERVER_URL`) at a different host also moves authentication to that host.
+
+**How it works:** Tunnel mode runs the MCP server in-process behind an in-memory transport (`McpModule` is started with no built-in transport). `TunnelMcpService` connects that in-memory transport to the MCP server, and `TunnelClient` bridges it to the remote tunnel service over a WebSocket — relaying MCP requests in and responses out. AnkiConnect is still only ever reached on your local machine.
+
+### Option 5: Manual Installation from Source (Local Mode)
 
 For development or advanced usage:
 
@@ -387,6 +450,7 @@ For more details, see the [official MCP documentation](https://modelcontextproto
 | `ANKI_CONNECT_API_KEY` | API key if configured in AnkiConnect | - |
 | `ANKI_CONNECT_TIMEOUT` | Request timeout in ms | `5000` |
 | `READ_ONLY` | Enable read-only mode (`true` or `1`) | `false` |
+| `TUNNEL_SERVER_URL` | Tunnel server WebSocket URL (tunnel mode only) | `wss://tunnel.ankimcp.ai` |
 | `MEDIA_ALLOWED_TYPES` | Extra MIME types to allow for file path imports (comma-separated, e.g., `application/pdf`) | - |
 | `MEDIA_IMPORT_DIR` | Restrict file path imports to this directory | - |
 | `MEDIA_ALLOWED_HOSTS` | Allow specific private network hosts for URL imports (comma-separated, e.g., `192.168.1.50,my-nas`) | - |
@@ -508,7 +572,7 @@ node --version
 
 ### Transport Modes
 
-This server supports two MCP transport modes via **separate entry points**:
+This server supports three MCP transport modes via **separate entry points**:
 
 #### STDIO Mode (Default)
 - For local MCP clients like Claude Desktop
@@ -526,13 +590,21 @@ This server supports two MCP transport modes via **separate entry points**:
 - **Default host**: `127.0.0.1` (configurable via `HOST` env var)
 - **MCP endpoint**: `http://127.0.0.1:3000/` (root path)
 
+#### Tunnel Mode (Managed WebSocket Tunnel)
+- For web-based AI assistants via the managed AnkiMCP tunnel service, with built-in authentication
+- The MCP server runs in-process behind an in-memory transport; `TunnelMcpService` wires it to the MCP server and `TunnelClient` bridges it to the tunnel service over a WebSocket
+- **Entry point**: `dist/main-tunnel.js`
+- **Run**: `node dist/main-tunnel.js --tunnel` (or `ankimcp --tunnel`)
+- **Auth**: `ankimcp --login` / `ankimcp --logout`; credentials stored at `~/.ankimcp/credentials.json` (`0600`)
+- **Dev**: `npm run start:dev:tunnel` (watch mode, runs `--tunnel --debug`)
+
 #### Building
 
 ```bash
-npm run build  # Builds once, creates dist/ with both entry points
+npm run build  # Builds once, creates dist/ with all three entry points
 ```
 
-Both `main-stdio.js` and `main-http.js` are in the same `dist/` directory. Choose which to run based on your needs.
+`main-stdio.js`, `main-http.js`, and `main-tunnel.js` are all built into the same `dist/` directory. Choose which to run based on your needs.
 
 #### HTTP Mode Configuration
 
@@ -586,7 +658,7 @@ The output file will be named `anki-mcp-server-X.X.X.mcpb` and can be distribute
 #### What Gets Bundled
 
 The MCPB bundle includes:
-- Compiled JavaScript (`dist/` directory - includes both entry points)
+- Compiled JavaScript (`dist/` directory - includes all three entry points)
 - Production dependencies only (`node_modules/` - devDependencies removed by `mcpb clean`)
 - Package metadata (`package.json`)
 - Manifest configuration (`manifest.json` - configured to use `main-stdio.js`)
