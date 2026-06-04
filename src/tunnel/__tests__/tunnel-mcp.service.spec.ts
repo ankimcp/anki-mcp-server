@@ -428,7 +428,7 @@ describe("TunnelMcpService", () => {
       await service.onApplicationBootstrap();
     });
 
-    it("rejects array (batch) bodies with a -32600 error", async () => {
+    it("rejects array (batch) bodies with a -32700 error", async () => {
       // JSON-RPC batching was removed from the MCP spec (2025-06-18) and the
       // Anki addon endpoint accepts single objects only — arrays are rejected.
       const batchRequest: JSONRPCMessage[] = [
@@ -453,8 +453,8 @@ describe("TunnelMcpService", () => {
         jsonrpc: "2.0",
         id: null,
         error: {
-          code: -32600,
-          message: "Invalid Request: JSON-RPC batching is not supported",
+          code: -32700,
+          message: "Batched JSON-RPC requests are not supported",
         },
       });
     });

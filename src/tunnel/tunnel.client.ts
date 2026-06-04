@@ -365,18 +365,56 @@ export class TunnelClient extends EventEmitter {
     } catch (error) {
       this.logger.error(`Error handling request ${message.requestId}:`, error);
 
-      // Send error response
+      const {
+        status,
+        code,
+        message: errorMessage,
+      } = this.mapHandlerError(error);
+
+      // Mirror the relay's JSON-RPC error contract so the end MCP client sees
+      // one consistent error envelope regardless of which side failed.
       this.sendResponse({
         type: "response",
         requestId: message.requestId,
-        statusCode: 500,
-        headers: {},
+        statusCode: status,
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          error: "Internal server error",
-          message: error instanceof Error ? error.message : String(error),
+          jsonrpc: "2.0",
+          id: null,
+          error: { code, message: errorMessage },
         }),
       });
     }
+  }
+
+  /**
+   * Map a request-handler error onto the relay's JSON-RPC error contract
+   * (timeout → 504/-32004, connection unavailable → 503/-32005, otherwise
+   * 500/-32006), so the end MCP client sees one consistent error envelope no
+   * matter which side generated it. Mirrors the relay's sendJsonRpcError.
+   */
+  private mapHandlerError(error: unknown): {
+    status: number;
+    code: number;
+    message: string;
+  } {
+    const raw = error instanceof Error ? error.message : String(error);
+
+    if (/timeout/i.test(raw)) {
+      return { status: 504, code: -32004, message: "Request to CLI timed out" };
+    }
+    if (/closed|not connected/i.test(raw)) {
+      return {
+        status: 503,
+        code: -32005,
+        message: "Tunnel connection is not available",
+      };
+    }
+    return {
+      status: 500,
+      code: -32006,
+      message: "Failed to forward request to CLI",
+    };
   }
 
   /**

@@ -373,7 +373,7 @@ describe("TunnelClient", () => {
       );
     });
 
-    it("should handle MCP request error and send 500 response", async () => {
+    it("should map a generic handler error to a 500/-32006 JSON-RPC envelope", async () => {
       mockMcpHandler.handle.mockRejectedValue(new Error("Handler error"));
 
       const requestMessage = {
@@ -395,8 +395,69 @@ describe("TunnelClient", () => {
       const parsed = JSON.parse(sentData);
 
       expect(parsed.type).toBe("response");
-      expect(parsed.statusCode).toBe(500);
       expect(parsed.requestId).toBe("req123");
+      expect(parsed.statusCode).toBe(500);
+      expect(JSON.parse(parsed.body)).toEqual({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32006, message: "Failed to forward request to CLI" },
+      });
+    });
+
+    it("should map an MCP request timeout to a 504/-32004 envelope", async () => {
+      mockMcpHandler.handle.mockRejectedValue(new Error("MCP request timeout"));
+
+      const requestMessage = {
+        type: "request",
+        requestId: "req-timeout",
+        method: "POST",
+        path: "/mcp/v1",
+        headers: {},
+        body: "{}",
+      };
+
+      mockWs.emit("message", JSON.stringify(requestMessage));
+
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const sentData = (mockWs.send as jest.Mock).mock.calls[0][0];
+      const parsed = JSON.parse(sentData);
+
+      expect(parsed.statusCode).toBe(504);
+      expect(JSON.parse(parsed.body)).toEqual({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32004, message: "Request to CLI timed out" },
+      });
+    });
+
+    it("should map a closed transport to a 503/-32005 envelope", async () => {
+      mockMcpHandler.handle.mockRejectedValue(new Error("Transport closed"));
+
+      const requestMessage = {
+        type: "request",
+        requestId: "req-closed",
+        method: "POST",
+        path: "/mcp/v1",
+        headers: {},
+        body: "{}",
+      };
+
+      mockWs.emit("message", JSON.stringify(requestMessage));
+
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const sentData = (mockWs.send as jest.Mock).mock.calls[0][0];
+      const parsed = JSON.parse(sentData);
+
+      expect(parsed.statusCode).toBe(503);
+      expect(JSON.parse(parsed.body)).toEqual({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32005, message: "Tunnel connection is not available" },
+      });
     });
 
     it("should respond to ping with pong", () => {

@@ -1,6 +1,7 @@
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { JSONRPCMessage, RequestId } from "@modelcontextprotocol/sdk/types.js";
 import { Logger } from "@nestjs/common";
+import { TUNNEL_DEFAULTS } from "./tunnel.protocol";
 
 interface PendingRequest {
   resolve: (msg: JSONRPCMessage) => void;
@@ -88,7 +89,7 @@ export class InMemoryTransport implements Transport {
       pending.timeout = setTimeout(() => {
         this.pendingRequests.delete(request.id as RequestId);
         reject(new Error("MCP request timeout"));
-      }, 30000);
+      }, TUNNEL_DEFAULTS.REQUEST_TIMEOUT);
 
       // Feed request to Protocol - errors are caught by Protocol
       // and sent back via send() as JSON-RPC error responses

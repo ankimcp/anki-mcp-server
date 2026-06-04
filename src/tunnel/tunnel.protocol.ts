@@ -121,7 +121,7 @@ export type TunnelCloseCode =
 
 export const TUNNEL_DEFAULTS = {
   CONNECTION_TIMEOUT: 10000, // 10s
-  REQUEST_TIMEOUT: 30000, // 30s
+  REQUEST_TIMEOUT: 25000, // 25s — must stay < relay's 30s so the client's specific timeout error wins the race
   HEARTBEAT_INTERVAL: 30000, // 30s
   HEARTBEAT_TIMEOUT: 10000, // 10s
   RECONNECT_INITIAL_DELAY: 1000, // 1s

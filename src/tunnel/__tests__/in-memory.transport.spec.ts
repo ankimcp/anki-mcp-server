@@ -259,7 +259,7 @@ describe("InMemoryTransport", () => {
   });
 
   describe("timeout", () => {
-    it("should reject after 30s timeout if no response", async () => {
+    it("should reject after the 25s timeout if no response", async () => {
       jest.useFakeTimers();
 
       try {
@@ -274,8 +274,8 @@ describe("InMemoryTransport", () => {
 
         const promise = transport.handleRequest(request);
 
-        // Fast-forward time by 30 seconds
-        jest.advanceTimersByTime(30000);
+        // Fast-forward past the 25s timeout
+        jest.advanceTimersByTime(25000);
 
         await expect(promise).rejects.toThrow("MCP request timeout");
       } finally {
@@ -286,12 +286,12 @@ describe("InMemoryTransport", () => {
       }
     });
 
-    it("should not timeout if response arrives before 30s", async () => {
+    it("should not timeout if response arrives before the 25s timeout", async () => {
       jest.useFakeTimers();
 
       try {
         transport.onmessage = jest.fn((request: JSONRPCMessage) => {
-          // Respond after 25 seconds
+          // Respond after 20 seconds — before the 25s timeout
           setTimeout(() => {
             // In this test, request always has an id (it's a request, not a notification)
             const requestId = ("id" in request ? request.id : 1) as
@@ -302,7 +302,7 @@ describe("InMemoryTransport", () => {
               id: requestId,
               result: { success: true },
             });
-          }, 25000);
+          }, 20000);
         });
 
         const request: JSONRPCMessage = {
@@ -331,7 +331,7 @@ describe("InMemoryTransport", () => {
       }
     });
 
-    it("should reject exactly at 30s boundary", async () => {
+    it("should reject exactly at the 25s boundary", async () => {
       jest.useFakeTimers();
 
       try {
@@ -346,11 +346,11 @@ describe("InMemoryTransport", () => {
 
         const promise = transport.handleRequest(request);
 
-        // Advance to 29.9s - should not timeout
-        jest.advanceTimersByTime(29900);
+        // Advance to 24.9s - should not timeout
+        jest.advanceTimersByTime(24900);
         await Promise.resolve();
 
-        // Advance past 30s - should timeout
+        // Advance past 25s - should timeout
         jest.advanceTimersByTime(100);
 
         await expect(promise).rejects.toThrow("MCP request timeout");
