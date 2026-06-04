@@ -280,7 +280,7 @@ Tunnel mode lets web-based AI assistants reach your **local** Anki without runni
 
 **Log in (OAuth device flow):**
 
-Tunnel mode uses the OAuth 2.0 Device Authorization Grant. Logging in opens your browser to a verification page where you enter a short code; on success, credentials are saved to `~/.ankimcp/credentials.json` (file permissions `0600`).
+Tunnel mode uses the OAuth 2.0 Device Authorization Grant. Logging in opens your browser automatically to an approval page with the code already embedded in the URL — nothing to type, just approve. (If the browser can't open, the terminal prints a verification URL and code to enter manually as a fallback.) On success, credentials are saved to `~/.ankimcp/credentials.json` (file permissions `0600`).
 
 ```bash
 # Pre-authenticate (optional — --tunnel will trigger this automatically if needed)
@@ -902,7 +902,7 @@ This project follows [Semantic Versioning](https://semver.org/) with a pre-1.0 d
     - Will be released when the API is stable and tested
     - Breaking changes will require major version bumps (2.0.0, etc.)
 
-**Current Status**: `0.15.1` - Active beta development. Recent features include batch note creation (`addNotes`), integrated ngrok tunneling (`--ngrok` flag), media file management, model/template management, and comprehensive deck statistics. APIs may change based on feedback and testing.
+**Current Status**: `0.19.0` - Active beta development. Recent features include batch note creation (`addNotes`), integrated ngrok tunneling (`--ngrok` flag), media file management, model/template management, and comprehensive deck statistics. APIs may change based on feedback and testing.
 
 ### MCPB spec evolution
 
