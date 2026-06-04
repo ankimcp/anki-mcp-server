@@ -114,20 +114,32 @@ Tools that drive the Anki desktop interface. Intended for note editing/creation 
 
 ## Installation
 
-This server works in three modes:
+There are a few ways to get the server onto your machine. Once it's installed, head to [Connecting an AI Client](#connecting-an-ai-client) to wire it up to your AI assistant — locally or remotely.
 
-- **Local mode (STDIO)** - For Claude Desktop on your computer (recommended for most users)
-- **Remote mode (HTTP)** - For web-based AI assistants like ChatGPT or Claude.ai, exposed via your own tunnel (e.g. ngrok)
-- **Tunnel mode** - For web-based AI assistants, using the managed AnkiMCP tunnel service with authentication (no ngrok needed)
+### npm (global or npx)
 
-### Option 1: MCPB Bundle (Recommended - Local Mode)
+The general-purpose way to install the server, suitable for any MCP client that launches it directly.
+
+Install it globally for clients that run the `ankimcp` command:
+
+```bash
+npm install -g @ankimcp/anki-mcp-server
+```
+
+Or run it on demand with no install required:
+
+```bash
+npx @ankimcp/anki-mcp-server
+```
+
+### MCPB Bundle (Recommended for Claude Desktop)
 
 The easiest way to install this MCP server for Claude Desktop:
 
 1. Download the latest `.mcpb` bundle from the [Releases](https://github.com/ankimcp/anki-mcp-server/releases) page
 2. In Claude Desktop, install the extension:
-   - **Method 1**: Go to Settings → Extensions, then drag and drop the `.mcpb` file
-   - **Method 2**: Go to Settings → Developer → Extensions → Install Extension, then select the `.mcpb` file
+    - **Method 1**: Go to Settings → Extensions, then drag and drop the `.mcpb` file
+    - **Method 2**: Go to Settings → Developer → Extensions → Install Extension, then select the `.mcpb` file
 3. Configure AnkiConnect URL if needed (defaults to `http://localhost:8765`)
 4. Restart Claude Desktop
 
@@ -135,15 +147,38 @@ That's it! The bundle includes everything needed to run the server locally.
 
 > **For Anthropic MCP Directory reviewers:** a zero-to-integration walkthrough with a pre-populated sample deck lives in [`docs/reviewer-setup.md`](./docs/reviewer-setup.md).
 
-### Option 2: NPM Package with STDIO (For Other MCP Clients)
+### Install from Source (for development)
 
-Want to use Anki with MCP clients like **Cursor IDE**, **Cline**, or **Zed Editor**? Use the npm package with the `--stdio` flag:
+For development or advanced usage:
+
+```bash
+npm install
+npm run build
+```
+
+## Connecting an AI Client
+
+There are two ways an AI assistant can reach this server, depending on where the assistant runs:
+
+- **[Local](#local)** — the server runs on the same machine as the AI client (Claude Desktop, Cursor, Cline, Zed, or a local browser session). Use **STDIO** for desktop MCP clients, **HTTP** for local web-based tools.
+- **[Remote](#remote)** — a hosted/remote AI (e.g. ChatGPT or Claude.ai in the cloud) needs to reach the Anki running on your local machine. Use the managed **Tunnel** (✅ recommended — authenticated) or, as a lighter-weight unauthenticated alternative, **ngrok**.
+
+### Local
+
+The server runs on the same computer as your AI client and talks to AnkiConnect on `localhost`.
+
+#### STDIO (primary local integration)
+
+STDIO is the standard transport for local desktop MCP clients — **Claude Desktop**, **Cursor IDE**, **Cline**, **Zed Editor**, and others. The client launches the server as a subprocess and communicates over standard input/output.
 
 **Supported Clients:**
+- [Claude Desktop](https://claude.ai/download)
 - [Cursor IDE](https://www.cursor.com/) - AI-powered code editor
 - [Cline](https://github.com/cline/cline) - VS Code extension for AI assistance
 - [Zed Editor](https://zed.dev/) - Fast, modern code editor
 - Other MCP clients that support STDIO transport
+
+For Claude Desktop, the [MCPB bundle](#mcpb-bundle-recommended-for-claude-desktop) is the easiest path. For other clients, configure the npm package with the `--stdio` flag.
 
 **Configuration - Choose one method:**
 
@@ -190,19 +225,11 @@ Then configure:
 - **Cline**: Accessible via settings UI in VS Code
 - **Zed Editor**: Install as MCP extension through extension marketplace
 
-For client-specific features and troubleshooting, consult your MCP client's documentation.
+For client-specific features and troubleshooting, consult your MCP client's documentation. See also [Connect to Claude Desktop](#connect-to-claude-desktop-local-mode) for a config that points directly at a built `dist/main-stdio.js`.
 
-### Option 3: HTTP Mode (For Remote AI Assistants)
+#### HTTP (local web-based AI)
 
-Want to use Anki with ChatGPT or Claude.ai in your browser? This mode lets you connect web-based AI tools to your local Anki.
-
-**How it works (simple explanation):**
-1. You run a small server on your computer (where Anki is installed)
-2. Use the built-in `--ngrok` flag to automatically create a public tunnel URL
-3. Share that URL with ChatGPT or Claude.ai
-4. Now the AI can talk to your Anki through the internet!
-
-**New in v0.8.0:** Integrated ngrok support with the `--ngrok` flag - no need to run ngrok separately!
+HTTP mode runs the server as a local web server speaking the MCP Streamable HTTP protocol. It's the transport a web-based AI tool talks to when pointed at your machine, and it's also what the [Remote](#remote) options expose to the outside world. On its own, HTTP mode binds to `localhost` only.
 
 **Setup - Choose one method:**
 
@@ -211,9 +238,6 @@ Want to use Anki with ChatGPT or Claude.ai in your browser? This mode lets you c
 ```bash
 # Quick start
 npx @ankimcp/anki-mcp-server
-
-# With ngrok tunnel (recommended for web-based AI)
-npx @ankimcp/anki-mcp-server --ngrok
 
 # With custom options
 npx @ankimcp/anki-mcp-server --port 8080 --host 0.0.0.0
@@ -229,9 +253,6 @@ npm install -g @ankimcp/anki-mcp-server
 # Run the server
 ankimcp
 
-# With ngrok tunnel (recommended for web-based AI)
-ankimcp --ngrok
-
 # With custom options
 ankimcp --port 8080 --host 0.0.0.0
 ankimcp --anki-connect http://localhost:8765
@@ -245,121 +266,17 @@ npm run build
 npm run start:prod:http
 ```
 
-**CLI Options:**
+To make a local HTTP server reachable by a cloud-hosted AI, use one of the [Remote](#remote) options below.
 
-```bash
-ankimcp [options]
+### Remote
 
-Options:
-  --stdio                        Run in STDIO mode (for MCP clients)
-  -p, --port <port>              Port to listen on (HTTP mode, default: 3000)
-  -h, --host <host>              Host to bind to (HTTP mode, default: 127.0.0.1)
-  -a, --anki-connect <url>       AnkiConnect URL (default: http://localhost:8765)
-  --ngrok                        Start ngrok tunnel (requires global ngrok installation)
-  --read-only                    Run in read-only mode (blocks all write operations)
-  --help                         Show help message
+A hosted/remote AI (such as ChatGPT or Claude.ai running in the cloud) can't reach `localhost` directly. These options expose your **local** Anki to the internet so a remote assistant can talk to it.
 
-Usage with npx (no installation needed):
-  npx @ankimcp/anki-mcp-server                        # HTTP mode
-  npx @ankimcp/anki-mcp-server --port 8080            # Custom port
-  npx @ankimcp/anki-mcp-server --stdio                # STDIO mode
-  npx @ankimcp/anki-mcp-server --ngrok                # HTTP mode with ngrok tunnel
-  npx @ankimcp/anki-mcp-server --read-only            # Read-only mode
+#### Tunnel (✅ Recommended)
 
-Usage with global installation:
-  npm install -g @ankimcp/anki-mcp-server             # Install once
-  ankimcp                                             # HTTP mode
-  ankimcp --port 8080                                 # Custom port
-  ankimcp --stdio                                     # STDIO mode
-  ankimcp --ngrok                                     # HTTP mode with ngrok tunnel
-  ankimcp --read-only                                 # Read-only mode
-```
+> **Recommended remote path — authenticated & secure.** Unlike a raw public port, tunnel mode requires you to log in (OAuth 2.0 device flow), so the endpoint isn't open to anyone who guesses the URL.
 
-**Read-Only Mode:**
-
-The `--read-only` flag prevents any modifications to your Anki collection. When enabled:
-- All read operations work normally (browsing decks, viewing cards, searching notes)
-- Review operations are allowed (sync, answerCards, suspend/unsuspend)
-- Content modifications are blocked (addNote, deleteNotes, createDeck, updateNoteFields, etc.)
-- Useful for safely exploring Anki data without risk of accidental changes
-
-```bash
-# HTTP mode with read-only
-ankimcp --read-only
-
-# STDIO mode with read-only
-ankimcp --stdio --read-only
-
-# Can combine with other flags
-ankimcp --ngrok --read-only
-```
-
-You can also enable read-only mode via environment variable:
-```bash
-READ_ONLY=true ankimcp
-```
-
-Or in MCP client configuration:
-```json
-{
-  "mcpServers": {
-    "anki-mcp": {
-      "command": "npx",
-      "args": ["-y", "@ankimcp/anki-mcp-server", "--stdio", "--read-only"],
-      "env": {
-        "ANKI_CONNECT_URL": "http://localhost:8765"
-      }
-    }
-  }
-}
-```
-
-**Using with ngrok:**
-
-**Method 1: Integrated (Recommended - One Command)**
-
-```bash
-# One-time setup (if you haven't already):
-npm install -g ngrok
-ngrok config add-authtoken <your-token>  # Get token from https://dashboard.ngrok.com
-
-# Start server with ngrok tunnel in one command:
-ankimcp --ngrok
-
-# The tunnel URL will be displayed in the startup banner
-# Example output:
-# 🌐 Ngrok tunnel: https://abc123.ngrok-free.app
-```
-
-**Method 2: Manual (Two Terminals)**
-
-```bash
-# Terminal 1: Start the server
-ankimcp
-
-# Terminal 2: Create tunnel
-ngrok http 3000
-
-# Copy the ngrok URL (looks like: https://abc123.ngrok-free.app)
-# Share this URL with your AI assistant
-```
-
-**Benefits of `--ngrok` flag:**
-- ✅ One command instead of two terminals
-- ✅ Automatic cleanup when you press Ctrl+C
-- ✅ URL displayed directly in the startup banner
-- ✅ Works with custom ports: `ankimcp --port 8080 --ngrok`
-
-**Security note:** Anyone with your ngrok URL can access your Anki, so keep that URL private!
-
-### Option 4: Tunnel Mode (Managed Remote Access)
-
-Like HTTP mode, tunnel mode lets web-based AI assistants reach your **local** Anki — but instead of running your own ngrok tunnel, the server connects out to the managed AnkiMCP tunnel service (`wss://tunnel.ankimcp.ai`) over a WebSocket and is assigned a public URL. Authentication is built in, so the endpoint isn't open to anyone who guesses the URL.
-
-**When to use it (vs. STDIO / HTTP):**
-- **STDIO** - local desktop MCP clients (Claude Desktop, Cursor, Cline, Zed).
-- **HTTP** - remote AI, but you run and manage your own public tunnel (`--ngrok`) and there is no authentication.
-- **Tunnel** - remote AI with a managed, authenticated tunnel. You log in once; no ngrok account or separate tunnel process required.
+Tunnel mode lets web-based AI assistants reach your **local** Anki without running your own tunnel. The server connects out to the managed AnkiMCP tunnel service (`wss://tunnel.ankimcp.ai`) over a WebSocket and is assigned a public URL. Authentication is built in — no ngrok account or separate tunnel process required, and you log in once.
 
 **Log in (OAuth device flow):**
 
@@ -398,13 +315,89 @@ The device-flow auth endpoints (`/auth/device`, `/auth/token`) are derived from 
 
 **How it works:** Tunnel mode runs the MCP server in-process behind an in-memory transport (`McpModule` is started with no built-in transport). `TunnelMcpService` connects that in-memory transport to the MCP server, and `TunnelClient` bridges it to the remote tunnel service over a WebSocket — relaying MCP requests in and responses out. AnkiConnect is still only ever reached on your local machine.
 
-### Option 5: Manual Installation from Source (Local Mode)
+#### ngrok (unauthenticated alternative)
 
-For development or advanced usage:
+If you'd rather expose [local HTTP mode](#http-local-web-based-ai) publicly without an account on the managed tunnel, the built-in `--ngrok` flag launches an [ngrok](https://ngrok.com/) subprocess (`src/services/ngrok.service.ts`) and prints the public URL in the startup banner:
 
 ```bash
-npm install
-npm run build
+# One-time ngrok setup, then:
+ankimcp --ngrok
+```
+
+This route is **unauthenticated** — anyone with the URL can reach your Anki, so it's less secure than [Tunnel](#tunnel--recommended). Prefer Tunnel unless you have a specific reason to manage your own ngrok endpoint. (Requires a global ngrok install and authtoken; the manual two-terminal `ngrok http 3000` setup works too.)
+
+### CLI Options (all modes)
+
+```bash
+ankimcp [options]
+
+Options:
+  --stdio                        Run in STDIO mode (for MCP clients)
+  --tunnel [url]                 Connect via the managed tunnel (authenticated)
+  --login                        Authenticate for tunnel mode (OAuth device flow)
+  --logout                       Clear saved tunnel credentials
+  -p, --port <port>              Port to listen on (HTTP mode, default: 3000)
+  -h, --host <host>              Host to bind to (HTTP mode, default: 127.0.0.1)
+  -a, --anki-connect <url>       AnkiConnect URL (default: http://localhost:8765)
+  --ngrok                        Start ngrok tunnel (requires global ngrok installation)
+  --read-only                    Run in read-only mode (blocks all write operations)
+  --help                         Show help message
+
+Usage with npx (no installation needed):
+  npx @ankimcp/anki-mcp-server                        # HTTP mode
+  npx @ankimcp/anki-mcp-server --port 8080            # Custom port
+  npx @ankimcp/anki-mcp-server --stdio                # STDIO mode
+  npx @ankimcp/anki-mcp-server --tunnel               # Managed tunnel mode
+  npx @ankimcp/anki-mcp-server --ngrok                # HTTP mode with ngrok tunnel
+  npx @ankimcp/anki-mcp-server --read-only            # Read-only mode
+
+Usage with global installation:
+  npm install -g @ankimcp/anki-mcp-server             # Install once
+  ankimcp                                             # HTTP mode
+  ankimcp --port 8080                                 # Custom port
+  ankimcp --stdio                                     # STDIO mode
+  ankimcp --tunnel                                    # Managed tunnel mode
+  ankimcp --ngrok                                     # HTTP mode with ngrok tunnel
+  ankimcp --read-only                                 # Read-only mode
+```
+
+### Read-Only Mode (all modes)
+
+The `--read-only` flag prevents any modifications to your Anki collection. When enabled:
+- All read operations work normally (browsing decks, viewing cards, searching notes)
+- Review operations are allowed (sync, answerCards, suspend/unsuspend)
+- Content modifications are blocked (addNote, deleteNotes, createDeck, updateNoteFields, etc.)
+- Useful for safely exploring Anki data without risk of accidental changes
+
+```bash
+# HTTP mode with read-only
+ankimcp --read-only
+
+# STDIO mode with read-only
+ankimcp --stdio --read-only
+
+# Can combine with other flags
+ankimcp --ngrok --read-only
+```
+
+You can also enable read-only mode via environment variable:
+```bash
+READ_ONLY=true ankimcp
+```
+
+Or in MCP client configuration:
+```json
+{
+  "mcpServers": {
+    "anki-mcp": {
+      "command": "npx",
+      "args": ["-y", "@ankimcp/anki-mcp-server", "--stdio", "--read-only"],
+      "env": {
+        "ANKI_CONNECT_URL": "http://localhost:8765"
+      }
+    }
+  }
+}
 ```
 
 ## Connect to Claude Desktop (Local Mode)
@@ -793,10 +786,10 @@ After saving the config, restart Claude Desktop. The MCP server will now run wit
 1. Go to **Run → Edit Configurations**
 2. Click the **+** button and select **Attach to Node.js/Chrome**
 3. Configure:
-   - **Name**: `Attach to Anki MCP (Claude Desktop)`
-   - **Host**: `localhost`
-   - **Port**: `9229`
-   - **Attach to**: `Node.js < 8` or `Chrome or Node.js > 6.3` (depending on WebStorm version)
+    - **Name**: `Attach to Anki MCP (Claude Desktop)`
+    - **Host**: `localhost`
+    - **Port**: `9229`
+    - **Attach to**: `Node.js < 8` or `Chrome or Node.js > 6.3` (depending on WebStorm version)
 4. Click **OK**
 5. Click **Debug** (Shift+F9) to attach
 
@@ -901,13 +894,13 @@ Coverage reports are generated in the `coverage/` directory.
 This project follows [Semantic Versioning](https://semver.org/) with a pre-1.0 development approach:
 
 - **0.x.x** - Beta/Development versions (current phase)
-  - **0.1.x** - Bug fixes and patches
-  - **0.2.0+** - New features or minor improvements
-  - **Breaking changes** are acceptable in 0.x versions
+    - **0.1.x** - Bug fixes and patches
+    - **0.2.0+** - New features or minor improvements
+    - **Breaking changes** are acceptable in 0.x versions
 
 - **1.0.0** - First stable release
-  - Will be released when the API is stable and tested
-  - Breaking changes will require major version bumps (2.0.0, etc.)
+    - Will be released when the API is stable and tested
+    - Breaking changes will require major version bumps (2.0.0, etc.)
 
 **Current Status**: `0.15.1` - Active beta development. Recent features include batch note creation (`addNotes`), integrated ngrok tunneling (`--ngrok` flag), media file management, model/template management, and comprehensive deck statistics. APIs may change based on feedback and testing.
 
