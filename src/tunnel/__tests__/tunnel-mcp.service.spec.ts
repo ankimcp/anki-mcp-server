@@ -428,7 +428,9 @@ describe("TunnelMcpService", () => {
       await service.onApplicationBootstrap();
     });
 
-    it("should handle batch request with multiple requests", async () => {
+    it("rejects array (batch) bodies with a -32600 error", async () => {
+      // JSON-RPC batching was removed from the MCP spec (2025-06-18) and the
+      // Anki addon endpoint accepts single objects only — arrays are rejected.
       const batchRequest: JSONRPCMessage[] = [
         {
           jsonrpc: "2.0",
@@ -442,217 +444,19 @@ describe("TunnelMcpService", () => {
           method: "resources/list",
           params: {},
         },
-        {
-          jsonrpc: "2.0",
-          id: 3,
-          method: "prompts/list",
-          params: {},
-        },
       ];
-
-      const responses: JSONRPCMessage[] = [
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          result: { tools: [] },
-        },
-        {
-          jsonrpc: "2.0",
-          id: 2,
-          result: { resources: [] },
-        },
-        {
-          jsonrpc: "2.0",
-          id: 3,
-          result: { prompts: [] },
-        },
-      ];
-
-      mockTransport.handleRequest
-        .mockResolvedValueOnce(responses[0])
-        .mockResolvedValueOnce(responses[1])
-        .mockResolvedValueOnce(responses[2]);
-
-      const result = await service.handleRequest(JSON.stringify(batchRequest));
-
-      expect(mockTransport.handleRequest).toHaveBeenCalledTimes(3);
-      expect(mockTransport.handleRequest).toHaveBeenNthCalledWith(
-        1,
-        batchRequest[0],
-      );
-      expect(mockTransport.handleRequest).toHaveBeenNthCalledWith(
-        2,
-        batchRequest[1],
-      );
-      expect(mockTransport.handleRequest).toHaveBeenNthCalledWith(
-        3,
-        batchRequest[2],
-      );
-
-      expect(JSON.parse(result)).toEqual(responses);
-    });
-
-    it("should filter out null responses from notifications in batch", async () => {
-      const batchRequest: JSONRPCMessage[] = [
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          method: "tools/list",
-          params: {},
-        },
-        {
-          jsonrpc: "2.0",
-          method: "notifications/test", // notification (no id)
-          params: {},
-        },
-        {
-          jsonrpc: "2.0",
-          id: 2,
-          method: "resources/list",
-          params: {},
-        },
-      ];
-
-      const responses: (JSONRPCMessage | null)[] = [
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          result: { tools: [] },
-        },
-        null, // notification response
-        {
-          jsonrpc: "2.0",
-          id: 2,
-          result: { resources: [] },
-        },
-      ];
-
-      mockTransport.handleRequest
-        .mockResolvedValueOnce(responses[0])
-        .mockResolvedValueOnce(responses[1])
-        .mockResolvedValueOnce(responses[2]);
-
-      const result = await service.handleRequest(JSON.stringify(batchRequest));
-
-      const parsedResult = JSON.parse(result);
-      expect(parsedResult).toHaveLength(2);
-      expect(parsedResult[0].id).toBe(1);
-      expect(parsedResult[1].id).toBe(2);
-    });
-
-    it("should handle empty batch request", async () => {
-      const batchRequest: JSONRPCMessage[] = [];
 
       const result = await service.handleRequest(JSON.stringify(batchRequest));
 
       expect(mockTransport.handleRequest).not.toHaveBeenCalled();
-      expect(JSON.parse(result)).toEqual([]);
-    });
-
-    it("should handle batch with only notifications", async () => {
-      const batchRequest: JSONRPCMessage[] = [
-        {
-          jsonrpc: "2.0",
-          method: "notifications/test1",
-          params: {},
+      expect(JSON.parse(result)).toEqual({
+        jsonrpc: "2.0",
+        id: null,
+        error: {
+          code: -32600,
+          message: "Invalid Request: JSON-RPC batching is not supported",
         },
-        {
-          jsonrpc: "2.0",
-          method: "notifications/test2",
-          params: {},
-        },
-      ];
-
-      mockTransport.handleRequest
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(null);
-
-      const result = await service.handleRequest(JSON.stringify(batchRequest));
-
-      expect(mockTransport.handleRequest).toHaveBeenCalledTimes(2);
-      expect(JSON.parse(result)).toEqual([]);
-    });
-
-    it("should handle batch with mixed success and error responses", async () => {
-      const batchRequest: JSONRPCMessage[] = [
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          method: "tools/list",
-          params: {},
-        },
-        {
-          jsonrpc: "2.0",
-          id: 2,
-          method: "invalid/method",
-          params: {},
-        },
-      ];
-
-      const responses: JSONRPCMessage[] = [
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          result: { tools: [] },
-        },
-        {
-          jsonrpc: "2.0",
-          id: 2,
-          error: {
-            code: -32601,
-            message: "Method not found",
-          },
-        },
-      ];
-
-      mockTransport.handleRequest
-        .mockResolvedValueOnce(responses[0])
-        .mockResolvedValueOnce(responses[1]);
-
-      const result = await service.handleRequest(JSON.stringify(batchRequest));
-
-      const parsedResult = JSON.parse(result);
-      expect(parsedResult).toHaveLength(2);
-      expect(parsedResult[0]).toEqual(responses[0]);
-      expect(parsedResult[1]).toEqual(responses[1]);
-    });
-
-    it("should process batch requests in parallel", async () => {
-      const batchRequest: JSONRPCMessage[] = [
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          method: "tools/list",
-          params: {},
-        },
-        {
-          jsonrpc: "2.0",
-          id: 2,
-          method: "resources/list",
-          params: {},
-        },
-      ];
-
-      // Track call order
-      const callOrder: number[] = [];
-
-      mockTransport.handleRequest.mockImplementation(
-        async (msg: JSONRPCMessage) => {
-          const id = "id" in msg ? (msg.id as number) : 0;
-          callOrder.push(id);
-          return {
-            jsonrpc: "2.0" as const,
-            id,
-            result: { success: true },
-          };
-        },
-      );
-
-      await service.handleRequest(JSON.stringify(batchRequest));
-
-      // Both should be called (order doesn't matter for parallel execution)
-      expect(callOrder).toEqual([1, 2]);
-      expect(mockTransport.handleRequest).toHaveBeenCalledTimes(2);
+      });
     });
   });
 
@@ -738,35 +542,6 @@ describe("TunnelMcpService", () => {
       await expect(
         service.handleRequest(JSON.stringify(request)),
       ).rejects.toThrow("MCP request timeout");
-    });
-
-    it("should handle partial batch failure", async () => {
-      const batchRequest: JSONRPCMessage[] = [
-        {
-          jsonrpc: "2.0",
-          id: 1,
-          method: "tools/list",
-          params: {},
-        },
-        {
-          jsonrpc: "2.0",
-          id: 2,
-          method: "resources/list",
-          params: {},
-        },
-      ];
-
-      mockTransport.handleRequest
-        .mockResolvedValueOnce({
-          jsonrpc: "2.0",
-          id: 1,
-          result: { tools: [] },
-        })
-        .mockRejectedValueOnce(new Error("Failed to list resources"));
-
-      await expect(
-        service.handleRequest(JSON.stringify(batchRequest)),
-      ).rejects.toThrow("Failed to list resources");
     });
   });
 

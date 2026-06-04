@@ -72,10 +72,12 @@ export class TunnelMcpService implements OnApplicationBootstrap {
 
   /**
    * Handle MCP request body (JSON string).
-   * Supports both single requests and batch (array) requests.
+   * Handles a single JSON-RPC request. Array (batch) bodies are rejected with a
+   * JSON-RPC -32600 error — batching was removed from the MCP spec in revision
+   * 2025-06-18 and the Anki addon endpoint accepts single objects only.
    *
-   * @param body - JSON string containing MCP request(s)
-   * @returns JSON string containing MCP response(s), or empty string for notifications
+   * @param body - JSON string containing a single MCP request
+   * @returns JSON string containing the MCP response, or empty string for notifications
    */
   async handleRequest(body: string): Promise<string> {
     let rawMessage: JSONRPCMessage | JSONRPCMessage[];
@@ -94,13 +96,16 @@ export class TunnelMcpService implements OnApplicationBootstrap {
     }
 
     if (Array.isArray(rawMessage)) {
-      // Batch request - process each message
-      const responses = await Promise.all(
-        rawMessage.map((msg) => this.transport.handleRequest(msg)),
-      );
-      // Filter out null responses (notifications don't return responses)
-      const nonNullResponses = responses.filter((r) => r !== null);
-      return JSON.stringify(nonNullResponses);
+      // JSON-RPC batching was removed from the MCP spec (revision 2025-06-18)
+      // and the Anki addon endpoint accepts single objects only. Reject arrays.
+      return JSON.stringify({
+        jsonrpc: "2.0",
+        id: null,
+        error: {
+          code: -32600,
+          message: "Invalid Request: JSON-RPC batching is not supported",
+        },
+      });
     }
 
     // Single request
