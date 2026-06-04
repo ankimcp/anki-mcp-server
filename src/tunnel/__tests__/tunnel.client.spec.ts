@@ -120,7 +120,6 @@ describe("TunnelClient", () => {
         JSON.stringify({
           type: "tunnel_established",
           url: tunnelUrl,
-          expiresAt: null,
         }),
       );
 
@@ -166,7 +165,6 @@ describe("TunnelClient", () => {
         JSON.stringify({
           type: "tunnel_established",
           url: "https://abc123.tunnel.ankimcp.ai",
-          expiresAt: null,
         }),
       );
 
@@ -196,7 +194,6 @@ describe("TunnelClient", () => {
         JSON.stringify({
           type: "tunnel_established",
           url: tunnelUrl,
-          expiresAt: null,
         }),
       );
 
@@ -242,7 +239,6 @@ describe("TunnelClient", () => {
         JSON.stringify({
           type: "tunnel_established",
           url: "https://abc123.tunnel.ankimcp.ai",
-          expiresAt: null,
         }),
       );
       await connectPromise;
@@ -276,7 +272,6 @@ describe("TunnelClient", () => {
         JSON.stringify({
           type: "tunnel_established",
           url: "https://abc123.tunnel.ankimcp.ai",
-          expiresAt: null,
         }),
       );
       await connectPromise;
@@ -300,7 +295,6 @@ describe("TunnelClient", () => {
         JSON.stringify({
           type: "tunnel_established",
           url: "https://test.tunnel.ankimcp.ai",
-          expiresAt: null,
         }),
       );
       await connectPromise;
@@ -333,7 +327,6 @@ describe("TunnelClient", () => {
         JSON.stringify({
           type: "tunnel_established",
           url: "https://test.tunnel.ankimcp.ai",
-          expiresAt: null,
         }),
       );
       await connectPromise;
@@ -498,25 +491,6 @@ describe("TunnelClient", () => {
         }),
       );
     });
-
-    it("should emit url_changed event on url_changed message", () => {
-      const urlChangedSpy = jest.fn();
-      client.on("url_changed", urlChangedSpy);
-
-      mockWs.emit(
-        "message",
-        JSON.stringify({
-          type: "url_changed",
-          oldUrl: "https://old.tunnel.ankimcp.ai",
-          newUrl: "https://new.tunnel.ankimcp.ai",
-        }),
-      );
-
-      expect(urlChangedSpy).toHaveBeenCalledWith(
-        "https://old.tunnel.ankimcp.ai",
-        "https://new.tunnel.ankimcp.ai",
-      );
-    });
   });
 
   describe("utility methods", () => {
@@ -532,7 +506,6 @@ describe("TunnelClient", () => {
         JSON.stringify({
           type: "tunnel_established",
           url: "https://test.tunnel.ankimcp.ai",
-          expiresAt: null,
         }),
       );
       await connectPromise;
@@ -554,7 +527,6 @@ describe("TunnelClient", () => {
         JSON.stringify({
           type: "tunnel_established",
           url: tunnelUrl,
-          expiresAt: null,
         }),
       );
       await connectPromise;
@@ -574,7 +546,6 @@ describe("TunnelClient", () => {
         JSON.stringify({
           type: "tunnel_established",
           url: "https://test.tunnel.ankimcp.ai",
-          expiresAt: null,
         }),
       );
       await connectPromise;

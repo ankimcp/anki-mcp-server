@@ -8,7 +8,6 @@ import {
   TunnelRequestMessage,
   TunnelPingMessage,
   TunnelErrorMessage,
-  TunnelUrlChangedMessage,
   TunnelResponseMessage,
   TunnelPongMessage,
   TunnelCloseCodes,
@@ -56,7 +55,6 @@ export class TunnelClientError extends Error {
  * - 'tunnel_url': (url: string) => void - Public tunnel URL received
  * - 'request': (requestId: string, request: TunnelRequestMessage) => void - MCP request received
  * - 'error': (error: Error) => void - Non-fatal error occurred
- * - 'expiring': (expiresAt: string, minutesRemaining: number) => void - Tunnel expiring soon
  *
  * URL resolution: the constructor takes a required `tunnelUrl` argument which
  * is the single source of truth for this instance. The caller owns URL
@@ -323,10 +321,6 @@ export class TunnelClient extends EventEmitter {
         this.handleError(message as TunnelErrorMessage);
         break;
 
-      case "url_changed":
-        this.handleUrlChanged(message as TunnelUrlChangedMessage);
-        break;
-
       default:
         this.logger.warn(`Unknown message type: ${message.type}`);
     }
@@ -433,17 +427,6 @@ export class TunnelClient extends EventEmitter {
   private handleError(message: TunnelErrorMessage): void {
     this.logger.warn(`Server error: ${message.code} - ${message.message}`);
     this.emit("error", new TunnelClientError(message.message, message.code));
-  }
-
-  /**
-   * Handle URL changed notification (slug update)
-   */
-  private handleUrlChanged(message: TunnelUrlChangedMessage): void {
-    this.logger.log(
-      `Tunnel URL changed: ${message.oldUrl} → ${message.newUrl}`,
-    );
-    this.currentTunnelUrl = message.newUrl;
-    this.emit("url_changed", message.oldUrl, message.newUrl);
   }
 
   /**

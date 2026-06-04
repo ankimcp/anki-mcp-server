@@ -17,7 +17,6 @@ export interface TunnelMessage {
 export interface TunnelEstablishedMessage extends TunnelMessage {
   type: "tunnel_established";
   url: string;
-  expiresAt: string | null; // ISO datetime string, null for paid tier
 }
 
 /** Forwarded MCP request from LLM client */
@@ -44,20 +43,12 @@ export interface TunnelErrorMessage extends TunnelMessage {
   details?: unknown;
 }
 
-/** URL changed notification (slug update) */
-export interface TunnelUrlChangedMessage extends TunnelMessage {
-  type: "url_changed";
-  oldUrl: string;
-  newUrl: string;
-}
-
 /** Union type for all server messages */
 export type ServerMessage =
   | TunnelEstablishedMessage
   | TunnelRequestMessage
   | TunnelPingMessage
-  | TunnelErrorMessage
-  | TunnelUrlChangedMessage;
+  | TunnelErrorMessage;
 
 // ============================================================================
 // Client → Server Messages

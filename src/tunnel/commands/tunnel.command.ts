@@ -179,7 +179,7 @@ async function ensureCredentials(
  *    credentials so it doesn't re-read them from disk, and the fully
  *    resolved URL so the client doesn't re-resolve internally)
  * 5. Display tunnel URL
- * 6. Listen for events (requests, errors, expiring, disconnected)
+ * 6. Listen for events (requests, errors, disconnected)
  * 7. Handle graceful shutdown on SIGINT/SIGTERM via the local `gracefulExit`
  *
  * @param cli - User-facing output surface (constructed at bootstrap; debug flag
@@ -401,14 +401,6 @@ export async function handleTunnel(
     const logger = new Logger("TunnelCommand");
     tunnelClient.on("request", (requestId: string, request) => {
       logger.log(`Request ${requestId}: ${request.method} ${request.path}`);
-    });
-
-    tunnelClient.on("url_changed", (oldUrl: string, newUrl: string) => {
-      cli.blank();
-      cli.info(`🔄 Tunnel URL changed:`);
-      cli.info(`   Old: ${oldUrl}`);
-      cli.info(`   New: ${newUrl}`);
-      cli.blank();
     });
 
     tunnelClient.on("disconnected", (code: number, reason: string) => {
