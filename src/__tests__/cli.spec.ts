@@ -401,7 +401,7 @@ describe("CLI Module", () => {
       consoleLogSpy.mockRestore();
     });
 
-    it("should include ngrok usage instructions", () => {
+    it("should include remote-access hint (tunnel recommended, ngrok mentioned)", () => {
       const consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
 
       const options: CliOptions = {
@@ -420,13 +420,13 @@ describe("CLI Module", () => {
 
       const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
 
+      expect(output).toContain("ankimcp --tunnel");
       expect(output).toContain("ngrok");
-      expect(output).toContain("ankimcp --ngrok");
 
       consoleLogSpy.mockRestore();
     });
 
-    it("should show correct ngrok port in instructions", () => {
+    it("should not show verbose ngrok setup steps", () => {
       const consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
 
       const options: CliOptions = {
@@ -445,7 +445,8 @@ describe("CLI Module", () => {
 
       const output = consoleLogSpy.mock.calls.map((call) => call[0]).join("\n");
 
-      expect(output).toContain("ankimcp --ngrok");
+      expect(output).not.toContain("npm install -g ngrok");
+      expect(output).not.toContain("config add-authtoken");
 
       consoleLogSpy.mockRestore();
     });

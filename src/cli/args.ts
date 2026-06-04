@@ -208,10 +208,9 @@ Configuration:
 ${
   !ngrokUrl
     ? `
-Usage with ngrok:
-  1. Install: npm install -g ngrok
-  2. Setup: ngrok config add-authtoken <your-token>
-  3. Run: ankimcp --ngrok
+Want remote access?
+  • Tunnel (recommended): ankimcp --tunnel
+  • ngrok also supported — run 'ankimcp --help' or see the docs
 `
     : `
 Share this URL with your AI assistant:

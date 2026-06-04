@@ -12,7 +12,7 @@ import {
   displayStartupBanner,
   checkForUpdates,
 } from "./cli";
-import { createCli } from "./cli/cli-output";
+import { createCli } from "@/cli";
 import { NgrokService } from "./services/ngrok.service";
 import { buildConfigInput } from "./config";
 

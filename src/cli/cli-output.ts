@@ -11,7 +11,7 @@
  * leakage across tests in the same Jest worker.
  */
 
-import { getVersion } from "../version";
+import { getVersion } from "@/version";
 
 // ANSI color codes
 const colors = {
