@@ -11,6 +11,8 @@
  * leakage across tests in the same Jest worker.
  */
 
+import { getVersion } from "../version";
+
 // ANSI color codes
 const colors = {
   reset: "\x1b[0m",
@@ -61,6 +63,41 @@ export function box(title: string, content: string): void {
   console.log(`├${border}┤`);
   console.log(`│ ${content.padEnd(width - 2)} │`);
   console.log(`└${border}┘`);
+}
+
+/**
+ * Format the fixed-width startup banner box for a given mode label.
+ *
+ * Produces the three box-drawing lines used by every entry point's startup
+ * banner, e.g. `formatBanner("HTTP")` →
+ *
+ * ```
+ * ╔════════════════════════════════════════════════════════════════╗
+ * ║                  AnkiMCP HTTP Server v0.19.0                   ║
+ * ╚════════════════════════════════════════════════════════════════╝
+ * ```
+ *
+ * Returns the string (rather than printing) so callers can embed it inside a
+ * larger template literal — this keeps HTTP mode's combined banner+config
+ * output a single `cli.info` call, and lets tunnel mode print the box on its
+ * own. The version is read once via {@link getVersion}.
+ *
+ * @param label - Mode label inserted between "AnkiMCP" and "Server"
+ *   (e.g. `HTTP`, `STDIO`, `Tunnel`).
+ */
+export function formatBanner(label: string): string {
+  const version = getVersion();
+  const title = `AnkiMCP ${label} Server v${version}`;
+  const innerWidth = 64;
+  const padding = Math.floor((innerWidth - title.length) / 2);
+  const paddedTitle =
+    " ".repeat(padding) +
+    title +
+    " ".repeat(innerWidth - padding - title.length);
+
+  return `╔════════════════════════════════════════════════════════════════╗
+║${paddedTitle}║
+╚════════════════════════════════════════════════════════════════╝`;
 }
 
 /**

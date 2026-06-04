@@ -13,7 +13,7 @@ import {
 import { TunnelMcpService } from "@/tunnel/tunnel-mcp.service";
 import { AppConfigService } from "@/app-config.service";
 import { loadValidatedConfig } from "@/config";
-import type { Cli } from "@/cli/cli-output";
+import { formatBanner, type Cli } from "@/cli/cli-output";
 import { startSpinner } from "@/cli/spinner";
 import {
   createPinoLogger,
@@ -254,6 +254,7 @@ export async function handleTunnel(
     process.exit(code);
   };
 
+  cli.info(formatBanner("Tunnel"));
   cli.blank();
 
   try {

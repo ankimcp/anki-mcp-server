@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { readFileSync } from "fs";
 import { join } from "path";
 import updateNotifier from "update-notifier";
-import type { Cli } from "./cli-output";
+import { formatBanner, type Cli } from "./cli-output";
 import { getVersion } from "../version";
 
 export interface CliOptions {
@@ -190,20 +190,12 @@ export function displayStartupBanner(
   options: CliOptions,
   ngrokUrl?: string,
 ): void {
-  const version = getVersion();
-  const title = `AnkiMCP HTTP Server v${version}`;
-  const padding = Math.floor((64 - title.length) / 2);
-  const paddedTitle =
-    " ".repeat(padding) + title + " ".repeat(64 - padding - title.length);
-
   const readOnlyWarning = options.readOnly
     ? "\n\n** READ-ONLY MODE ENABLED **\nContent modifications (addNote, deleteNotes, createDeck, etc.) are blocked.\nReview operations (sync, answerCards, suspend) remain available."
     : "";
 
   cli.info(`
-╔════════════════════════════════════════════════════════════════╗
-║${paddedTitle}║
-╚════════════════════════════════════════════════════════════════╝${readOnlyWarning}
+${formatBanner("HTTP")}${readOnlyWarning}
 
 🚀 Server running on: http://${options.host}:${options.port}
 🔌 AnkiConnect URL:   ${options.ankiConnect}${ngrokUrl ? `\n🌐 Ngrok tunnel:      ${ngrokUrl}` : ""}${options.readOnly ? "\n🔒 Mode:              Read-only" : ""}
