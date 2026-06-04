@@ -53,6 +53,18 @@ export function deriveDashboardUrl(tunnelUrl: string): string {
 }
 
 /**
+ * Print the tunnel URL and its derived dashboard URL in their boxes. Shared by
+ * the initial connect display and the post-reconnect reprint so the two stay
+ * identical.
+ */
+function printTunnelBoxes(cli: Cli, tunnelUrl: string): void {
+  displayBox(cli, "🚇 Tunnel URL", tunnelUrl);
+  cli.blank();
+  displayBox(cli, "🌐 Dashboard", deriveDashboardUrl(tunnelUrl));
+  cli.blank();
+}
+
+/**
  * Format connection errors with user-friendly messages.
  *
  * The `tunnelUrl` argument is the resolved URL the caller is actually using
@@ -390,10 +402,7 @@ export async function handleTunnel(
     // Step 5: Display tunnel URL and the web dashboard URL in nice boxes.
     // The dashboard URL is derived from the live tunnel URL by swapping the
     // host (`tunnel.` → `web.`) so it stays consistent with self-hosted servers.
-    displayBox(cli, "🚇 Tunnel URL", publicUrl);
-    cli.blank();
-    displayBox(cli, "🌐 Dashboard", deriveDashboardUrl(publicUrl));
-    cli.blank();
+    printTunnelBoxes(cli, publicUrl);
     cli.info("Tunnel is active. Press Ctrl+C to disconnect.");
     cli.blank();
 
@@ -403,10 +412,38 @@ export async function handleTunnel(
       logger.log(`Request ${requestId}: ${request.method} ${request.path}`);
     });
 
-    tunnelClient.on("disconnected", (code: number, reason: string) => {
+    tunnelClient.on(
+      "disconnected",
+      (code: number, reason: string, willReconnect: boolean) => {
+        cli.blank();
+        if (willReconnect) {
+          // Recoverable close (URL rotation, transient drop, auth retry) — the
+          // client auto-reconnects, so don't alarm the user with a red error.
+          cli.warn(
+            `Tunnel disconnected (code ${code}): ${reason}. Reconnecting…`,
+          );
+        } else {
+          cli.error(`Tunnel disconnected (code ${code}): ${reason}`);
+        }
+        cli.blank();
+      },
+    );
+
+    // Reprint the URL boxes if the tunnel URL changes after a reconnect
+    // (server-initiated rotation, e.g. close code 4006). The client re-emits
+    // 'tunnel_url' on every (re)connect; the initial URL was already printed
+    // above and emitted during connect() before this listener existed, so this
+    // only fires for a genuinely new URL — same-URL transient reconnects are
+    // ignored to avoid noise.
+    let activeTunnelUrl = publicUrl;
+    tunnelClient.on("tunnel_url", (url: string) => {
+      if (url === activeTunnelUrl) {
+        return;
+      }
+      activeTunnelUrl = url;
       cli.blank();
-      cli.error(`Tunnel disconnected (code ${code}): ${reason}`);
-      cli.blank();
+      cli.info("Tunnel URL changed after reconnect:");
+      printTunnelBoxes(cli, url);
     });
 
     // Step 7: Handle graceful shutdown.

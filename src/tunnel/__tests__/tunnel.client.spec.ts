@@ -721,7 +721,7 @@ describe("TunnelClient", () => {
       }
     });
 
-    it("should emit disconnected event on close", () => {
+    it("should emit disconnected with willReconnect=false on a permanent close", () => {
       const disconnectedSpy = jest.fn();
       client.on("disconnected", disconnectedSpy);
 
@@ -730,6 +730,20 @@ describe("TunnelClient", () => {
       expect(disconnectedSpy).toHaveBeenCalledWith(
         TunnelCloseCodes.NORMAL,
         "Test close",
+        false,
+      );
+    });
+
+    it("should emit disconnected with willReconnect=true on a recoverable close", () => {
+      const disconnectedSpy = jest.fn();
+      client.on("disconnected", disconnectedSpy);
+
+      emitClose(TunnelCloseCodes.URL_REGENERATED, "URL regenerated");
+
+      expect(disconnectedSpy).toHaveBeenCalledWith(
+        TunnelCloseCodes.URL_REGENERATED,
+        "URL regenerated",
+        true,
       );
     });
 

@@ -51,7 +51,7 @@ export class TunnelClientError extends Error {
  *
  * Events:
  * - 'connected': () => void - Tunnel established successfully
- * - 'disconnected': (code: number, reason: string) => void - WebSocket closed
+ * - 'disconnected': (code: number, reason: string, willReconnect: boolean) => void - WebSocket closed (willReconnect: client will auto-reconnect)
  * - 'tunnel_url': (url: string) => void - Public tunnel URL received
  * - 'request': (requestId: string, request: TunnelRequestMessage) => void - MCP request received
  * - 'error': (error: Error) => void - Non-fatal error occurred
@@ -274,7 +274,15 @@ export class TunnelClient extends EventEmitter {
         this.logger.log(`WebSocket closed: ${code} - ${reasonStr}`);
 
         this.currentTunnelUrl = null;
-        this.emit("disconnected", code, reasonStr);
+
+        // Tell listeners whether this disconnect is recoverable so the CLI can
+        // style it as a warning vs a terminal error. Mirrors the bail-out
+        // conditions in handleReconnection().
+        const willReconnect =
+          !this.isManualDisconnect &&
+          !this.isPermanentCloseCode(code) &&
+          this.reconnectAttempts < TUNNEL_DEFAULTS.RECONNECT_MAX_ATTEMPTS;
+        this.emit("disconnected", code, reasonStr, willReconnect);
 
         // Handle reconnection based on close code
         if (!this.isManualDisconnect) {
@@ -452,39 +460,54 @@ export class TunnelClient extends EventEmitter {
   }
 
   /**
+   * Close codes after which the client will NOT auto-reconnect: a normal/manual
+   * close, a deleted account, a replaced session, or a revoked token. Single
+   * source of truth for the no-reconnect decision — both handleReconnection()
+   * and the 'disconnected' event's willReconnect flag derive from it.
+   */
+  private isPermanentCloseCode(code: number): boolean {
+    return (
+      code === TunnelCloseCodes.NORMAL ||
+      code === TunnelCloseCodes.ACCOUNT_DELETED ||
+      code === TunnelCloseCodes.SESSION_REPLACED ||
+      code === TunnelCloseCodes.TOKEN_REVOKED
+    );
+  }
+
+  /**
    * Handle reconnection logic based on close code
    * Implements exponential backoff with token refresh for auth errors
    */
   private handleReconnection(closeCode: number): void {
     this.clearReconnectTimer();
 
-    // Permanent close codes — do not reconnect
-    if (closeCode === TunnelCloseCodes.NORMAL) {
-      this.logger.log("Normal closure, not reconnecting");
-      return;
-    }
-
-    if (closeCode === TunnelCloseCodes.ACCOUNT_DELETED) {
-      this.logger.warn("Account deleted, not reconnecting");
-      return;
-    }
-
-    if (closeCode === TunnelCloseCodes.SESSION_REPLACED) {
-      this.logger.warn(
-        "Disconnected: another device connected. Run `ankimcp --tunnel` to reconnect.",
-      );
-      return;
-    }
-
-    // Token revoked — user deliberately revoked, require re-login
-    if (closeCode === TunnelCloseCodes.TOKEN_REVOKED) {
-      this.emit(
-        "error",
-        new TunnelClientError(
-          "Token was revoked. Please run `ankimcp --login` to re-authenticate.",
-          "session_expired",
-        ),
-      );
+    // Permanent close codes — do not reconnect. isPermanentCloseCode() is the
+    // single source of truth for this decision (it also drives the
+    // 'disconnected' event's willReconnect flag); the per-code messaging lives
+    // in the switch below.
+    if (this.isPermanentCloseCode(closeCode)) {
+      switch (closeCode) {
+        case TunnelCloseCodes.ACCOUNT_DELETED:
+          this.logger.warn("Account deleted, not reconnecting");
+          break;
+        case TunnelCloseCodes.SESSION_REPLACED:
+          this.logger.warn(
+            "Disconnected: another device connected. Run `ankimcp --tunnel` to reconnect.",
+          );
+          break;
+        case TunnelCloseCodes.TOKEN_REVOKED:
+          // User deliberately revoked — require re-login.
+          this.emit(
+            "error",
+            new TunnelClientError(
+              "Token was revoked. Please run `ankimcp --login` to re-authenticate.",
+              "session_expired",
+            ),
+          );
+          break;
+        default: // NORMAL
+          this.logger.log("Normal closure, not reconnecting");
+      }
       return;
     }
 
