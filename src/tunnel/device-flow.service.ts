@@ -210,7 +210,10 @@ export class DeviceFlowService {
         // Handle expected polling errors. In ky v2 the response body is
         // pre-parsed onto `error.data`; if it isn't a recognizable OAuth
         // error payload we fall through to generic HTTP error handling.
-        if (error instanceof HTTPError && isDeviceFlowErrorResponse(error.data)) {
+        if (
+          error instanceof HTTPError &&
+          isDeviceFlowErrorResponse(error.data)
+        ) {
           const errorResponse = error.data;
 
           switch (errorResponse.error) {
