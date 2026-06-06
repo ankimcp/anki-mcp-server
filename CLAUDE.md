@@ -9,6 +9,7 @@ MCP server enabling AI assistants to interact with Anki via AnkiConnect. Built w
 - **Package**: `@ankimcp/anki-mcp-server` (npm)
 - **License**: MIT
 - **Status**: Beta (0.x.x) - breaking changes allowed
+- **User-facing docs**: `README.md` covers installation, client setup (Claude Desktop/MCPB, HTTP, tunnel), and the full tool catalog — consult it for anything user-facing rather than reconstructing it here.
 
 ## Quick Reference
 
@@ -120,6 +121,7 @@ These are upstream behaviors that shape tool design — surface them in tool des
 ### Build & Tooling Notes
 
 - **NestJS CLI** builds the project (`nest build`). Asset copying is configured in `nest-cli.json` — all `**/*.md` files in `src/` are copied to `dist/`. This matters for prompt templates that reference markdown files.
+- **`prebuild` hook** runs `scripts/generate-icon.mjs` before every `npm run build` (via npm's `pre*` lifecycle) — that's why an icon-generation step fires on build. It's expected, not a stray command.
 - **ESLint flat config** (`eslint.config.mjs`) — not legacy `.eslintrc`. Uses `typescript-eslint` + Prettier integration.
 - **TypeScript**: `strict: true`, target ES2023, `nodenext` module resolution. Path aliases are resolved by both `tsconfig.json` and Jest's `moduleNameMapper`.
 - **Zod 4** (`^4.3.6`) — not Zod 3. Some patterns like `z.preprocess` in `config.schema.ts` are Zod 3 holdovers that still work but may need migration.
