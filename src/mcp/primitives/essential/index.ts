@@ -26,6 +26,10 @@ export { ModelFieldNamesTool } from "./tools/model-field-names.tool";
 export { ModelStylingTool } from "./tools/model-styling.tool";
 export { CreateModelTool } from "./tools/create-model.tool";
 export { UpdateModelStylingTool } from "./tools/update-model-styling.tool";
+export { AddModelFieldTool } from "./tools/add-model-field.tool";
+export { RemoveModelFieldTool } from "./tools/remove-model-field.tool";
+export { RenameModelFieldTool } from "./tools/rename-model-field.tool";
+export { RepositionModelFieldTool } from "./tools/reposition-model-field.tool";
 export { AddNoteTool } from "./tools/add-note.tool";
 export { AddNotesTool } from "./tools/add-notes.tool";
 export { FindNotesTool } from "./tools/find-notes.tool";
@@ -71,6 +75,10 @@ import { ModelFieldNamesTool } from "./tools/model-field-names.tool";
 import { ModelStylingTool } from "./tools/model-styling.tool";
 import { CreateModelTool } from "./tools/create-model.tool";
 import { UpdateModelStylingTool } from "./tools/update-model-styling.tool";
+import { AddModelFieldTool } from "./tools/add-model-field.tool";
+import { RemoveModelFieldTool } from "./tools/remove-model-field.tool";
+import { RenameModelFieldTool } from "./tools/rename-model-field.tool";
+import { RepositionModelFieldTool } from "./tools/reposition-model-field.tool";
 import { AddNoteTool } from "./tools/add-note.tool";
 import { AddNotesTool } from "./tools/add-notes.tool";
 import { FindNotesTool } from "./tools/find-notes.tool";
@@ -109,6 +117,10 @@ export const ESSENTIAL_MCP_TOOLS = [
   ModelStylingTool,
   CreateModelTool,
   UpdateModelStylingTool,
+  AddModelFieldTool,
+  RemoveModelFieldTool,
+  RenameModelFieldTool,
+  RepositionModelFieldTool,
   AddNoteTool,
   AddNotesTool,
   FindNotesTool,

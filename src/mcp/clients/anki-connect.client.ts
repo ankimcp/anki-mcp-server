@@ -30,6 +30,10 @@ const WRITE_ACTIONS = new Set([
   // Model operations
   "createModel",
   "updateModelStyling",
+  "modelFieldAdd",
+  "modelFieldRemove",
+  "modelFieldRename",
+  "modelFieldReposition",
 ]);
 
 /**
