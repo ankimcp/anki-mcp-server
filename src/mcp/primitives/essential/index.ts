@@ -26,6 +26,8 @@ export { ModelFieldNamesTool } from "./tools/model-field-names.tool";
 export { ModelStylingTool } from "./tools/model-styling.tool";
 export { CreateModelTool } from "./tools/create-model.tool";
 export { UpdateModelStylingTool } from "./tools/update-model-styling.tool";
+export { ModelTemplatesTool } from "./tools/model-templates.tool";
+export { UpdateModelTemplatesTool } from "./tools/update-model-templates.tool";
 export { AddNoteTool } from "./tools/add-note.tool";
 export { AddNotesTool } from "./tools/add-notes.tool";
 export { FindNotesTool } from "./tools/find-notes.tool";
@@ -71,6 +73,8 @@ import { ModelFieldNamesTool } from "./tools/model-field-names.tool";
 import { ModelStylingTool } from "./tools/model-styling.tool";
 import { CreateModelTool } from "./tools/create-model.tool";
 import { UpdateModelStylingTool } from "./tools/update-model-styling.tool";
+import { ModelTemplatesTool } from "./tools/model-templates.tool";
+import { UpdateModelTemplatesTool } from "./tools/update-model-templates.tool";
 import { AddNoteTool } from "./tools/add-note.tool";
 import { AddNotesTool } from "./tools/add-notes.tool";
 import { FindNotesTool } from "./tools/find-notes.tool";
@@ -109,6 +113,8 @@ export const ESSENTIAL_MCP_TOOLS = [
   ModelStylingTool,
   CreateModelTool,
   UpdateModelStylingTool,
+  ModelTemplatesTool,
+  UpdateModelTemplatesTool,
   AddNoteTool,
   AddNotesTool,
   FindNotesTool,
