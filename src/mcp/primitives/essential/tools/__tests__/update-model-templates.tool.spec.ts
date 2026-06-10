@@ -38,7 +38,11 @@ describe("UpdateModelTemplatesTool", () => {
         },
       };
 
-      ankiClient.invoke.mockResolvedValueOnce(null);
+      ankiClient.invoke
+        .mockResolvedValueOnce({
+          "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+        }) // modelTemplates pre-read
+        .mockResolvedValueOnce(null); // updateModelTemplates write
 
       const rawResult = await tool.updateModelTemplates({
         modelName,
@@ -46,13 +50,20 @@ describe("UpdateModelTemplatesTool", () => {
       });
       const result = parseToolResult(rawResult);
 
-      expect(ankiClient.invoke).toHaveBeenCalledTimes(1);
-      expect(ankiClient.invoke).toHaveBeenCalledWith("updateModelTemplates", {
-        model: {
-          name: modelName,
-          templates,
-        },
+      expect(ankiClient.invoke).toHaveBeenCalledTimes(2);
+      expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "modelTemplates", {
+        modelName,
       });
+      expect(ankiClient.invoke).toHaveBeenNthCalledWith(
+        2,
+        "updateModelTemplates",
+        {
+          model: {
+            name: modelName,
+            templates,
+          },
+        },
+      );
 
       expect(result.success).toBe(true);
       expect(result.modelName).toBe(modelName);
@@ -75,7 +86,12 @@ describe("UpdateModelTemplatesTool", () => {
         },
       };
 
-      ankiClient.invoke.mockResolvedValueOnce(null);
+      ankiClient.invoke
+        .mockResolvedValueOnce({
+          "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+          "Card 2": { Front: "{{Back}}", Back: "{{Front}}" },
+        })
+        .mockResolvedValueOnce(null);
 
       const rawResult = await tool.updateModelTemplates({
         modelName,
@@ -94,12 +110,15 @@ describe("UpdateModelTemplatesTool", () => {
         "Card 1": {
           Front:
             '<div style="font-family: Arial; font-size: 20px;">{{Front}}</div>',
-          Back:
-            '<div class="card">{{FrontSide}}<hr id="answer"><div class="back">{{Back}}</div></div>',
+          Back: '<div class="card">{{FrontSide}}<hr id="answer"><div class="back">{{Back}}</div></div>',
         },
       };
 
-      ankiClient.invoke.mockResolvedValueOnce(null);
+      ankiClient.invoke
+        .mockResolvedValueOnce({
+          "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+        })
+        .mockResolvedValueOnce(null);
 
       const rawResult = await tool.updateModelTemplates({
         modelName,
@@ -115,12 +134,17 @@ describe("UpdateModelTemplatesTool", () => {
       const modelName = "Conditional";
       const templates = {
         "Card 1": {
-          Front: "{{#Field}}<b>{{Field}}</b>{{/Field}}{{^Field}}<i>empty</i>{{/Field}}",
+          Front:
+            "{{#Field}}<b>{{Field}}</b>{{/Field}}{{^Field}}<i>empty</i>{{/Field}}",
           Back: "{{FrontSide}}<hr>{{Back}}",
         },
       };
 
-      ankiClient.invoke.mockResolvedValueOnce(null);
+      ankiClient.invoke
+        .mockResolvedValueOnce({
+          "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+        })
+        .mockResolvedValueOnce(null);
 
       const rawResult = await tool.updateModelTemplates({
         modelName,
@@ -138,7 +162,11 @@ describe("UpdateModelTemplatesTool", () => {
         "Card 1": { Front: longHtml, Back: "{{FrontSide}}" },
       };
 
-      ankiClient.invoke.mockResolvedValueOnce(null);
+      ankiClient.invoke
+        .mockResolvedValueOnce({
+          "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+        })
+        .mockResolvedValueOnce(null);
 
       const rawResult = await tool.updateModelTemplates({
         modelName,
@@ -158,7 +186,11 @@ describe("UpdateModelTemplatesTool", () => {
         },
       };
 
-      ankiClient.invoke.mockResolvedValueOnce(null);
+      ankiClient.invoke
+        .mockResolvedValueOnce({
+          "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+        })
+        .mockResolvedValueOnce(null);
 
       const rawResult = await tool.updateModelTemplates({
         modelName,
@@ -214,9 +246,7 @@ describe("UpdateModelTemplatesTool", () => {
         "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
       };
 
-      ankiClient.invoke.mockRejectedValueOnce(
-        new Error("Anki is not running"),
-      );
+      ankiClient.invoke.mockRejectedValueOnce(new Error("Anki is not running"));
 
       const rawResult = await tool.updateModelTemplates({
         modelName,
@@ -248,6 +278,131 @@ describe("UpdateModelTemplatesTool", () => {
     });
   });
 
+  describe("Pre-flight Card Name Validation", () => {
+    it("should reject unknown card names and list valid templates without writing", async () => {
+      const modelName = "Basic";
+      const templates = {
+        "Front Card": { Front: "{{Front}}", Back: "{{Back}}" },
+      };
+
+      ankiClient.invoke.mockResolvedValueOnce({
+        "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+      });
+
+      const rawResult = await tool.updateModelTemplates({
+        modelName,
+        templates,
+      });
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain(
+        'Card template(s) not found in model "Basic": "Front Card"',
+      );
+      expect(result.error).toContain('Valid templates: "Card 1"');
+      expect(result.hint).toContain('"Card 1"');
+
+      expect(ankiClient.invoke).toHaveBeenCalledTimes(1);
+      expect(ankiClient.invoke).not.toHaveBeenCalledWith(
+        "updateModelTemplates",
+        expect.anything(),
+      );
+    });
+
+    it("should reject mis-cased card names (case-sensitive matching)", async () => {
+      const modelName = "Basic";
+      const templates = {
+        "card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+      };
+
+      ankiClient.invoke.mockResolvedValueOnce({
+        "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+      });
+
+      const rawResult = await tool.updateModelTemplates({
+        modelName,
+        templates,
+      });
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('"card 1"');
+      expect(result.hint).toContain("case-sensitive");
+      expect(ankiClient.invoke).toHaveBeenCalledTimes(1);
+    });
+
+    it("should return model not found error when pre-read returns null", async () => {
+      const modelName = "Ghost";
+      const templates = {
+        "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+      };
+
+      ankiClient.invoke.mockResolvedValueOnce(null);
+
+      const rawResult = await tool.updateModelTemplates({
+        modelName,
+        templates,
+      });
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(false);
+      expect(result.hint).toContain("Model not found");
+      expect(ankiClient.invoke).toHaveBeenCalledTimes(1);
+    });
+
+    it("should return model not found error when pre-read returns empty object", async () => {
+      const modelName = "Empty";
+      const templates = {
+        "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+      };
+
+      ankiClient.invoke.mockResolvedValueOnce({});
+
+      const rawResult = await tool.updateModelTemplates({
+        modelName,
+        templates,
+      });
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(false);
+      expect(result.hint).toContain("Model not found");
+      expect(ankiClient.invoke).toHaveBeenCalledTimes(1);
+    });
+
+    it("should proceed with the write when all card names are valid", async () => {
+      const modelName = "Basic (and reversed card)";
+      const templates = {
+        "Card 2": { Front: "{{Back}}", Back: "{{Front}}" },
+      };
+
+      ankiClient.invoke
+        .mockResolvedValueOnce({
+          "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+          "Card 2": { Front: "{{Back}}", Back: "{{Front}}" },
+        })
+        .mockResolvedValueOnce(null);
+
+      const rawResult = await tool.updateModelTemplates({
+        modelName,
+        templates,
+      });
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(true);
+      expect(ankiClient.invoke).toHaveBeenCalledTimes(2);
+      expect(ankiClient.invoke).toHaveBeenNthCalledWith(
+        2,
+        "updateModelTemplates",
+        {
+          model: {
+            name: modelName,
+            templates,
+          },
+        },
+      );
+    });
+  });
+
   describe("Response Structure - Success", () => {
     it("should return complete structure on success", async () => {
       const modelName = "Test Model";
@@ -255,7 +410,11 @@ describe("UpdateModelTemplatesTool", () => {
         "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
       };
 
-      ankiClient.invoke.mockResolvedValueOnce(null);
+      ankiClient.invoke
+        .mockResolvedValueOnce({
+          "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+        })
+        .mockResolvedValueOnce(null);
 
       const rawResult = await tool.updateModelTemplates({
         modelName,
@@ -280,7 +439,13 @@ describe("UpdateModelTemplatesTool", () => {
         "Card 3": { Front: "E", Back: "F" },
       };
 
-      ankiClient.invoke.mockResolvedValueOnce(null);
+      ankiClient.invoke
+        .mockResolvedValueOnce({
+          "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+          "Card 2": { Front: "{{Front}}", Back: "{{Back}}" },
+          "Card 3": { Front: "{{Front}}", Back: "{{Back}}" },
+        })
+        .mockResolvedValueOnce(null);
 
       const rawResult = await tool.updateModelTemplates({
         modelName,
@@ -297,7 +462,11 @@ describe("UpdateModelTemplatesTool", () => {
         "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
       };
 
-      ankiClient.invoke.mockResolvedValueOnce(null);
+      ankiClient.invoke
+        .mockResolvedValueOnce({
+          "Card 1": { Front: "{{Front}}", Back: "{{Back}}" },
+        })
+        .mockResolvedValueOnce(null);
 
       const rawResult = await tool.updateModelTemplates({
         modelName,

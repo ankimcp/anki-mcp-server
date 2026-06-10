@@ -21,15 +21,13 @@ export class UpdateModelTemplatesTool {
       "Use modelTemplates first to see current templates, then modify and pass back the templates object. " +
       "Changes apply to all cards using this model. " +
       "WARNING: Invalid HTML or missing required fields may break card rendering. " +
-      "Card template names must exactly match existing ones — unknown or mis-cased names are silently ignored (no error), and only matching templates are updated. " +
+      "Card template names are validated against the model's existing templates (case-sensitive) — unknown or mis-cased names are rejected before any update. " +
       "An empty string cannot be used to blank a side.",
     parameters: z.object({
       modelName: z
         .string()
         .min(1)
-        .describe(
-          'Name of the model to update (e.g., "Basic", "Cloze")',
-        ),
+        .describe('Name of the model to update (e.g., "Basic", "Cloze")'),
       templates: z
         .record(
           z.string(),
@@ -48,7 +46,7 @@ export class UpdateModelTemplatesTool {
           message: "At least one card template is required",
         })
         .describe(
-          "Card templates keyed by card name (e.g., { \"Card 1\": { Front: \"...\", Back: \"...\" } }). " +
+          'Card templates keyed by card name (e.g., { "Card 1": { Front: "...", Back: "..." } }). ' +
             "Use modelTemplates first to get the current structure, then modify the Front/Back HTML as needed.",
         ),
     }),
@@ -75,6 +73,49 @@ export class UpdateModelTemplatesTool {
   }) {
     try {
       this.logger.log(`Updating templates for model: ${modelName}`);
+
+      // Pre-flight: fetch existing templates to validate card names.
+      // AnkiConnect matches templates by name (case-sensitive) and silently
+      // ignores unknown names, so a typo would report success with no write.
+      const existingTemplates = await this.ankiClient.invoke<Record<
+        string,
+        { Front: string; Back: string }
+      > | null>("modelTemplates", {
+        modelName,
+      });
+
+      if (!existingTemplates || Object.keys(existingTemplates).length === 0) {
+        return createErrorResponse(
+          new Error(`Model "${modelName}" has no templates or does not exist`),
+          {
+            modelName,
+            hint: "Model not found. Use modelNames tool to see available models.",
+          },
+        );
+      }
+
+      const existingNames = new Set(Object.keys(existingTemplates));
+      const unknownNames = Object.keys(templates).filter(
+        (name) => !existingNames.has(name),
+      );
+
+      if (unknownNames.length > 0) {
+        const offending = unknownNames.map((name) => `"${name}"`).join(", ");
+        const validNames = Object.keys(existingTemplates)
+          .map((name) => `"${name}"`)
+          .join(", ");
+        return createErrorResponse(
+          new Error(
+            `Card template(s) not found in model "${modelName}": ${offending}. ` +
+              `Valid templates: ${validNames}. ` +
+              "Use modelTemplates to see current names.",
+          ),
+          {
+            modelName,
+            hint: `Card template names are case-sensitive and must match exactly. Valid templates: ${validNames}.`,
+          },
+        );
+      }
 
       const templateCount = Object.keys(templates).length;
 
