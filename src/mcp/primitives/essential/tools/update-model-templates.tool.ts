@@ -20,7 +20,9 @@ export class UpdateModelTemplatesTool {
       "Each card template defines how the card's front and back sides are rendered. " +
       "Use modelTemplates first to see current templates, then modify and pass back the templates object. " +
       "Changes apply to all cards using this model. " +
-      "WARNING: Invalid HTML or missing required fields may break card rendering.",
+      "WARNING: Invalid HTML or missing required fields may break card rendering. " +
+      "Card template names must exactly match existing ones — unknown or mis-cased names are silently ignored (no error), and only matching templates are updated. " +
+      "An empty string cannot be used to blank a side.",
     parameters: z.object({
       modelName: z
         .string()
@@ -32,10 +34,19 @@ export class UpdateModelTemplatesTool {
         .record(
           z.string(),
           z.object({
-            Front: z.string().describe("HTML template for the front/question side"),
-            Back: z.string().describe("HTML template for the back/answer side"),
+            Front: z
+              .string()
+              .min(1)
+              .describe("HTML template for the front/question side"),
+            Back: z
+              .string()
+              .min(1)
+              .describe("HTML template for the back/answer side"),
           }),
         )
+        .refine((t) => Object.keys(t).length > 0, {
+          message: "At least one card template is required",
+        })
         .describe(
           "Card templates keyed by card name (e.g., { \"Card 1\": { Front: \"...\", Back: \"...\" } }). " +
             "Use modelTemplates first to get the current structure, then modify the Front/Back HTML as needed.",

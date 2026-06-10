@@ -1250,6 +1250,7 @@ describe("AnkiConnectClient", () => {
         // Model operations
         { action: "createModel", params: { modelName: "Test" } },
         { action: "updateModelStyling", params: { model: {} } },
+        { action: "updateModelTemplates", params: { model: {} } },
       ];
 
       it.each(writeActions)(
