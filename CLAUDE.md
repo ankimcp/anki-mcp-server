@@ -59,8 +59,12 @@ src/
 ├── main-tunnel.ts           # Tunnel bootstrap: auth commands + WebSocket tunnel
 ├── app.module.ts            # Root module with forStdio()/forHttp()/forTunnel() factories
 ├── bootstrap.ts             # Shared logger setup (pino → NestJS LoggerService)
-├── cli.ts                   # Commander entrypoint: option parsing, subcommand dispatch
-├── cli/cli-output.ts        # User-facing print helpers (cli.success/error/info/box) — separate from cli.ts so non-CLI code can use it without pulling in Commander
+├── version.ts               # Package version constant (read from package.json at build)
+├── cli/                     # CLI layer (Commander parsing + user-facing output)
+│   ├── args.ts              # Commander entrypoint: option parsing, subcommand dispatch
+│   ├── cli-output.ts        # User-facing print helpers (cli.success/error/info/box) — separate from args.ts so non-CLI code can use it without pulling in Commander
+│   ├── spinner.ts           # Terminal spinner for long-running CLI operations
+│   └── index.ts             # Barrel re-export for the cli module
 ├── app-config.service.ts    # IAnkiConfig implementation (reads from validated AppConfig)
 ├── config/                  # Zod-validated config system (schema, factory, APP_CONFIG token)
 ├── services/ngrok.service.ts # Optional ngrok subprocess for HTTP-mode public tunneling
