@@ -1251,6 +1251,22 @@ describe("AnkiConnectClient", () => {
         { action: "createModel", params: { modelName: "Test" } },
         { action: "updateModelStyling", params: { model: {} } },
         { action: "updateModelTemplates", params: { model: {} } },
+        {
+          action: "modelFieldAdd",
+          params: { modelName: "Test", fieldName: "F" },
+        },
+        {
+          action: "modelFieldRemove",
+          params: { modelName: "Test", fieldName: "F" },
+        },
+        {
+          action: "modelFieldRename",
+          params: { modelName: "Test", oldFieldName: "F", newFieldName: "G" },
+        },
+        {
+          action: "modelFieldReposition",
+          params: { modelName: "Test", fieldName: "F", index: 0 },
+        },
       ];
 
       it.each(writeActions)(

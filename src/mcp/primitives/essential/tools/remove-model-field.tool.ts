@@ -23,7 +23,9 @@ export class RemoveModelFieldTool {
       modelName: z
         .string()
         .min(1)
-        .describe('Name of the note type to modify (e.g., "Basic", "Latin Vocabulary")'),
+        .describe(
+          'Name of the note type to modify (e.g., "Basic", "Latin Vocabulary")',
+        ),
       fieldName: z
         .string()
         .min(1)
@@ -58,14 +60,11 @@ export class RemoveModelFieldTool {
   }) {
     try {
       if (!confirmDeletion) {
-        return createErrorResponse(
-          new Error("Deletion not confirmed"),
-          {
-            modelName,
-            fieldName,
-            hint: "Set confirmDeletion: true to confirm you want to permanently delete this field and all its data.",
-          },
-        );
+        return createErrorResponse(new Error("Deletion not confirmed"), {
+          modelName,
+          fieldName,
+          hint: "Set confirmDeletion: true to confirm you want to permanently delete this field and all its data.",
+        });
       }
 
       this.logger.log(

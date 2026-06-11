@@ -88,6 +88,10 @@ Just tell Claude where the image is, and it will handle the upload automatically
 - `createModel` - Create a new note type with custom fields, card templates, and CSS (e.g., RTL models)
 - `updateModelStyling` - Update the CSS styling for an existing note type (applies to all its cards)
 - `updateModelTemplates` - Update the card templates (Front and Back HTML) for an existing note type (applies to all its cards)
+- `addModelField` - Add a new field to an existing note type (appended at the end or inserted at a specific position)
+- `removeModelField` - Remove a field from an existing note type (deletes its content from all notes; requires explicit confirmation)
+- `renameModelField` - Rename a field in an existing note type (card templates referencing the old name must be updated separately)
+- `repositionModelField` - Change the position of a field within an existing note type
 
 #### Statistics
 - `collection_stats` - Aggregated statistics across all decks with per-deck breakdown

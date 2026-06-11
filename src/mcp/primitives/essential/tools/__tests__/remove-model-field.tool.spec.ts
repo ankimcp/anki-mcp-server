@@ -15,7 +15,9 @@ describe("RemoveModelFieldTool", () => {
     }).compile();
 
     tool = module.get<RemoveModelFieldTool>(RemoveModelFieldTool);
-    ankiClient = module.get(AnkiConnectClient) as jest.Mocked<AnkiConnectClient>;
+    ankiClient = module.get(
+      AnkiConnectClient,
+    ) as jest.Mocked<AnkiConnectClient>;
     jest.clearAllMocks();
   });
 
@@ -68,7 +70,9 @@ describe("RemoveModelFieldTool", () => {
     });
 
     it("should handle field not found error", async () => {
-      ankiClient.invoke.mockRejectedValueOnce(new Error("field does not exist"));
+      ankiClient.invoke.mockRejectedValueOnce(
+        new Error("field does not exist"),
+      );
 
       const rawResult = await tool.removeModelField({
         modelName: "Basic",

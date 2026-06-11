@@ -1,7 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { RepositionModelFieldTool } from "../reposition-model-field.tool";
 import { AnkiConnectClient } from "../../../../clients/anki-connect.client";
-import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
+import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 jest.mock("../../../../clients/anki-connect.client");
 
@@ -15,13 +15,16 @@ describe("RepositionModelFieldTool", () => {
     }).compile();
 
     tool = module.get<RepositionModelFieldTool>(RepositionModelFieldTool);
-    ankiClient = module.get(AnkiConnectClient) as jest.Mocked<AnkiConnectClient>;
+    ankiClient = module.get(
+      AnkiConnectClient,
+    ) as jest.Mocked<AnkiConnectClient>;
     jest.clearAllMocks();
   });
 
   describe("repositionModelField", () => {
     it("should reposition a field successfully", async () => {
-      ankiClient.invoke.mockResolvedValueOnce(null);
+      ankiClient.invoke.mockResolvedValueOnce(["Front", "Back", "Grammar"]); // modelFieldNames
+      ankiClient.invoke.mockResolvedValueOnce(null); // modelFieldReposition
 
       const rawResult = await tool.repositionModelField({
         modelName: "Basic",
@@ -30,6 +33,9 @@ describe("RepositionModelFieldTool", () => {
       });
       const result = parseToolResult(rawResult);
 
+      expect(ankiClient.invoke).toHaveBeenCalledWith("modelFieldNames", {
+        modelName: "Basic",
+      });
       expect(ankiClient.invoke).toHaveBeenCalledWith("modelFieldReposition", {
         modelName: "Basic",
         fieldName: "Grammar",
@@ -42,18 +48,39 @@ describe("RepositionModelFieldTool", () => {
       expect(result.message).toContain("position 1");
     });
 
-    it("should reposition to index 0 (first/sort field)", async () => {
-      ankiClient.invoke.mockResolvedValueOnce(null);
+    it("should reposition to index 0 (first field)", async () => {
+      ankiClient.invoke.mockResolvedValueOnce(["Latin", "English"]); // modelFieldNames
+      ankiClient.invoke.mockResolvedValueOnce(null); // modelFieldReposition
 
       const rawResult = await tool.repositionModelField({
         modelName: "Latin Vocabulary",
-        fieldName: "Latin",
+        fieldName: "English",
         index: 0,
       });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
       expect(result.newIndex).toBe(0);
+    });
+
+    it("should reposition to the last valid index (field count - 1)", async () => {
+      ankiClient.invoke.mockResolvedValueOnce(["Front", "Back", "Grammar"]); // modelFieldNames
+      ankiClient.invoke.mockResolvedValueOnce(null); // modelFieldReposition
+
+      const rawResult = await tool.repositionModelField({
+        modelName: "Basic",
+        fieldName: "Front",
+        index: 2,
+      });
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(true);
+      expect(result.newIndex).toBe(2);
+      expect(ankiClient.invoke).toHaveBeenCalledWith("modelFieldReposition", {
+        modelName: "Basic",
+        fieldName: "Front",
+        index: 2,
+      });
     });
 
     it("should handle model not found error", async () => {
@@ -70,18 +97,92 @@ describe("RepositionModelFieldTool", () => {
       expect(result.hint).toContain("Model or field not found");
     });
 
-    it("should handle index out of range error", async () => {
-      ankiClient.invoke.mockRejectedValueOnce(new Error("index out of range"));
+    it("should reject when the model has no fields (does not exist)", async () => {
+      ankiClient.invoke.mockResolvedValueOnce([]); // modelFieldNames
+
+      const rawResult = await tool.repositionModelField({
+        modelName: "NonExistent",
+        fieldName: "Grammar",
+        index: 0,
+      });
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(false);
+      expect(result.hint).toContain("Model not found");
+      expect(ankiClient.invoke).not.toHaveBeenCalledWith(
+        "modelFieldReposition",
+        expect.anything(),
+      );
+    });
+
+    it("should reject when the field does not exist", async () => {
+      ankiClient.invoke.mockResolvedValueOnce(["Front", "Back"]); // modelFieldNames
 
       const rawResult = await tool.repositionModelField({
         modelName: "Basic",
         fieldName: "Grammar",
+        index: 0,
+      });
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(false);
+      expect(result.hint).toContain("modelFieldNames");
+      expect(ankiClient.invoke).not.toHaveBeenCalledWith(
+        "modelFieldReposition",
+        expect.anything(),
+      );
+    });
+
+    it("should reject an out-of-range index (pre-flight)", async () => {
+      ankiClient.invoke.mockResolvedValueOnce(["Front", "Back"]); // modelFieldNames
+
+      const rawResult = await tool.repositionModelField({
+        modelName: "Basic",
+        fieldName: "Front",
         index: 99,
       });
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
       expect(result.hint).toContain("modelFieldNames");
+      expect(ankiClient.invoke).not.toHaveBeenCalledWith(
+        "modelFieldReposition",
+        expect.anything(),
+      );
+    });
+
+    it("should reject index equal to field count (must land on an existing slot)", async () => {
+      ankiClient.invoke.mockResolvedValueOnce(["Front", "Back"]); // modelFieldNames
+
+      const rawResult = await tool.repositionModelField({
+        modelName: "Basic",
+        fieldName: "Front",
+        index: 2,
+      });
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("out of range");
+      expect(ankiClient.invoke).not.toHaveBeenCalledWith(
+        "modelFieldReposition",
+        expect.anything(),
+      );
+    });
+
+    it("should surface a write failure after a passing pre-flight", async () => {
+      ankiClient.invoke.mockResolvedValueOnce(["Front", "Back", "Grammar"]); // modelFieldNames
+      ankiClient.invoke.mockRejectedValueOnce(new Error("write failed")); // modelFieldReposition
+
+      const rawResult = await tool.repositionModelField({
+        modelName: "Basic",
+        fieldName: "Grammar",
+        index: 1,
+      });
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("write failed");
+      expect(result.hint).toContain("Anki is running");
     });
 
     it("should handle generic AnkiConnect error", async () => {

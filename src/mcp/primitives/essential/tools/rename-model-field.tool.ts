@@ -24,7 +24,9 @@ export class RenameModelFieldTool {
       modelName: z
         .string()
         .min(1)
-        .describe('Name of the note type to modify (e.g., "Basic", "Latin Vocabulary")'),
+        .describe(
+          'Name of the note type to modify (e.g., "Basic", "Latin Vocabulary")',
+        ),
       oldFieldName: z
         .string()
         .min(1)
@@ -62,6 +64,94 @@ export class RenameModelFieldTool {
       this.logger.log(
         `Renaming field "${oldFieldName}" → "${newFieldName}" in model "${modelName}"`,
       );
+
+      if (oldFieldName === newFieldName) {
+        return createErrorResponse(
+          new Error(
+            `Old and new field names are identical ("${oldFieldName}") — nothing to rename`,
+          ),
+          {
+            modelName,
+            oldFieldName,
+            newFieldName,
+            hint: "Provide a new field name that differs from the current one.",
+          },
+        );
+      }
+
+      // Pre-flight: validating against the current fields gives clearer
+      // errors than AnkiConnect's behavior — a missing source field raises a
+      // raw "field was not found in {model}: {field}" upstream, and renaming
+      // onto an existing name triggers Anki's ensure-unique mangle that
+      // appends a "+" suffix instead of erroring.
+      const fields = await this.ankiClient.invoke<string[]>("modelFieldNames", {
+        modelName,
+      });
+
+      if (!fields || fields.length === 0) {
+        return createErrorResponse(
+          new Error(`Model "${modelName}" has no fields or does not exist`),
+          {
+            modelName,
+            oldFieldName,
+            newFieldName,
+            hint: "Model not found. Use modelNames tool to see available models.",
+          },
+        );
+      }
+
+      if (!fields.includes(oldFieldName)) {
+        return createErrorResponse(
+          new Error(
+            `Field "${oldFieldName}" does not exist in model "${modelName}"`,
+          ),
+          {
+            modelName,
+            oldFieldName,
+            newFieldName,
+            hint: "Field names are case-sensitive. Use modelFieldNames to see the current field names.",
+          },
+        );
+      }
+
+      if (fields.includes(newFieldName)) {
+        return createErrorResponse(
+          new Error(
+            `A field named "${newFieldName}" already exists in model "${modelName}". ` +
+              'AnkiConnect would silently mangle the name with a "+" suffix instead of erroring.',
+          ),
+          {
+            modelName,
+            oldFieldName,
+            newFieldName,
+            hint: `A field named "${newFieldName}" already exists in this model.`,
+          },
+        );
+      }
+
+      // Case-variant collision: renaming "Foo" → "foo" is a legitimate case
+      // change when it targets the field being renamed itself, so it is
+      // allowed only in that case. A case-variant of a *different* field is
+      // rejected — two fields differing only in case is almost certainly a
+      // mistake.
+      const caseVariant = fields.find(
+        (f) =>
+          f !== oldFieldName && f.toLowerCase() === newFieldName.toLowerCase(),
+      );
+      if (caseVariant) {
+        return createErrorResponse(
+          new Error(
+            `Field "${newFieldName}" collides with existing field "${caseVariant}" ` +
+              `in model "${modelName}" (names differ only in case)`,
+          ),
+          {
+            modelName,
+            oldFieldName,
+            newFieldName,
+            hint: `Field names are case-sensitive, but "${newFieldName}" differs from existing field "${caseVariant}" only in case. Pick a distinct name.`,
+          },
+        );
+      }
 
       await this.ankiClient.invoke("modelFieldRename", {
         modelName,
@@ -101,15 +191,6 @@ export class RenameModelFieldTool {
           oldFieldName,
           newFieldName,
           hint: "Model or field not found. Use modelNames and modelFieldNames tools to verify names.",
-        });
-      }
-
-      if (errorMessage.includes("already exist")) {
-        return createErrorResponse(error, {
-          modelName,
-          oldFieldName,
-          newFieldName,
-          hint: `A field named "${newFieldName}" already exists in this model.`,
         });
       }
 
