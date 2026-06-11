@@ -116,6 +116,22 @@
       "description": "Update the card templates (Front and Back HTML) for an existing note type. Each card template defines how the card's front and back sides are rendered. Changes apply to all cards using this model."
     },
     {
+      "name": "addModelField",
+      "description": "Add a new field to an existing Anki note type. Existing notes get the field as empty."
+    },
+    {
+      "name": "removeModelField",
+      "description": "Remove a field from an existing Anki note type. WARNING: permanently deletes all field data."
+    },
+    {
+      "name": "renameModelField",
+      "description": "Rename a field in an existing Anki note type. Card templates referencing the old name must be updated separately."
+    },
+    {
+      "name": "repositionModelField",
+      "description": "Change the position/order of a field within an Anki note type (0-based index)."
+    },
+    {
       "name": "guiBrowse",
       "description": "Open Anki Card Browser and search for cards. For note editing/creation workflows only, NOT for review sessions"
     },
