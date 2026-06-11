@@ -198,8 +198,7 @@ describe("ModelTemplatesTool", () => {
         "Card 1": {
           Front:
             '<div style="font-family: Arial">{{Front}}</div><script>/* inline */</script>',
-          Back:
-            '<div class="back">{{FrontSide}}<hr>{{Back}}</div>',
+          Back: '<div class="back">{{FrontSide}}<hr>{{Back}}</div>',
         },
       };
 

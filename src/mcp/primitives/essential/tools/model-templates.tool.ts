@@ -58,9 +58,7 @@ export class ModelTemplatesTool {
       if (!templates || Object.keys(templates).length === 0) {
         this.logger.warn(`No templates found for model: ${modelName}`);
         return createErrorResponse(
-          new Error(
-            `Model "${modelName}" not found or has no card templates`,
-          ),
+          new Error(`Model "${modelName}" not found or has no card templates`),
           {
             modelName: modelName,
             hint: "Use modelNames tool to see available models",
