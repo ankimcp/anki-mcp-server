@@ -26,6 +26,8 @@ export { ModelFieldNamesTool } from "./tools/model-field-names.tool";
 export { ModelStylingTool } from "./tools/model-styling.tool";
 export { CreateModelTool } from "./tools/create-model.tool";
 export { UpdateModelStylingTool } from "./tools/update-model-styling.tool";
+export { ModelTemplatesTool } from "./tools/model-templates.tool";
+export { UpdateModelTemplatesTool } from "./tools/update-model-templates.tool";
 export { AddModelFieldTool } from "./tools/add-model-field.tool";
 export { RemoveModelFieldTool } from "./tools/remove-model-field.tool";
 export { RenameModelFieldTool } from "./tools/rename-model-field.tool";
@@ -75,6 +77,8 @@ import { ModelFieldNamesTool } from "./tools/model-field-names.tool";
 import { ModelStylingTool } from "./tools/model-styling.tool";
 import { CreateModelTool } from "./tools/create-model.tool";
 import { UpdateModelStylingTool } from "./tools/update-model-styling.tool";
+import { ModelTemplatesTool } from "./tools/model-templates.tool";
+import { UpdateModelTemplatesTool } from "./tools/update-model-templates.tool";
 import { AddModelFieldTool } from "./tools/add-model-field.tool";
 import { RemoveModelFieldTool } from "./tools/remove-model-field.tool";
 import { RenameModelFieldTool } from "./tools/rename-model-field.tool";
@@ -117,6 +121,8 @@ export const ESSENTIAL_MCP_TOOLS = [
   ModelStylingTool,
   CreateModelTool,
   UpdateModelStylingTool,
+  ModelTemplatesTool,
+  UpdateModelTemplatesTool,
   AddModelFieldTool,
   RemoveModelFieldTool,
   RenameModelFieldTool,

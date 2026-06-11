@@ -108,6 +108,14 @@
       "description": "Update the CSS styling for an existing note type. Changes apply to all cards using this model. Useful for adding RTL support or modifying appearance."
     },
     {
+      "name": "modelTemplates",
+      "description": "Get the card templates (Front and Back HTML) for a specific note type. Use this before updateModelTemplates to see current templates and plan changes."
+    },
+    {
+      "name": "updateModelTemplates",
+      "description": "Update the card templates (Front and Back HTML) for an existing note type. Each card template defines how the card's front and back sides are rendered. Changes apply to all cards using this model."
+    },
+    {
       "name": "addModelField",
       "description": "Add a new field to an existing Anki note type. Existing notes get the field as empty."
     },

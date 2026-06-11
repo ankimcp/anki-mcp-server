@@ -84,8 +84,10 @@ Just tell Claude where the image is, and it will handle the upload automatically
 - `modelNames` - List all available note types/models
 - `modelFieldNames` - Get field names for a specific note type
 - `modelStyling` - Get CSS styling information for a note type
+- `modelTemplates` - Get the card templates (Front and Back HTML) for a note type
 - `createModel` - Create a new note type with custom fields, card templates, and CSS (e.g., RTL models)
 - `updateModelStyling` - Update the CSS styling for an existing note type (applies to all its cards)
+- `updateModelTemplates` - Update the card templates (Front and Back HTML) for an existing note type (applies to all its cards)
 
 #### Statistics
 - `collection_stats` - Aggregated statistics across all decks with per-deck breakdown

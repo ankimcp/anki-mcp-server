@@ -9,6 +9,7 @@ MCP server enabling AI assistants to interact with Anki via AnkiConnect. Built w
 - **Package**: `@ankimcp/anki-mcp-server` (npm)
 - **License**: MIT
 - **Status**: Beta (0.x.x) - breaking changes allowed
+- **User-facing docs**: `README.md` covers installation, client setup (Claude Desktop/MCPB, HTTP, tunnel), and the full tool catalog — consult it for anything user-facing rather than reconstructing it here.
 
 ## Quick Reference
 
@@ -58,8 +59,12 @@ src/
 ├── main-tunnel.ts           # Tunnel bootstrap: auth commands + WebSocket tunnel
 ├── app.module.ts            # Root module with forStdio()/forHttp()/forTunnel() factories
 ├── bootstrap.ts             # Shared logger setup (pino → NestJS LoggerService)
-├── cli.ts                   # Commander entrypoint: option parsing, subcommand dispatch
-├── cli/cli-output.ts        # User-facing print helpers (cli.success/error/info/box) — separate from cli.ts so non-CLI code can use it without pulling in Commander
+├── version.ts               # Package version constant (read from package.json at build)
+├── cli/                     # CLI layer (Commander parsing + user-facing output)
+│   ├── args.ts              # Commander entrypoint: option parsing, subcommand dispatch
+│   ├── cli-output.ts        # User-facing print helpers (cli.success/error/info/box) — separate from args.ts so non-CLI code can use it without pulling in Commander
+│   ├── spinner.ts           # Terminal spinner for long-running CLI operations
+│   └── index.ts             # Barrel re-export for the cli module
 ├── app-config.service.ts    # IAnkiConfig implementation (reads from validated AppConfig)
 ├── config/                  # Zod-validated config system (schema, factory, APP_CONFIG token)
 ├── services/ngrok.service.ts # Optional ngrok subprocess for HTTP-mode public tunneling
@@ -120,6 +125,7 @@ These are upstream behaviors that shape tool design — surface them in tool des
 ### Build & Tooling Notes
 
 - **NestJS CLI** builds the project (`nest build`). Asset copying is configured in `nest-cli.json` — all `**/*.md` files in `src/` are copied to `dist/`. This matters for prompt templates that reference markdown files.
+- **`prebuild` hook** runs `scripts/generate-icon.mjs` before every `npm run build` (via npm's `pre*` lifecycle) — that's why an icon-generation step fires on build. It's expected, not a stray command.
 - **ESLint flat config** (`eslint.config.mjs`) — not legacy `.eslintrc`. Uses `typescript-eslint` + Prettier integration.
 - **TypeScript**: `strict: true`, target ES2023, `nodenext` module resolution. Path aliases are resolved by both `tsconfig.json` and Jest's `moduleNameMapper`.
 - **Zod 4** (`^4.3.6`) — not Zod 3. Some patterns like `z.preprocess` in `config.schema.ts` are Zod 3 holdovers that still work but may need migration.
