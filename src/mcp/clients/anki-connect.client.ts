@@ -1,8 +1,43 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Mutex } from "async-mutex";
 import ky, { KyInstance, HTTPError } from "ky";
 import { ANKI_CONFIG } from "../config/anki-config.interface";
 import type { IAnkiConfig } from "../config/anki-config.interface";
 import { AnkiConnectRequest, AnkiConnectResponse } from "../types/anki.types";
+
+/**
+ * AnkiConnect is single-threaded (requests run on Anki's Qt main thread with
+ * max_workers=1), so concurrent POSTs collide and time out. All requests —
+ * reads included — are serialized through this mutex (concurrency 1, FIFO).
+ *
+ * Module-scoped on purpose: AnkiConnectClient is provided by both the
+ * essential and GUI modules, so NestJS may create multiple instances. A
+ * single file-level mutex serializes across all of them, matching the
+ * "one Anki per process" invariant.
+ */
+const ankiRequestMutex = new Mutex();
+
+/**
+ * Maximum number of requests allowed to be pending (in-flight + queued) at
+ * once. Beyond this we fail fast instead of queueing unbounded work — the
+ * error message steers the AI toward the addNotes batch tool, which awaits
+ * sequentially and keeps queue depth ~1.
+ */
+const MAX_QUEUE_DEPTH = 50;
+
+/** Current number of pending requests (in-flight + waiting on the mutex). */
+let pendingRequests = 0;
+
+/**
+ * @internal test-only — resets the module-scoped pending-request counter so
+ * serialization specs don't leak queue depth across tests (a wedged counter
+ * would otherwise trip the backpressure guard in later tests). The mutex
+ * itself auto-frees once every in-flight `runExclusive` callback settles, so
+ * only the counter needs an explicit reset. Not part of the public API.
+ */
+export function __resetAnkiQueueForTests(): void {
+  pendingRequests = 0;
+}
 
 /**
  * Set of AnkiConnect actions that modify collection content.
@@ -87,6 +122,9 @@ export class AnkiConnectClient {
       headers: {
         "Content-Type": "application/json",
       },
+      // Note: timeouts are intentionally NOT retried (no retryOnTimeout), so
+      // the time a request can hold the serialization mutex stays bounded by
+      // ankiConnectTimeout (plus the listed retryable HTTP statuses).
       retry: {
         limit: 2,
         methods: ["POST"],
@@ -140,26 +178,53 @@ export class AnkiConnectClient {
       request.key = this.apiKey;
     }
 
+    // Backpressure guard: fail fast instead of queueing unbounded work.
+    if (pendingRequests >= MAX_QUEUE_DEPTH) {
+      this.logger.warn(
+        `Rejecting action "${action}": ${pendingRequests} requests already pending (max ${MAX_QUEUE_DEPTH})`,
+      );
+      throw new AnkiConnectError(
+        `Too many concurrent requests queued for AnkiConnect (max ${MAX_QUEUE_DEPTH}). ` +
+          `For bulk note creation, use the addNotes batch tool instead of many parallel addNote calls.`,
+        action,
+      );
+    }
+
+    // Enqueue synchronously (no await between here and runExclusive) so FIFO
+    // order matches submission order.
+    pendingRequests++;
+
     try {
-      this.logger.log(`Invoking AnkiConnect action: ${action}`);
+      // Acquire the mutex BEFORE dispatching, so ky's timeout (which starts
+      // at POST dispatch) covers only the in-flight request, never the time
+      // spent waiting in the queue. runExclusive releases the lock even if
+      // the callback throws.
+      const result = await ankiRequestMutex.runExclusive(async () => {
+        this.logger.log(`Invoking AnkiConnect action: ${action}`);
 
-      const response = await this.client
-        .post("", {
-          json: request,
-        })
-        .json<AnkiConnectResponse<T>>();
+        const response = await this.client
+          .post("", {
+            json: request,
+          })
+          .json<AnkiConnectResponse<T>>();
 
-      // Check for AnkiConnect errors
-      if (response.error) {
-        throw new AnkiConnectError(
-          `AnkiConnect error: ${response.error}`,
-          action,
-          response.error,
-        );
-      }
+        // Check for AnkiConnect errors
+        if (response.error) {
+          throw new AnkiConnectError(
+            `AnkiConnect error: ${response.error}`,
+            action,
+            response.error,
+          );
+        }
 
-      this.logger.log(`AnkiConnect action successful: ${action}`);
-      return response.result;
+        // Log success while still holding the mutex so the per-request log
+        // order ("Invoking" → "successful") can't interleave with the next
+        // request's "Invoking" line.
+        this.logger.log(`AnkiConnect action successful: ${action}`);
+        return response.result;
+      });
+
+      return result;
     } catch (error) {
       // Re-throw ReadOnlyModeError without wrapping
       if (error instanceof ReadOnlyModeError) {
@@ -198,6 +263,8 @@ export class AnkiConnectClient {
         `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
         action,
       );
+    } finally {
+      pendingRequests--;
     }
   }
 }
