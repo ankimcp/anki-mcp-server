@@ -61,11 +61,11 @@
     },
     {
       "name": "addNote",
-      "description": "Create new notes with specified fields and tags. IMPORTANT: Only create notes that were explicitly requested by the user"
+      "description": "Add a SINGLE note. To create multiple notes, use addNotes instead of calling addNote repeatedly — AnkiConnect processes requests one at a time, so repeated/parallel addNote calls are slower and unnecessary. IMPORTANT: Only create notes that were explicitly requested by the user"
     },
     {
       "name": "addNotes",
-      "description": "Add multiple notes to Anki in a single batch. Up to 100 notes sharing the same deck and model. Duplicates are skipped individually; validation errors (empty required fields, bad tags) reject the batch."
+      "description": "Add multiple notes in a single batch — the preferred way to create more than one note (use instead of repeated addNote calls). Up to 100 notes sharing the same deck and model. Duplicates are skipped individually; validation errors (empty required fields, bad tags) reject the batch."
     },
     {
       "name": "findNotes",
