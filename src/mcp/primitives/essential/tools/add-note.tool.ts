@@ -17,7 +17,7 @@ export class AddNoteTool {
   @Tool({
     name: "addNote",
     description:
-      "Add a new note to Anki. Use modelNames to see available note types and modelFieldNames to see required fields. Returns the note ID on success. IMPORTANT: Only create notes that were explicitly requested by the user.",
+      "Add a SINGLE note to Anki. To create multiple notes, use the addNotes batch tool instead of calling addNote repeatedly — AnkiConnect processes requests one at a time, so repeated (especially parallel) addNote calls are slower and unnecessary. Use modelNames to see available note types and modelFieldNames to see required fields. Returns the note ID on success. IMPORTANT: Only create notes that were explicitly requested by the user.",
     parameters: z.object({
       deckName: z.string().min(1).describe("The deck to add the note to"),
       modelName: z
