@@ -64,6 +64,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.26",
     "@rekog/mcp-nest": "^1.9.10",
+    "async-mutex": "^0.5.0",
     "commander": "^15.0.0",
     "ipaddr.js": "^2.4.0",
     "jsonwebtoken": "^9.0.3",

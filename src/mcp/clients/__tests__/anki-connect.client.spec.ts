@@ -4,6 +4,7 @@ import {
   AnkiConnectClient,
   AnkiConnectError,
   ReadOnlyModeError,
+  __resetAnkiQueueForTests,
 } from "../anki-connect.client";
 import { ANKI_CONFIG } from "@/mcp/config/anki-config.interface";
 import type { IAnkiConfig } from "@/mcp/config/anki-config.interface";
@@ -137,6 +138,11 @@ describe("AnkiConnectClient", () => {
   });
 
   afterEach(() => {
+    // Reset the module-scoped pending-request counter so serialization specs
+    // don't leak queue depth into later tests (a wedged counter would trip the
+    // backpressure guard). Individual serialization tests resolve any held
+    // blockers in their own `finally` so the mutex itself is never left locked.
+    __resetAnkiQueueForTests();
     jest.restoreAllMocks();
   });
 
@@ -1581,6 +1587,237 @@ describe("AnkiConnectClient", () => {
       expect(callArg.action).toBe("noParamsAction");
       expect(callArg.version).toBe(6);
       // params is undefined, not included or is undefined
+    });
+  });
+
+  describe("invoke() - Request Serialization", () => {
+    // The client performs "the HTTP call" only when it awaits `.json()`, so by
+    // controlling when each per-request promise settles we get precise control
+    // over completion order — no real timers, no races. Each mocked POST
+    // registers its resolve/reject in these registries, keyed by call order.
+    type Resolver = (result: unknown) => void;
+    type Rejecter = (err: unknown) => void;
+    let resolvers: Resolver[] = [];
+    let rejecters: Rejecter[] = [];
+
+    // Let microtasks flush so queued mutex callbacks can advance.
+    const flush = () => new Promise<void>((r) => setImmediate(r));
+
+    /**
+     * Registry-based deferred mock: each POST registers its resolve/reject in
+     * `resolvers`/`rejecters` (indexed by call order), and tracks in-flight /
+     * start / finish ordering so tests can assert serialization invariants.
+     * `.json()` being invoked is the moment a request is actually "in flight".
+     */
+    function installRegistryMock() {
+      resolvers = [];
+      rejecters = [];
+      const startOrder: string[] = [];
+      const finishOrder: string[] = [];
+      let inFlight = 0;
+      let maxInFlight = 0;
+
+      mockKyInstance.post.mockImplementation(
+        (_endpoint: string, options: { json: { action: string } }) => {
+          const action = options.json.action;
+          const promise = new Promise((resolve, reject) => {
+            resolvers.push((result: unknown) => {
+              finishOrder.push(action);
+              inFlight--;
+              resolve({ result, error: null });
+            });
+            rejecters.push((err: unknown) => {
+              inFlight--;
+              reject(err);
+            });
+          });
+          return {
+            json: () => {
+              startOrder.push(action);
+              inFlight++;
+              maxInFlight = Math.max(maxInFlight, inFlight);
+              return promise;
+            },
+          };
+        },
+      );
+
+      return {
+        startOrder,
+        finishOrder,
+        getInFlight: () => inFlight,
+        getMaxInFlight: () => maxInFlight,
+      };
+    }
+
+    it("executes concurrently-fired requests FIFO, one at a time, in submission order", async () => {
+      const mock = installRegistryMock();
+      const actions = ["a1", "a2", "a3", "a4", "a5"];
+
+      // Fire all five concurrently WITHOUT awaiting individually.
+      const promises = actions.map((action) => client.invoke(action));
+
+      // Drive the queue one request at a time. After each flush exactly one new
+      // request (the next in submission order) should have started its HTTP
+      // call, proving FIFO serialization with at most one request in flight.
+      for (let i = 0; i < actions.length; i++) {
+        await flush();
+        expect(mock.startOrder).toEqual(actions.slice(0, i + 1));
+        expect(mock.getInFlight()).toBe(1);
+        // Release the current in-flight request so the next may proceed.
+        resolvers[i](`res-${actions[i]}`);
+      }
+
+      const results = await Promise.all(promises);
+      expect(results).toEqual(actions.map((a) => `res-${a}`));
+      // Both started and finished strictly in submission order.
+      expect(mock.startOrder).toEqual(actions);
+      expect(mock.finishOrder).toEqual(actions);
+      // The core proof: never more than one HTTP call in flight at once.
+      expect(mock.getMaxInFlight()).toBe(1);
+    });
+
+    it("never lets a second request start before the first settles (no overlap)", async () => {
+      const mock = installRegistryMock();
+
+      const p1 = client.invoke("first");
+      const p2 = client.invoke("second");
+
+      await flush();
+      // Only the first request should be in flight; second still queued.
+      expect(mock.startOrder).toEqual(["first"]);
+      expect(mock.getInFlight()).toBe(1);
+
+      // Resolve the first; the second should now be allowed to start.
+      resolvers[0]("ok-1");
+      await flush();
+      expect(mock.startOrder).toEqual(["first", "second"]);
+      expect(mock.getInFlight()).toBe(1);
+
+      resolvers[1]("ok-2");
+      const [r1, r2] = await Promise.all([p1, p2]);
+      expect(r1).toBe("ok-1");
+      expect(r2).toBe("ok-2");
+      expect(mock.getMaxInFlight()).toBe(1);
+    });
+
+    it("releases the slot when a request fails, letting the next proceed", async () => {
+      const mock = installRegistryMock();
+
+      const p1 = client.invoke("willFail");
+      const p2 = client.invoke("willSucceed");
+
+      await flush();
+      expect(mock.startOrder).toEqual(["willFail"]);
+
+      // Reject the first request (simulates a timeout / network failure). The
+      // mutex must release so the second request is not deadlocked behind it.
+      rejecters[0](
+        new Error("The operation was aborted due to timeout (fetch)"),
+      );
+
+      await expect(p1).rejects.toThrow(AnkiConnectError);
+
+      await flush();
+      // Second request must have started despite the first failing.
+      expect(mock.startOrder).toEqual(["willFail", "willSucceed"]);
+      expect(mock.getInFlight()).toBe(1);
+
+      resolvers[1]("recovered");
+      await expect(p2).resolves.toBe("recovered");
+      expect(mock.getMaxInFlight()).toBe(1);
+    });
+
+    it("rejects the 51st request immediately without calling the HTTP layer, then recovers", async () => {
+      const mock = installRegistryMock();
+      const blockers: Promise<unknown>[] = [];
+
+      try {
+        // Saturate the queue: MAX_QUEUE_DEPTH (50) pending requests. The first
+        // is in flight; the other 49 are queued on the mutex. None resolve yet.
+        for (let i = 0; i < 50; i++) {
+          blockers.push(client.invoke(`held-${i}`).catch(() => "caught"));
+        }
+        await flush();
+
+        // Exactly one is in flight (serialized); the rest wait on the mutex.
+        expect(mock.getInFlight()).toBe(1);
+        const postCallsBefore = mockKyInstance.post.mock.calls.length;
+
+        // The 51st invoke must reject IMMEDIATELY (queue depth at cap) and must
+        // NOT reach the HTTP layer.
+        await expect(client.invoke("overflow")).rejects.toThrow(
+          AnkiConnectError,
+        );
+        await expect(client.invoke("overflow")).rejects.toThrow(/addNotes/);
+
+        // No new POST was issued for the rejected overflow requests.
+        expect(mockKyInstance.post.mock.calls.length).toBe(postCallsBefore);
+        expect(mock.startOrder).not.toContain("overflow");
+      } finally {
+        // Drain every held request so the mutex is freed for later tests.
+        // Only the in-flight request has registered a resolver; releasing it
+        // lets the next queued request start and register ITS resolver. So we
+        // resolve-then-flush in a loop until all 50 blockers have settled.
+        let drained = 0;
+        while (drained < resolvers.length) {
+          resolvers[drained](`done-${drained}`);
+          drained++;
+          await flush();
+        }
+        await Promise.all(blockers);
+      }
+
+      // Recovery: with the queue drained, a fresh invoke succeeds normally.
+      installRegistryMock();
+      const recovered = client.invoke("afterDrain");
+      await flush();
+      resolvers[0]("recovered-ok");
+      await expect(recovered).resolves.toBe("recovered-ok");
+    });
+
+    it("does not enqueue or call HTTP when read-only blocks a write, leaving the counter intact", async () => {
+      const readOnlyConfig: IAnkiConfig = {
+        ...mockConfig,
+        readOnly: true,
+      };
+      const module = await Test.createTestingModule({
+        providers: [
+          AnkiConnectClient,
+          { provide: ANKI_CONFIG, useValue: readOnlyConfig },
+        ],
+      }).compile();
+      const readOnlyClient = module.get<AnkiConnectClient>(AnkiConnectClient);
+
+      const mock = installRegistryMock();
+
+      // A blocked write rejects with ReadOnlyModeError BEFORE the mutex/counter,
+      // so the HTTP layer is never touched.
+      await expect(
+        readOnlyClient.invoke("addNote", { note: {} }),
+      ).rejects.toBeInstanceOf(ReadOnlyModeError);
+      expect(mockKyInstance.post).not.toHaveBeenCalled();
+
+      // Counter unaffected: an allowed read still goes through and completes,
+      // proving the blocked write neither incremented nor wedged the counter.
+      const allowed = readOnlyClient.invoke("deckNames");
+      await flush();
+      expect(mock.getInFlight()).toBe(1);
+      resolvers[0](["Default"]);
+      await expect(allowed).resolves.toEqual(["Default"]);
+    });
+
+    it("still maps a response.error to AnkiConnectError through the serialized path", async () => {
+      // Sanity: serialization wrapper hasn't broken normal error mapping.
+      mockKyInstance.post.mockReturnValue({
+        json: jest
+          .fn()
+          .mockResolvedValue({ result: null, error: "deck not found" }),
+      });
+
+      await expect(client.invoke("findCards")).rejects.toThrow(
+        "AnkiConnect error: deck not found",
+      );
     });
   });
 });
