@@ -285,27 +285,22 @@ export function calculateStreak(
   }
 
   // Sort by date descending (most recent first)
-  const sorted = [...reviewsByDay].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  const sorted = [...reviewsByDay].sort((a, b) =>
+    b.date.localeCompare(a.date),
   );
 
   let streak = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Use UTC date string to match ISO date strings in review data
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayBase = new Date(todayStr);
 
   for (let i = 0; i < sorted.length; i++) {
-    const reviewDate = new Date(sorted[i].date);
-    reviewDate.setHours(0, 0, 0, 0);
+    // Calculate expected date string (today - i days, UTC)
+    const expected = new Date(todayBase);
+    expected.setUTCDate(expected.getUTCDate() - i);
+    const expectedStr = expected.toISOString().split("T")[0];
 
-    // Calculate expected date (today - i days)
-    const expectedDate = new Date(today);
-    expectedDate.setDate(expectedDate.getDate() - i);
-
-    // Check if this date matches and has reviews
-    if (
-      reviewDate.getTime() === expectedDate.getTime() &&
-      sorted[i].count > 0
-    ) {
+    if (sorted[i].date === expectedStr && sorted[i].count > 0) {
       streak++;
     } else {
       break;

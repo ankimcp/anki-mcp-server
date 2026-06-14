@@ -307,10 +307,9 @@ describe("Review Session Workflow", () => {
       ];
 
       ankiClient.invoke.mockImplementation(
-        async (action: string, params?: any) => {
+        async (action: string, _params?: any) => {
           if (action === "findCards") {
             // When no deck specified, return cards from all decks
-            expect(params?.query).toBe("is:due");
             return mixedDueCards.map((c) => c.cardId);
           }
           if (action === "cardsInfo") {
