@@ -27,6 +27,28 @@ export function cleanHtml(html: string): string {
 }
 
 /**
+ * Process a cloze note's raw Text field into a human-readable question.
+ *
+ * Active cloze (activeClozeOrd + 1) → "[blank]" or "[blank — hint: X]"
+ * All other cloze numbers → revealed answer text
+ */
+export function processClozeField(
+  rawText: string,
+  activeClozeOrd: number,
+): string {
+  const activeClozeNum = activeClozeOrd + 1;
+  return rawText.replace(
+    /\{\{c(\d+)::(.*?)(?:::(.*?))?\}\}/g,
+    (_, numStr, answer, hint) => {
+      if (parseInt(numStr, 10) === activeClozeNum) {
+        return hint ? `[blank — hint: ${hint}]` : `[blank]`;
+      }
+      return answer;
+    },
+  );
+}
+
+/**
  * Extract front and back content from Anki card fields
  */
 export function extractCardContent(fields: AnkiCard["fields"]): {

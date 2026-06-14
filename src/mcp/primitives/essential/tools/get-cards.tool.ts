@@ -6,6 +6,7 @@ import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, SimplifiedCard } from "@/mcp/types/anki.types";
 import {
   extractCardContent,
+  processClozeField,
   createSuccessResponse,
   createErrorResponse,
   cleanHtml,
@@ -113,11 +114,22 @@ export class GetCardsTool {
 
       // Transform cards to simplified structure
       const cards: SimplifiedCard[] = cardsInfo.map((card) => {
-        const { front, back } = extractCardContent(card.fields);
+        const { front: extractedFront, back } = extractCardContent(card.fields);
+
+        const isClozed = card.modelName.toLowerCase().includes("cloze");
+        const rawTextField = card.fields["Text"]?.value;
+
+        let front: string;
+        if (isClozed && rawTextField) {
+          front = processClozeField(cleanHtml(rawTextField), card.ord);
+        } else {
+          front =
+            extractedFront !== "" ? extractedFront : cleanHtml(card.question || "");
+        }
 
         return {
           cardId: card.cardId,
-          front: front !== "" ? front : cleanHtml(card.question || ""),
+          front,
           back: back !== "" ? back : cleanHtml(card.answer || ""),
           deckName: card.deckName,
           modelName: card.modelName,

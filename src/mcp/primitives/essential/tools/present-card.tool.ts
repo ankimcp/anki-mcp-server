@@ -6,6 +6,7 @@ import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, CardPresentation } from "@/mcp/types/anki.types";
 import {
   extractCardContent,
+  processClozeField,
   getCardType,
   createSuccessResponse,
   createErrorResponse,
@@ -61,13 +62,23 @@ export class PresentCardTool {
       await context.reportProgress({ progress: 75, total: 100 });
 
       const card = cardsInfo[0];
-      const { front, back } = extractCardContent(card.fields);
+      const { front: extractedFront, back } = extractCardContent(card.fields);
       const cardType = getCardType(card.type);
+
+      const isClozed = card.modelName.toLowerCase().includes("cloze");
+      const rawTextField = card.fields["Text"]?.value;
+
+      const front =
+        isClozed && rawTextField
+          ? processClozeField(cleanHtml(rawTextField), card.ord)
+          : extractedFront !== ""
+            ? extractedFront
+            : cleanHtml(card.question || "");
 
       // Build the presentation object
       const presentation: CardPresentation = {
         cardId: card.cardId,
-        front: front !== "" ? front : cleanHtml(card.question || ""),
+        front,
         deckName: card.deckName,
         modelName: card.modelName,
         tags: card.tags || [],
