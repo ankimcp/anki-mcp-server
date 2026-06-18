@@ -23,6 +23,8 @@ describe("Config Schema", () => {
         port: "8080",
         host: "0.0.0.0",
         nodeEnv: "production",
+        allowedHosts: undefined,
+        allowedOrigins: undefined,
         ankiConnect: {
           url: "http://anki.example.com:8765",
           apiKey: "test-key",
@@ -46,6 +48,8 @@ describe("Config Schema", () => {
         port: undefined,
         host: undefined,
         nodeEnv: undefined,
+        allowedHosts: undefined,
+        allowedOrigins: undefined,
         ankiConnect: {
           url: undefined,
           apiKey: undefined,
@@ -76,6 +80,13 @@ describe("Config Schema", () => {
           port: 3000,
           host: "127.0.0.1",
           nodeEnv: "development",
+          allowedHosts: [],
+          allowedOrigins: [
+            "http://localhost:*",
+            "http://127.0.0.1:*",
+            "https://localhost:*",
+            "https://127.0.0.1:*",
+          ],
           readOnly: false,
           ankiConnect: {
             url: "http://localhost:8765",

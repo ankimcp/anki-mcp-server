@@ -29,10 +29,18 @@ export class NgrokService {
       );
     }
 
-    // Start ngrok process
-    this.process = spawn("ngrok", ["http", port.toString()], {
-      stdio: "pipe", // Capture output for debugging if needed
-    });
+    // Start ngrok process.
+    // `--host-header=rewrite` makes ngrok rewrite the upstream Host header to the
+    // local target (localhost:<port>) so it passes the HostValidationGuard's
+    // loopback allowlist — without it ngrok forwards the public *.ngrok domain as
+    // the Host and the server rejects it (DNS-rebinding protection).
+    this.process = spawn(
+      "ngrok",
+      ["http", "--host-header=rewrite", port.toString()],
+      {
+        stdio: "pipe", // Capture output for debugging if needed
+      },
+    );
 
     // Register cleanup handlers (only once)
     if (!this.cleanupHandlersRegistered) {

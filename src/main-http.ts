@@ -1,11 +1,11 @@
 import { NestFactory } from "@nestjs/core";
+import { Logger } from "@nestjs/common";
 import { AppModule } from "./app.module";
 import {
   createPinoLogger,
   createLoggerService,
   LOG_DESTINATION,
 } from "./bootstrap";
-import { OriginValidationGuard } from "./http/guards/origin-validation.guard";
 import {
   parseCliArgs,
   parseOptionalUrl,
@@ -14,7 +14,8 @@ import {
 } from "./cli";
 import { createCli } from "@/cli";
 import { NgrokService } from "./services/ngrok.service";
-import { buildConfigInput } from "./config";
+import { buildConfigInput, configSchema, transformEnvToConfig } from "./config";
+import { shouldWarnLoopbackOnly } from "./http/guards/host-validation.guard";
 
 async function bootstrap() {
   // Check for updates (non-blocking, cached)
@@ -52,13 +53,29 @@ async function bootstrap() {
   const loggerService = createLoggerService(pinoLogger);
 
   // HTTP mode - create NestJS HTTP application
+  // Security guards (Origin + Host validation, required by the MCP Streamable
+  // HTTP spec) are registered at module level via APP_GUARD in forHttp().
   const app = await NestFactory.create(AppModule.forHttp(configInput), {
     logger: loggerService,
     bufferLogs: true,
   });
 
-  // Apply security guards (required by MCP Streamable HTTP spec)
-  app.useGlobalGuards(new OriginValidationGuard());
+  // Fail-closed warning: binding to a non-loopback address without an explicit
+  // ALLOWED_HOSTS means only loopback Host headers are accepted, so requests
+  // arriving via the machine's LAN/public hostname will be rejected. The
+  // emptiness check is sourced from the validated config (not raw process.env)
+  // so CLI overrides and Zod parsing are honored.
+  const validatedConfig = configSchema.parse(transformEnvToConfig(configInput));
+  const boundHost = options.host;
+  if (shouldWarnLoopbackOnly(boundHost, validatedConfig.allowedHosts)) {
+    new Logger("HttpBootstrap").warn(
+      `Server is bound to ${boundHost} but ALLOWED_HOSTS is not set. ` +
+        `For DNS-rebinding protection, only loopback Host headers ` +
+        `(localhost, 127.0.0.1, ::1) are accepted — requests via a LAN or ` +
+        `public hostname will be rejected with 403. Set ALLOWED_HOSTS ` +
+        `(comma-separated hostnames) to permit them.`,
+    );
+  }
 
   await app.listen(options.port, options.host);
 

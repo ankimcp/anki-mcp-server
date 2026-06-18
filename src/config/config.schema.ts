@@ -4,11 +4,47 @@ import { z } from "zod";
  * Zod schema for application configuration
  * Maps environment variables to a strongly-typed config object
  */
+/**
+ * Default Origin patterns accepted when ALLOWED_ORIGINS is not set.
+ * Loopback-only; wildcards match any port. Previously hardcoded in the
+ * OriginValidationGuard, now sourced through config so it can be overridden.
+ */
+export const DEFAULT_ALLOWED_ORIGINS = [
+  "http://localhost:*",
+  "http://127.0.0.1:*",
+  "https://localhost:*",
+  "https://127.0.0.1:*",
+];
+
+/**
+ * Splits a comma-separated env string into a trimmed, non-empty list.
+ * Returns the schema default ([]) when the value is absent or blank.
+ */
+function parseCsvList(val: unknown): string[] | undefined {
+  if (val === undefined || val === null) return undefined;
+  if (Array.isArray(val)) return val;
+  if (typeof val !== "string") return undefined;
+  const items = val
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  return items;
+}
+
 export const configSchema = z.object({
   // Server
   port: z.coerce.number().int().positive().default(3000),
   host: z.string().default("127.0.0.1"),
   nodeEnv: z.enum(["development", "production", "test"]).default("development"),
+
+  // DNS-rebinding protection (HTTP transport)
+  // Extra Host headers to accept beyond the built-in loopback set
+  // (localhost, 127.0.0.1, ::1). Hostname-only; ports are ignored.
+  allowedHosts: z.preprocess(parseCsvList, z.array(z.string())).default([]),
+  // Origin/Referer allowlist for the OriginValidationGuard.
+  allowedOrigins: z
+    .preprocess(parseCsvList, z.array(z.string()))
+    .default(DEFAULT_ALLOWED_ORIGINS),
 
   // AnkiConnect
   ankiConnect: z.object({
@@ -56,6 +92,8 @@ export function transformEnvToConfig(env: Record<string, any>): any {
     port: env.PORT,
     host: env.HOST,
     nodeEnv: env.NODE_ENV,
+    allowedHosts: env.ALLOWED_HOSTS,
+    allowedOrigins: env.ALLOWED_ORIGINS,
     ankiConnect: {
       url: env.ANKI_CONNECT_URL,
       apiKey: env.ANKI_CONNECT_API_KEY,

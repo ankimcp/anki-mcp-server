@@ -237,6 +237,8 @@ For client-specific features and troubleshooting, consult your MCP client's docu
 
 HTTP mode runs the server as a local web server speaking the MCP Streamable HTTP protocol. It's the transport a web-based AI tool talks to when pointed at your machine, and it's also what the [Remote](#remote) options expose to the outside world. On its own, HTTP mode binds to `localhost` only.
 
+> **Binding beyond localhost?** If you pass `--host 0.0.0.0` (or run behind a reverse proxy/public domain), the server only accepts loopback `Host` headers by default for DNS-rebinding protection — set `ALLOWED_HOSTS` to the hostname(s) clients use. See [HTTP Mode Configuration](#http-mode-configuration).
+
 **Setup - Choose one method:**
 
 **Method 1: Using npx (recommended - no installation needed)**
@@ -330,7 +332,9 @@ If you'd rather expose [local HTTP mode](#http-local-web-based-ai) publicly with
 ankimcp --ngrok
 ```
 
-This route is **unauthenticated** — anyone with the URL can reach your Anki, so it's less secure than [Tunnel](#tunnel--recommended). Prefer Tunnel unless you have a specific reason to manage your own ngrok endpoint. (Requires a global ngrok install and authtoken; the manual two-terminal `ngrok http 3000` setup works too.)
+This route is **unauthenticated** — anyone with the URL can reach your Anki, so it's less secure than [Tunnel](#tunnel--recommended). Prefer Tunnel unless you have a specific reason to manage your own ngrok endpoint. (Requires a global ngrok install and authtoken.)
+
+The `--ngrok` flag launches ngrok with `--host-header=rewrite`, so ngrok rewrites the upstream `Host` to `localhost` before forwarding. That keeps requests within the loopback Host allowlist (see [DNS-rebinding protection](#http-mode-configuration)) without you having to add the public `*.ngrok` domain to `ALLOWED_HOSTS`. If you instead run ngrok manually, use the same flag — `ngrok http --host-header=rewrite 3000` — otherwise ngrok forwards the public ngrok hostname as `Host` and the server rejects it with `403`.
 
 ### CLI Options (all modes)
 
@@ -449,6 +453,8 @@ For more details, see the [official MCP documentation](https://modelcontextproto
 | `ANKI_CONNECT_API_KEY` | API key if configured in AnkiConnect | - |
 | `ANKI_CONNECT_TIMEOUT` | Request timeout in ms | `5000` |
 | `READ_ONLY` | Enable read-only mode (`true` or `1`) | `false` |
+| `ALLOWED_HOSTS` | HTTP mode: extra `Host` header values to accept beyond loopback (comma-separated hostnames). Required when binding to a LAN/public address or running behind a reverse proxy. See [HTTP Mode Configuration](#http-mode-configuration). | loopback only |
+| `ALLOWED_ORIGINS` | HTTP mode: comma-separated allowlist of browser `Origin`/`Referer` patterns (wildcards supported, e.g. `https://*.ngrok.io`). | `http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*` |
 | `TUNNEL_SERVER_URL` | Tunnel server WebSocket URL (tunnel mode only) | `wss://tunnel.ankimcp.ai` |
 | `MEDIA_ALLOWED_TYPES` | Extra MIME types to allow for file path imports (comma-separated, e.g., `application/pdf`) | - |
 | `MEDIA_IMPORT_DIR` | Restrict file path imports to this directory | - |
@@ -519,6 +525,14 @@ The media tools (`storeMediaFile`, `retrieveMediaFile`, `deleteMediaFile`) and `
 These protections apply to `storeMediaFile`, `retrieveMediaFile`, `deleteMediaFile`, and `updateNoteFields` audio/picture fields.
 
 > Path traversal vulnerability reported by [Hideaki Takahashi](https://github.com/Koukyosyumei).
+
+### DNS-Rebinding Protection (HTTP transport)
+
+When running in HTTP mode, the server validates the `Host` header on every request. By default only loopback hosts (`localhost`, `127.0.0.1`, `::1`) are accepted, regardless of port. `Host` is a browser-forbidden header, so a malicious web page cannot forge it — this closes the DNS-rebinding path where a rebound page reaches the local server with a spoofed `Host` and no `Origin`, and reaches the MCP tools. A disallowed `Host` is rejected with `403`.
+
+If you bind to `0.0.0.0`, run behind a reverse proxy, or expose a public tunnel domain, set `ALLOWED_HOSTS` (comma-separated hostnames) to permit those hosts. When tunneling with ngrok the server uses `--host-header=rewrite`, so the upstream still sees a loopback `Host`. See [HTTP Mode Configuration](#http-mode-configuration) for the full list of options.
+
+> DNS-rebinding vulnerability reported by [avishaigo-commits](https://github.com/avishaigo-commits) and [yotampe-pluto](https://github.com/yotampe-pluto).
 
 ## Privacy Policy
 
@@ -610,13 +624,26 @@ npm run build  # Builds once, creates dist/ with all three entry points
 **Environment Variables:**
 - `PORT` - HTTP server port (default: 3000)
 - `HOST` - Bind address (default: 127.0.0.1 for localhost-only)
-- `ALLOWED_ORIGINS` - Comma-separated list of allowed origins for CORS (default: localhost)
+- `ALLOWED_HOSTS` - Comma-separated extra `Host` header values to accept beyond the built-in loopback set (`localhost`, `127.0.0.1`, `::1`). Hostname-only and port-agnostic. Default: loopback only.
+- `ALLOWED_ORIGINS` - Comma-separated allowlist of browser `Origin`/`Referer` patterns; wildcards supported (e.g. `https://*.ngrok.io`). Default: `http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*`.
 - `LOG_LEVEL` - Logging level (default: info)
 
 **Security:**
-- Origin header validation (prevents DNS rebinding attacks)
-- Binds to localhost (127.0.0.1) by default
-- No authentication in current version (OAuth support planned)
+- **Host header validation (DNS-rebinding protection)** — every HTTP request must carry a `Host` header that matches the allowlist. By default only loopback hosts (`localhost`, `127.0.0.1`, `::1`) are accepted, regardless of port. `Host` is a browser-forbidden header, so a malicious web page cannot forge it — this closes the [DNS-rebinding](https://github.com/ankimcp/anki-mcp-server/security/advisories) path where a rebound page reaches the server with a spoofed `Host` and no `Origin`. A disallowed `Host` is rejected with `403`.
+- **Origin header validation** — browser requests with a present-but-disallowed `Origin`/`Referer` are rejected. Requests with **no** `Origin` (curl, Postman, MCP-over-HTTP clients) are allowed; Host validation is the defense against rebinding.
+- Binds to localhost (127.0.0.1) by default.
+- No authentication in current version (OAuth support planned).
+
+**Exposing HTTP mode beyond localhost** — if you bind to a LAN/public address or put the server behind a reverse proxy or public domain, you **must** set `ALLOWED_HOSTS` to the hostname(s) clients will use, otherwise every non-loopback request is rejected with `403`:
+
+```bash
+# Bind to all interfaces and accept the machine's LAN name + a public domain
+ALLOWED_HOSTS=my-nas.local,anki.example.com PORT=8080 HOST=0.0.0.0 node dist/main-http.js
+```
+
+When you bind to `0.0.0.0`/`::` without `ALLOWED_HOSTS`, the server logs a startup warning that only loopback `Host` headers will be accepted.
+
+> **Docker / reverse proxy / public domain:** the same rule applies. In Docker, requests usually arrive with the container's published hostname or the proxy's `Host`, so set `ALLOWED_HOSTS` accordingly. A reverse proxy (nginx, Caddy, Traefik) should either forward the original `Host` and have that hostname listed in `ALLOWED_HOSTS`, or rewrite the upstream `Host` to `localhost`. The built-in `--ngrok` integration handles this automatically (see below).
 
 **Example: Running Modes**
 ```bash

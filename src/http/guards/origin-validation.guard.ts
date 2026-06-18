@@ -2,9 +2,11 @@ import {
   Injectable,
   CanActivate,
   ExecutionContext,
+  Inject,
   Logger,
 } from "@nestjs/common";
 import { Request } from "express";
+import { APP_CONFIG, type AppConfig } from "@/config";
 
 /**
  * Origin Validation Guard
@@ -18,17 +20,17 @@ import { Request } from "express";
  * - Set ALLOWED_ORIGINS environment variable (comma-separated list of patterns)
  * - Default: 'http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*'
  * - Supports wildcard patterns: 'http://localhost:*' matches any port
+ *
+ * The allowlist is sourced from validated config (`allowedOrigins`), which reads
+ * ALLOWED_ORIGINS through the Zod config pipeline.
  */
 @Injectable()
 export class OriginValidationGuard implements CanActivate {
   private readonly logger = new Logger(OriginValidationGuard.name);
   private readonly allowedOrigins: string[];
 
-  constructor() {
-    const defaultOrigins =
-      "http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*";
-    const originsEnv = process.env.ALLOWED_ORIGINS || defaultOrigins;
-    this.allowedOrigins = originsEnv.split(",").map((o) => o.trim());
+  constructor(@Inject(APP_CONFIG) config: AppConfig) {
+    this.allowedOrigins = config.allowedOrigins;
   }
 
   canActivate(context: ExecutionContext): boolean {
