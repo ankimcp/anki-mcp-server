@@ -7,6 +7,13 @@ describe("AppConfigService", () => {
     port: 3000,
     host: "127.0.0.1",
     nodeEnv: "development",
+    allowedHosts: [],
+    allowedOrigins: [
+      "http://localhost:*",
+      "http://127.0.0.1:*",
+      "https://localhost:*",
+      "https://127.0.0.1:*",
+    ],
     ankiConnect: {
       url: "http://localhost:8765",
       apiKey: undefined,

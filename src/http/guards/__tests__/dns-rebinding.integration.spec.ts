@@ -99,3 +99,54 @@ describe("DNS-rebinding protection (HTTP module integration)", () => {
     expect(REJECT_STATUSES).toContain(res.status);
   });
 });
+
+/**
+ * Escape-hatch coverage: setting ALLOWED_HOSTS must let an otherwise-blocked
+ * Host through end-to-end, proving the guard reads its allowlist from validated
+ * config. The env var is set before buildConfigInput() (which reads process.env)
+ * and restored in afterEach so it cannot leak into other suites.
+ */
+describe("DNS-rebinding protection — ALLOWED_HOSTS escape hatch (HTTP module integration)", () => {
+  let app: INestApplication;
+  const originalEnv = process.env;
+
+  const initializeBody = {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: { name: "dns-rebinding-test", version: "0.0.0" },
+    },
+  };
+
+  beforeEach(async () => {
+    process.env = { ...originalEnv, ALLOWED_HOSTS: "attacker.example" };
+
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule.forHttp(buildConfigInput())],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    await app.init();
+  });
+
+  afterEach(async () => {
+    process.env = originalEnv;
+    if (app) {
+      await app.close();
+    }
+  });
+
+  it("serves MCP initialize for a Host now on the allowlist (200)", async () => {
+    const res = await request(app.getHttpServer())
+      .post("/")
+      .set("Host", "attacker.example:3000")
+      .set("Content-Type", "application/json")
+      .set("Accept", "application/json, text/event-stream")
+      .send(initializeBody);
+
+    expect(res.status).toBe(200);
+  });
+});

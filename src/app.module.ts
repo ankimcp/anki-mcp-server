@@ -1,6 +1,9 @@
 import { DynamicModule, Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { McpModule, McpTransportType } from "@rekog/mcp-nest";
+import { OriginValidationGuard } from "./http/guards/origin-validation.guard";
+import { HostValidationGuard } from "./http/guards/host-validation.guard";
 import {
   McpPrimitivesAnkiEssentialModule,
   ANKI_CONFIG,
@@ -150,6 +153,16 @@ export class AppModule {
           useValue: validatedConfig,
         },
         AppConfigService,
+        // DNS-rebinding protection (HTTP transport only). Registered at module
+        // level so the guards run for every request and can use DI for config.
+        {
+          provide: APP_GUARD,
+          useClass: OriginValidationGuard,
+        },
+        {
+          provide: APP_GUARD,
+          useClass: HostValidationGuard,
+        },
         ...ESSENTIAL_MCP_TOOLS,
         ...GUI_MCP_TOOLS,
       ],

@@ -1,4 +1,10 @@
 import { ExecutionContext } from "@nestjs/common";
+import {
+  configSchema,
+  transformEnvToConfig,
+  buildConfigInput,
+  type AppConfig,
+} from "@/config";
 
 // Mock Logger BEFORE importing OriginValidationGuard
 const mockLoggerWarn = jest.fn();
@@ -20,6 +26,17 @@ jest.mock("@nestjs/common", () => {
 });
 
 import { OriginValidationGuard } from "../origin-validation.guard";
+
+/**
+ * Builds a guard from the current process.env, exercising the same Zod config
+ * path the app uses (ALLOWED_ORIGINS -> validated config.allowedOrigins).
+ */
+function buildGuard(): OriginValidationGuard {
+  const config: AppConfig = configSchema.parse(
+    transformEnvToConfig(buildConfigInput()),
+  );
+  return new OriginValidationGuard(config);
+}
 
 describe("OriginValidationGuard", () => {
   let guard: OriginValidationGuard;
@@ -44,7 +61,7 @@ describe("OriginValidationGuard", () => {
 
   describe("constructor", () => {
     it("should use default allowed origins when ALLOWED_ORIGINS not set", () => {
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
 
       // Test that default origins work
       const context = createMockContext("http://localhost:3000");
@@ -53,7 +70,7 @@ describe("OriginValidationGuard", () => {
 
     it("should use custom allowed origins from environment variable", () => {
       process.env.ALLOWED_ORIGINS = "https://example.com,https://test.com:8080";
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
 
       const context = createMockContext("https://example.com");
       expect(guard.canActivate(context)).toBe(true);
@@ -61,7 +78,7 @@ describe("OriginValidationGuard", () => {
 
     it("should trim whitespace from allowed origins", () => {
       process.env.ALLOWED_ORIGINS = " https://example.com , https://test.com ";
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
 
       const context = createMockContext("https://example.com");
       expect(guard.canActivate(context)).toBe(true);
@@ -70,7 +87,7 @@ describe("OriginValidationGuard", () => {
 
   describe("canActivate", () => {
     beforeEach(() => {
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
     });
 
     it("should allow request with no origin header", () => {
@@ -107,7 +124,7 @@ describe("OriginValidationGuard", () => {
       // Note: Default pattern is 'http://localhost:*' which requires a port
       // 'http://localhost' (no port) won't match unless explicitly configured
       process.env.ALLOWED_ORIGINS = "http://localhost,http://localhost:*";
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
 
       const context = createMockContext("http://localhost");
       expect(guard.canActivate(context)).toBe(true);
@@ -162,7 +179,7 @@ describe("OriginValidationGuard", () => {
 
     it("should allow ngrok origins when configured", () => {
       process.env.ALLOWED_ORIGINS = "https://*.ngrok.io";
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
 
       const context1 = createMockContext("https://abc123.ngrok.io");
       const context2 = createMockContext("https://xyz789.ngrok.io");
@@ -173,7 +190,7 @@ describe("OriginValidationGuard", () => {
 
     it("should block non-matching ngrok subdomain", () => {
       process.env.ALLOWED_ORIGINS = "https://abc123.ngrok.io";
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
 
       const context = createMockContext("https://xyz789.ngrok.io");
 
@@ -183,20 +200,20 @@ describe("OriginValidationGuard", () => {
 
   describe("matchesPattern", () => {
     beforeEach(() => {
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
     });
 
     it("should match exact origin", () => {
       const context = createMockContext("https://example.com:3000");
       process.env.ALLOWED_ORIGINS = "https://example.com:3000";
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
 
       expect(guard.canActivate(context)).toBe(true);
     });
 
     it("should match wildcard port pattern", () => {
       process.env.ALLOWED_ORIGINS = "https://example.com:*";
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
 
       const context1 = createMockContext("https://example.com:3000");
       const context2 = createMockContext("https://example.com:8080");
@@ -207,7 +224,7 @@ describe("OriginValidationGuard", () => {
 
     it("should match wildcard subdomain pattern", () => {
       process.env.ALLOWED_ORIGINS = "https://*.example.com";
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
 
       const context1 = createMockContext("https://api.example.com");
       const context2 = createMockContext("https://app.example.com");
@@ -218,7 +235,7 @@ describe("OriginValidationGuard", () => {
 
     it("should not match different protocol", () => {
       process.env.ALLOWED_ORIGINS = "http://localhost:*";
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
 
       const context = createMockContext("https://localhost:3000");
 
@@ -227,7 +244,7 @@ describe("OriginValidationGuard", () => {
 
     it("should not match different host", () => {
       process.env.ALLOWED_ORIGINS = "http://localhost:*";
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
 
       const context = createMockContext("http://example.com:3000");
 
@@ -236,7 +253,7 @@ describe("OriginValidationGuard", () => {
 
     it("should handle multiple wildcard patterns", () => {
       process.env.ALLOWED_ORIGINS = "https://*.ngrok.io,https://*.example.com";
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
 
       const context1 = createMockContext("https://abc.ngrok.io");
       const context2 = createMockContext("https://app.example.com");
@@ -249,7 +266,7 @@ describe("OriginValidationGuard", () => {
 
     it("should escape dots in pattern correctly", () => {
       process.env.ALLOWED_ORIGINS = "https://app.example.com";
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
 
       // Should not match 'app-example.com' or 'appaexampleacom'
       const context1 = createMockContext("https://app-example.com");
@@ -264,7 +281,7 @@ describe("OriginValidationGuard", () => {
 
   describe("security scenarios", () => {
     beforeEach(() => {
-      guard = new OriginValidationGuard();
+      guard = buildGuard();
     });
 
     it("should block DNS rebinding attack attempts", () => {
