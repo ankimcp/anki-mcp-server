@@ -4,7 +4,11 @@ import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { computeRetention, calculateStreak } from "@/mcp/utils/stats.utils";
-import { ReviewStatsResult, CardReviewTuple } from "./review-stats.types";
+import {
+  ReviewStatsResult,
+  CardReviewTuple,
+  CardReviewObject,
+} from "./review-stats.types";
 
 /** Milliseconds in one day */
 const MS_PER_DAY = 86400000;
@@ -23,13 +27,16 @@ export class ReviewStatsTool {
     description:
       "Get review history analysis including temporal patterns, retention metrics, and study streak information. " +
       "Use this to analyze learning progress over time, identify review patterns, and track consistency. " +
-      "Requires a start date and deck name; end date defaults to today.",
+      "Requires a start date; the deck is optional - omit it to analyze the entire collection (all decks). " +
+      "End date defaults to today.",
     parameters: z
       .object({
         deck: z
           .string()
+          .optional()
           .describe(
-            "Deck name to filter reviews (REQUIRED - AnkiConnect API requires a deck)",
+            "Deck name to filter reviews. Matches the exact deck only (subdecks are NOT rolled up). " +
+              "Omit to analyze the entire collection (all decks).",
           ),
         start_date: z
           .string()
@@ -107,16 +114,19 @@ export class ReviewStatsTool {
     },
   })
   async execute(params: {
-    deck: string;
+    deck?: string;
     start_date: string;
     end_date?: string;
   }) {
     try {
-      const { deck, start_date } = params;
+      const { start_date } = params;
+      const deck =
+        params.deck && params.deck.length > 0 ? params.deck : undefined;
+      const deckLabel = deck ?? "All Decks";
       const end_date = params.end_date || this.getTodayISO();
 
       this.logger.log(
-        `Getting review statistics from ${start_date} to ${end_date} for deck: ${deck}`,
+        `Getting review statistics from ${start_date} to ${end_date} for deck: ${deckLabel}`,
       );
 
       // Convert dates to timestamps (in milliseconds)
@@ -124,18 +134,23 @@ export class ReviewStatsTool {
       const startTimestamp = new Date(start_date).getTime();
       const endTimestamp = new Date(end_date).getTime() + MS_PER_DAY; // Add 1 day to include end date
 
-      // Step 1: Get detailed review data for the specified deck
-      this.logger.log(`Fetching detailed review data for deck: ${deck}...`);
-
-      const reviews = await this.ankiClient.invoke<CardReviewTuple[]>(
-        "cardReviews",
-        {
-          startID: startTimestamp,
-          deck: deck,
-        },
+      // Step 1: Get detailed review data.
+      // A specific deck uses AnkiConnect's `cardReviews` (exact deck, no subdeck
+      // rollup). When no deck is given we fall back to a collection-wide path,
+      // because `cardReviews` requires an exact deck name and can't answer
+      // "all decks".
+      this.logger.log(
+        `Fetching detailed review data for deck: ${deckLabel}...`,
       );
 
-      // Filter reviews to end_date (API only filters by start)
+      const reviews = deck
+        ? await this.ankiClient.invoke<CardReviewTuple[]>("cardReviews", {
+            startID: startTimestamp,
+            deck,
+          })
+        : await this.fetchCollectionReviews(startTimestamp);
+
+      // Filter reviews to end_date (lower bound already applied above)
       const filteredReviews = reviews.filter(
         (review) => review[0] <= endTimestamp,
       );
@@ -188,7 +203,7 @@ export class ReviewStatsTool {
           start: start_date,
           end: end_date,
         },
-        deck: deck,
+        deck: deckLabel,
         reviews_by_day: reviewsByDay,
         summary: {
           total_reviews: totalReviews,
@@ -214,6 +229,59 @@ export class ReviewStatsTool {
         hint: "Make sure Anki is running and date format is YYYY-MM-DD. Use listDecks to verify deck name if filtering by deck.",
       });
     }
+  }
+
+  /**
+   * Fetch reviews across the entire collection (all decks).
+   *
+   * AnkiConnect's `cardReviews` action requires an exact deck name and does not
+   * roll up subdecks, so it can't answer the "all decks" case. Instead we list
+   * every card (`findCards deck:*`) and pull their review logs in one batch
+   * (`getReviewsOfCards`), then normalize each entry to the same
+   * `CardReviewTuple` layout the per-deck path produces so the downstream
+   * aggregation is identical. Reviews older than `startTimestamp` are dropped
+   * here to mirror cardReviews' `startID` lower-bound filtering.
+   */
+  private async fetchCollectionReviews(
+    startTimestamp: number,
+  ): Promise<CardReviewTuple[]> {
+    const cardIds = await this.ankiClient.invoke<number[]>("findCards", {
+      query: "deck:*",
+    });
+
+    if (cardIds.length === 0) {
+      return [];
+    }
+
+    const reviewsByCard = await this.ankiClient.invoke<
+      Record<string, CardReviewObject[]>
+    >("getReviewsOfCards", { cards: cardIds });
+
+    const tuples: CardReviewTuple[] = [];
+    for (const [cardId, cardReviews] of Object.entries(reviewsByCard)) {
+      const cid = Number(cardId);
+      for (const r of cardReviews) {
+        if (r.id < startTimestamp) {
+          continue;
+        }
+        // Map getReviewsOfCards object -> cardReviews tuple layout.
+        // tuple[3] is the button pressed (r.ease); tuple[6] is the ease factor
+        // (r.factor).
+        tuples.push([
+          r.id,
+          cid,
+          r.usn,
+          r.ease,
+          r.ivl,
+          r.lastIvl,
+          r.factor,
+          r.time,
+          r.type,
+        ]);
+      }
+    }
+
+    return tuples;
   }
 
   /**
