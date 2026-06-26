@@ -431,8 +431,8 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
       expect(daysDiff).toBeLessThan(2); // Allow for timezone differences
     });
 
-    it("should require deck parameter", () => {
-      // Validation errors return a response with error text instead of throwing
+    it("should aggregate all decks when deck is omitted", () => {
+      // Omitting deck rolls the whole collection up under "All Decks"
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 7);
 
@@ -440,8 +440,8 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
         start_date: startDate.toISOString().split("T")[0],
       });
 
-      const text = result.text as string;
-      expect(text).toMatch(/deck|required|invalid/i);
+      expect(result.deck).toBe("All Decks");
+      expect(Array.isArray(result.reviews_by_day)).toBe(true);
     });
   });
 

@@ -425,16 +425,17 @@ describe("E2E: Stats Tools (STDIO)", () => {
       expect(daysDiff).toBeLessThan(2); // Allow for timezone differences
     });
 
-    it("should require deck parameter", () => {
-      // deck is required for review_stats due to AnkiConnect API limitation
+    it("should aggregate all decks when deck is omitted", () => {
+      // Omitting deck rolls the whole collection up under "All Decks"
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 7);
 
-      expect(() => {
-        callTool("review_stats", {
-          start_date: startDate.toISOString().split("T")[0],
-        });
-      }).toThrow(/deck|required|invalid/i);
+      const result = callTool("review_stats", {
+        start_date: startDate.toISOString().split("T")[0],
+      });
+
+      expect(result.deck).toBe("All Decks");
+      expect(Array.isArray(result.reviews_by_day)).toBe(true);
     });
   });
 

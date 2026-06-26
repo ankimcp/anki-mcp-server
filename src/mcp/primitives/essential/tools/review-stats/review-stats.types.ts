@@ -25,6 +25,26 @@ export interface CardReviewsParams {
 }
 
 /**
+ * Single review entry returned by AnkiConnect getReviewsOfCards API.
+ * Keys mirror the revlog columns. Note: `ease` is the button pressed (1-4),
+ * while `factor` is the ease factor (e.g. 2500) - the opposite naming from the
+ * cardReviews tuple, where index 3 is the button and index 6 is the factor.
+ */
+export interface CardReviewObject {
+  /** Review timestamp in milliseconds (revlog id) */
+  id: number;
+  usn: number;
+  /** Button pressed: 1=Again, 2=Hard, 3=Good, 4=Easy */
+  ease: number;
+  ivl: number;
+  lastIvl: number;
+  /** Ease factor (e.g. 2500) */
+  factor: number;
+  time: number;
+  type: number;
+}
+
+/**
  * Card review tuple returned by AnkiConnect cardReviews API
  * Format: [timestamp, cardId, usn, buttonPressed, newInterval, previousInterval, ease, timeTaken, reviewType]
  */

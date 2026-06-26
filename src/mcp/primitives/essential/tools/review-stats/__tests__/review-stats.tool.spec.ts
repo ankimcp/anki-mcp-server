@@ -743,4 +743,149 @@ describe("ReviewStatsTool", () => {
       expect(result.error).toContain("failed to fetch reviews");
     });
   });
+
+  describe("all decks (no deck filter)", () => {
+    it("should aggregate reviews across the whole collection when deck is omitted", async () => {
+      // Arrange
+      const startDate = "2026-01-10";
+      const endDate = "2026-01-11";
+      const startTs = new Date(startDate).getTime();
+
+      ankiClient.invoke.mockImplementation((action: string, params?: any) => {
+        if (action === "cardReviews") {
+          throw new Error(
+            "cardReviews must not be called for the all-decks path",
+          );
+        }
+        if (action === "findCards") {
+          expect(params?.query).toBe("deck:*");
+          return Promise.resolve([101, 202]);
+        }
+        if (action === "getReviewsOfCards") {
+          expect(params?.cards).toEqual([101, 202]);
+          // getReviewsOfCards returns objects keyed by card id.
+          // `ease` is the button pressed (1-4), `factor` is the ease factor.
+          return Promise.resolve({
+            "101": [
+              {
+                id: startTs + 1000,
+                usn: -1,
+                ease: 3,
+                ivl: 4,
+                lastIvl: -60,
+                factor: 2500,
+                time: 6000,
+                type: 0,
+              }, // good, day 1
+              {
+                id: startTs + 2000,
+                usn: -1,
+                ease: 1,
+                ivl: 4,
+                lastIvl: -60,
+                factor: 2500,
+                time: 6000,
+                type: 0,
+              }, // again, day 1
+              {
+                id: startTs - 999999,
+                usn: -1,
+                ease: 3,
+                ivl: 4,
+                lastIvl: -60,
+                factor: 2500,
+                time: 6000,
+                type: 0,
+              }, // before window -> dropped
+            ],
+            "202": [
+              {
+                id: startTs + 86400000 + 1000,
+                usn: -1,
+                ease: 3,
+                ivl: 4,
+                lastIvl: -60,
+                factor: 2500,
+                time: 6000,
+                type: 0,
+              }, // good, day 2
+            ],
+          });
+        }
+        return Promise.resolve({});
+      });
+
+      // Act
+      const rawResult = await tool.execute({
+        start_date: startDate,
+        end_date: endDate,
+      });
+      const result = parseToolResult(rawResult) as ReviewStatsResult;
+
+      // Assert
+      expect(result.deck).toBe("All Decks");
+      expect(result.reviews_by_day).toEqual([
+        { date: "2026-01-10", count: 2 },
+        { date: "2026-01-11", count: 1 },
+      ]);
+      expect(result.summary.total_reviews).toBe(3); // pre-window review dropped
+      expect(result.retention.by_rating).toEqual({
+        again: 1,
+        hard: 0,
+        good: 2,
+        easy: 0,
+      });
+      expect(ankiClient.invoke).toHaveBeenCalledWith("findCards", {
+        query: "deck:*",
+      });
+      expect(ankiClient.invoke).toHaveBeenCalledWith("getReviewsOfCards", {
+        cards: [101, 202],
+      });
+    });
+
+    it("should treat an empty-string deck as all decks", async () => {
+      // Arrange
+      const startDate = "2026-01-10";
+
+      ankiClient.invoke.mockImplementation((action: string) => {
+        if (action === "cardReviews") {
+          throw new Error(
+            "cardReviews must not be called for the all-decks path",
+          );
+        }
+        if (action === "findCards") return Promise.resolve([]);
+        return Promise.resolve({});
+      });
+
+      // Act
+      const rawResult = await tool.execute({ deck: "", start_date: startDate });
+      const result = parseToolResult(rawResult) as ReviewStatsResult;
+
+      // Assert
+      expect(result.deck).toBe("All Decks");
+      expect(result.reviews_by_day).toEqual([]);
+      expect(result.summary.total_reviews).toBe(0);
+    });
+
+    it("should return empty stats when the collection has no cards", async () => {
+      // Arrange
+      const startDate = "2026-01-10";
+
+      ankiClient.invoke.mockImplementation((action: string) => {
+        if (action === "findCards") return Promise.resolve([]);
+        if (action === "getReviewsOfCards") {
+          throw new Error("should not fetch reviews when there are no cards");
+        }
+        return Promise.resolve({});
+      });
+
+      // Act
+      const rawResult = await tool.execute({ start_date: startDate });
+      const result = parseToolResult(rawResult) as ReviewStatsResult;
+
+      // Assert
+      expect(result.summary.total_reviews).toBe(0);
+      expect(result.retention.overall).toBe(0);
+    });
+  });
 });
