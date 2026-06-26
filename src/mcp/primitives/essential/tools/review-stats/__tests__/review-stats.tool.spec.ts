@@ -45,6 +45,13 @@ describe("ReviewStatsTool", () => {
 
           // Return review details with button presses
           // Format: [timestamp, cardId, usn, buttonPressed, ...]
+          // NOTE: these mocks intentionally place reviews at exactly
+          // `startTimestamp` (i=0). On the per-deck path the lower bound is
+          // enforced server-side by AnkiConnect's `cardReviews` (revlog
+          // `id > startID`), so the mock returns them verbatim and the
+          // exclusive-boundary behavior is NOT exercised here. That boundary
+          // is covered by the collection-path test
+          // ("should exclude a review whose timestamp equals the window start").
           const startTimestamp = new Date(startDate).getTime();
           const reviews: any[] = [];
 
@@ -841,6 +848,61 @@ describe("ReviewStatsTool", () => {
       expect(ankiClient.invoke).toHaveBeenCalledWith("getReviewsOfCards", {
         cards: [101, 202],
       });
+    });
+
+    it("should exclude a review whose timestamp equals the window start (exclusive lower bound)", async () => {
+      // Arrange
+      // AnkiConnect's cardReviews uses a STRICT lower bound (revlog `id > startID`),
+      // so a review at exactly startTimestamp must NOT be counted on the
+      // collection-wide path either.
+      const startDate = "2026-01-10";
+      const startTs = new Date(startDate).getTime();
+
+      ankiClient.invoke.mockImplementation((action: string) => {
+        if (action === "cardReviews") {
+          throw new Error(
+            "cardReviews must not be called for the all-decks path",
+          );
+        }
+        if (action === "findCards") return Promise.resolve([101]);
+        if (action === "getReviewsOfCards") {
+          return Promise.resolve({
+            "101": [
+              {
+                id: startTs, // exactly at the window start -> excluded
+                usn: -1,
+                ease: 3,
+                ivl: 4,
+                lastIvl: -60,
+                factor: 2500,
+                time: 6000,
+                type: 0,
+              },
+              {
+                id: startTs + 1000, // strictly inside the window -> included
+                usn: -1,
+                ease: 3,
+                ivl: 4,
+                lastIvl: -60,
+                factor: 2500,
+                time: 6000,
+                type: 0,
+              },
+            ],
+          });
+        }
+        return Promise.resolve({});
+      });
+
+      // Act
+      const rawResult = await tool.execute({ start_date: startDate });
+      const result = parseToolResult(rawResult) as ReviewStatsResult;
+
+      // Assert - only the strictly-after-start review is counted
+      expect(result.summary.total_reviews).toBe(1);
+      expect(result.reviews_by_day).toEqual([
+        { date: "2026-01-10", count: 1 },
+      ]);
     });
 
     it("should treat an empty-string deck as all decks", async () => {

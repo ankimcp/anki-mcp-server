@@ -35,8 +35,9 @@ export class ReviewStatsTool {
           .string()
           .optional()
           .describe(
-            "Deck name to filter reviews. Matches the exact deck only (subdecks are NOT rolled up). " +
-              "Omit to analyze the entire collection (all decks).",
+            "Deck name to filter reviews. Matches the EXACT deck only - subdecks are NOT included, " +
+              "so a parent deck still returns reviews for cards assigned directly to it (but not its subdecks' cards). " +
+              "Omit (or pass an empty string) to analyze the entire collection (all decks).",
           ),
         start_date: z
           .string()
@@ -150,7 +151,10 @@ export class ReviewStatsTool {
           })
         : await this.fetchCollectionReviews(startTimestamp);
 
-      // Filter reviews to end_date (lower bound already applied above)
+      // Apply only the upper bound here; the lower bound (start) is already
+      // enforced on both paths: cardReviews applies it server-side via its
+      // strict startID (revlog `id > startID`), and fetchCollectionReviews
+      // applies it in-process.
       const filteredReviews = reviews.filter(
         (review) => review[0] <= endTimestamp,
       );
@@ -239,8 +243,8 @@ export class ReviewStatsTool {
    * every card (`findCards deck:*`) and pull their review logs in one batch
    * (`getReviewsOfCards`), then normalize each entry to the same
    * `CardReviewTuple` layout the per-deck path produces so the downstream
-   * aggregation is identical. Reviews older than `startTimestamp` are dropped
-   * here to mirror cardReviews' `startID` lower-bound filtering.
+   * aggregation is identical. Reviews at or before `startTimestamp` are dropped
+   * here to mirror cardReviews' strict `startID` lower bound (revlog `id > ?`).
    */
   private async fetchCollectionReviews(
     startTimestamp: number,
@@ -249,7 +253,7 @@ export class ReviewStatsTool {
       query: "deck:*",
     });
 
-    if (cardIds.length === 0) {
+    if (!cardIds || cardIds.length === 0) {
       return [];
     }
 
@@ -261,7 +265,7 @@ export class ReviewStatsTool {
     for (const [cardId, cardReviews] of Object.entries(reviewsByCard)) {
       const cid = Number(cardId);
       for (const r of cardReviews) {
-        if (r.id < startTimestamp) {
+        if (r.id <= startTimestamp) {
           continue;
         }
         // Map getReviewsOfCards object -> cardReviews tuple layout.
