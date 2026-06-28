@@ -935,7 +935,7 @@ This project follows [Semantic Versioning](https://semver.org/) with a pre-1.0 d
     - Will be released when the API is stable and tested
     - Breaking changes will require major version bumps (2.0.0, etc.)
 
-**Current Status**: `0.20.0` - Active beta development. Recent features include model field management (`addModelField`, `removeModelField`, `renameModelField`, `repositionModelField`), batch note creation (`addNotes`), integrated ngrok tunneling (`--ngrok` flag), media file management, model/template management, and comprehensive deck statistics. APIs may change based on feedback and testing.
+**Current Status**: `0.22.0` - Active beta development. Recent features include collection-wide review analysis (`review_stats` now aggregates across all decks when `deck` is omitted), model field management (`addModelField`, `removeModelField`, `renameModelField`, `repositionModelField`), batch note creation (`addNotes`), integrated ngrok tunneling (`--ngrok` flag), media file management, model/template management, and comprehensive deck statistics. APIs may change based on feedback and testing.
 
 ### MCPB spec evolution
 

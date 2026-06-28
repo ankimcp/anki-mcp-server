@@ -34,8 +34,7 @@ describe("InMemoryTransport", () => {
         setImmediate(() => {
           // In this test, request always has an id (it's a request, not a notification)
           const requestId = ("id" in request ? request.id : 1) as
-            | string
-            | number;
+            string | number;
           transport.send({
             jsonrpc: "2.0",
             id: requestId,
@@ -66,8 +65,7 @@ describe("InMemoryTransport", () => {
         setImmediate(() => {
           // In this test, request always has an id (it's a request, not a notification)
           const requestId = ("id" in request ? request.id : 1) as
-            | string
-            | number;
+            string | number;
           transport.send({
             jsonrpc: "2.0",
             id: requestId,
@@ -105,8 +103,7 @@ describe("InMemoryTransport", () => {
         setTimeout(() => {
           // In this test, request always has an id (it's a request, not a notification)
           const requestId = ("id" in request ? request.id : 1) as
-            | string
-            | number;
+            string | number;
           transport.send({
             jsonrpc: "2.0",
             id: requestId,
@@ -169,8 +166,7 @@ describe("InMemoryTransport", () => {
         setImmediate(() => {
           // In this test, request always has an id (it's a request, not a notification)
           const requestId = ("id" in request ? request.id : 1) as
-            | string
-            | number;
+            string | number;
           transport.send({
             jsonrpc: "2.0",
             id: requestId,
@@ -295,8 +291,7 @@ describe("InMemoryTransport", () => {
           setTimeout(() => {
             // In this test, request always has an id (it's a request, not a notification)
             const requestId = ("id" in request ? request.id : 1) as
-              | string
-              | number;
+              string | number;
             transport.send({
               jsonrpc: "2.0",
               id: requestId,
@@ -373,8 +368,7 @@ describe("InMemoryTransport", () => {
           setImmediate(() => {
             // In this test, request always has an id (it's a request, not a notification)
             const requestId = ("id" in request ? request.id : 1) as
-              | string
-              | number;
+              string | number;
             transport.send({
               jsonrpc: "2.0",
               id: requestId,
@@ -412,8 +406,7 @@ describe("InMemoryTransport", () => {
           setImmediate(() => {
             // In this test, request always has an id (it's a request, not a notification)
             const requestId = ("id" in request ? request.id : 1) as
-              | string
-              | number;
+              string | number;
             transport.send({
               jsonrpc: "2.0",
               id: requestId,

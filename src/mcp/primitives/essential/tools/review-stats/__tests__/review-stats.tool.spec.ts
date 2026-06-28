@@ -900,9 +900,7 @@ describe("ReviewStatsTool", () => {
 
       // Assert - only the strictly-after-start review is counted
       expect(result.summary.total_reviews).toBe(1);
-      expect(result.reviews_by_day).toEqual([
-        { date: "2026-01-10", count: 1 },
-      ]);
+      expect(result.reviews_by_day).toEqual([{ date: "2026-01-10", count: 1 }]);
     });
 
     it("should treat an empty-string deck as all decks", async () => {
