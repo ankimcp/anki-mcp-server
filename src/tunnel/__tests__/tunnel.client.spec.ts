@@ -282,6 +282,203 @@ describe("TunnelClient", () => {
         "mock_refresh_token",
       );
     }, 10000);
+
+    // Regression: a non-auth WS `close` arriving BEFORE `tunnel_established`
+    // (e.g. a 4008 SERVICE_UNAVAILABLE, which fires AFTER `open` and surfaces as
+    // a 'close' rather than an 'error') must settle the pending
+    // establishConnection promise. Previously only the WebSocket 'error' path
+    // rejected, so a pre-established close left connect() hanging forever: its
+    // private `isConnecting` guard stayed latched true and the next connect()
+    // threw `connection_in_progress`, wedging the client permanently.
+    //
+    // A NON-auth code is used deliberately: auth closes (4001/4003) now route
+    // through establishWithAuthRetry's single-shot refresh-and-retry (covered by
+    // the dedicated pre-established-auth tests below), whereas every other
+    // pre-established close still fails fast with "connection_closed". This test
+    // pins that fail-fast branch plus the wedge fix.
+    //
+    // This test lives in the `connect` describe (alongside the other
+    // pre-established failure tests) precisely because that block has NO
+    // tunnel-establishing beforeEach — we must reach `open` but never emit
+    // `tunnel_established`, exercising the `wasEstablished === false` branch of
+    // the close handler.
+    it("rejects the pending connect on a non-auth (4008) close before tunnel_established and clears the in-progress guard", async () => {
+      // A first-connect pre-established close is owned by connect() and does not
+      // schedule a background reconnect, but keep a no-op 'error' listener so any
+      // stray emit can never surface as an unhandled emitter error.
+      client.on("error", () => {});
+
+      // First attempt: reach `open` (past the handshake) but NEVER emit
+      // `tunnel_established`, then close with a non-auth 4008.
+      const firstConnect = client.connect();
+      await Promise.resolve();
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.OPEN });
+      mockWs.emit("open");
+
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.CLOSED });
+      mockWs.emit(
+        "close",
+        TunnelCloseCodes.SERVICE_UNAVAILABLE,
+        Buffer.from("Service unavailable"),
+      );
+
+      // Assertion 1: the pending promise REJECTS (does not hang) with the
+      // dedicated pre-established close code.
+      await expect(firstConnect).rejects.toThrow(
+        expect.objectContaining({ code: "connection_closed" }),
+      );
+
+      // Assertion 2: the wedge is cleared — a fresh connect() must proceed to a
+      // new attempt instead of throwing `connection_in_progress`. Drive it to a
+      // clean success against a fresh socket to prove it got past the guard.
+      const secondMockWs = createMockWs();
+      (WebSocket as any).mockImplementation(() => secondMockWs);
+
+      const secondConnect = client.connect();
+      await Promise.resolve();
+      Object.defineProperty(secondMockWs, "readyState", {
+        value: WebSocket.OPEN,
+      });
+      secondMockWs.emit("open");
+      secondMockWs.emit(
+        "message",
+        JSON.stringify({
+          type: "tunnel_established",
+          url: "https://second.tunnel.ankimcp.ai",
+        }),
+      );
+
+      await expect(secondConnect).resolves.toBe(
+        "https://second.tunnel.ankimcp.ai",
+      );
+    });
+
+    // A pre-established auth close (4001/4003) on the FIRST/CLI connect is no
+    // longer fatal: establishWithAuthRetry refreshes the token ONCE and retries
+    // establishConnection ONCE. ws1 auth-closes before `tunnel_established`;
+    // after the refresh, ws2 establishes and connect() resolves.
+    it("recovers a pre-established 4003 by refreshing the token once and retrying", async () => {
+      client.on("error", () => {});
+      const ws1 = createMockWs();
+      const ws2 = createMockWs();
+      (WebSocket as any)
+        .mockImplementationOnce(() => ws1)
+        .mockImplementationOnce(() => ws2);
+
+      const connectPromise = client.connect();
+      await Promise.resolve();
+
+      // ws1: open then a pre-established 4003 auth close.
+      Object.defineProperty(ws1, "readyState", { value: WebSocket.OPEN });
+      ws1.emit("open");
+      Object.defineProperty(ws1, "readyState", { value: WebSocket.CLOSED });
+      ws1.emit(
+        "close",
+        TunnelCloseCodes.TUNNEL_AUTH_FAILED,
+        Buffer.from("Tunnel auth failed"),
+      );
+
+      // Let establishWithAuthRetry refresh the token and open the retry socket.
+      await new Promise((resolve) => setImmediate(resolve));
+
+      // ws2: open then tunnel_established → connect resolves.
+      Object.defineProperty(ws2, "readyState", { value: WebSocket.OPEN });
+      ws2.emit("open");
+      ws2.emit(
+        "message",
+        JSON.stringify({
+          type: "tunnel_established",
+          url: "https://retry.tunnel.ankimcp.ai",
+        }),
+      );
+
+      await expect(connectPromise).resolves.toBe(
+        "https://retry.tunnel.ankimcp.ai",
+      );
+      // Exactly one refresh, and the socket was reconstructed for the retry.
+      expect(mockDeviceFlowService.refreshToken).toHaveBeenCalledTimes(1);
+      expect(mockDeviceFlowService.refreshToken).toHaveBeenCalledWith(
+        "mock_refresh_token",
+      );
+      expect(WebSocket).toHaveBeenCalledTimes(2);
+    });
+
+    // The single-shot retry does NOT loop: if a freshly refreshed token STILL
+    // auth-closes pre-established, re-login is the real fix, so the failure is
+    // remapped from a generic connection error to "session_expired".
+    it("surfaces session_expired when a refreshed token is STILL rejected (persistent 4003)", async () => {
+      // No 'error' is emitted on this path, but guard against any stray emit.
+      client.on("error", () => {});
+
+      const ws1 = createMockWs();
+      const ws2 = createMockWs();
+      (WebSocket as any)
+        .mockImplementationOnce(() => ws1)
+        .mockImplementationOnce(() => ws2);
+
+      const connectPromise = client.connect();
+      await Promise.resolve();
+
+      // ws1: open then a pre-established 4003.
+      Object.defineProperty(ws1, "readyState", { value: WebSocket.OPEN });
+      ws1.emit("open");
+      Object.defineProperty(ws1, "readyState", { value: WebSocket.CLOSED });
+      ws1.emit(
+        "close",
+        TunnelCloseCodes.TUNNEL_AUTH_FAILED,
+        Buffer.from("Tunnel auth failed"),
+      );
+
+      // Refresh succeeds, the retry socket opens...
+      await new Promise((resolve) => setImmediate(resolve));
+
+      // ...but the freshly refreshed token is rejected again with 4003.
+      Object.defineProperty(ws2, "readyState", { value: WebSocket.OPEN });
+      ws2.emit("open");
+      Object.defineProperty(ws2, "readyState", { value: WebSocket.CLOSED });
+      ws2.emit(
+        "close",
+        TunnelCloseCodes.TUNNEL_AUTH_FAILED,
+        Buffer.from("Tunnel auth failed"),
+      );
+
+      await expect(connectPromise).rejects.toThrow(
+        expect.objectContaining({ code: "session_expired" }),
+      );
+      // Refreshed exactly once — there is no second refresh/retry loop.
+      expect(mockDeviceFlowService.refreshToken).toHaveBeenCalledTimes(1);
+    });
+
+    // When the refresh itself fails (dead refresh_token), refreshTokenAndSave
+    // throws "session_expired" before any retry socket is opened — fail fast,
+    // and nothing is persisted.
+    it("fails fast with session_expired (no retry socket) when the refresh token is dead", async () => {
+      client.on("error", () => {});
+
+      mockDeviceFlowService.refreshToken.mockRejectedValue(
+        new DeviceFlowError("Token expired", "invalid_grant"),
+      );
+
+      const connectPromise = client.connect();
+      await Promise.resolve();
+
+      // Single socket: open then a pre-established 4003.
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.OPEN });
+      mockWs.emit("open");
+      Object.defineProperty(mockWs, "readyState", { value: WebSocket.CLOSED });
+      mockWs.emit(
+        "close",
+        TunnelCloseCodes.TUNNEL_AUTH_FAILED,
+        Buffer.from("Tunnel auth failed"),
+      );
+
+      await expect(connectPromise).rejects.toThrow(
+        expect.objectContaining({ code: "session_expired" }),
+      );
+      // No retry socket was opened, and nothing was persisted.
+      expect(WebSocket).toHaveBeenCalledTimes(1);
+      expect(mockCredentialsService.saveCredentials).not.toHaveBeenCalled();
+    });
   });
 
   describe("disconnect", () => {
@@ -797,7 +994,7 @@ describe("TunnelClient", () => {
         const errorSpy = jest.fn();
         client.on("error", errorSpy);
         mockDeviceFlowService.refreshToken.mockRejectedValue(
-          new DeviceFlowError("invalid_grant", "Token expired"),
+          new DeviceFlowError("Token expired", "invalid_grant"),
         );
         emitClose(TunnelCloseCodes.AUTH_FAILED, "Auth failed");
         await jest.advanceTimersByTimeAsync(
@@ -825,6 +1022,115 @@ describe("TunnelClient", () => {
         Buffer.from("Server shutting down"),
       );
       expect(WebSocket).not.toHaveBeenCalled();
+    });
+
+    // On the reconnect path, handleReconnection already refreshes the token for
+    // auth codes BEFORE reconnecting. establishWithAuthRetry must therefore be a
+    // no-op passthrough (isReconnecting=true) — otherwise an auth-close on the
+    // reconnect socket would trigger a SECOND refresh. This pins exactly-once.
+    it("does not double-refresh when a reconnect attempt itself auth-closes pre-established", async () => {
+      jest.useFakeTimers();
+      try {
+        client.on("error", () => {});
+
+        // The single reconnect attempt gets its own fresh socket.
+        const reconnectWs = createMockWs();
+        (WebSocket as any).mockImplementationOnce(() => reconnectWs);
+
+        // Mid-session auth drop schedules an auth-refresh reconnect.
+        emitClose(TunnelCloseCodes.TUNNEL_AUTH_FAILED, "Tunnel auth failed");
+
+        // Fire the reconnect timer: handleReconnection refreshes ONCE, then
+        // connect() → establishWithAuthRetry (isReconnecting=true) establishes
+        // plainly with NO additional refresh.
+        await jest.advanceTimersByTimeAsync(
+          TUNNEL_DEFAULTS.RECONNECT_INITIAL_DELAY + 500,
+        );
+
+        // The reconnect socket auth-closes again BEFORE tunnel_established.
+        Object.defineProperty(reconnectWs, "readyState", {
+          value: WebSocket.OPEN,
+        });
+        reconnectWs.emit("open");
+        Object.defineProperty(reconnectWs, "readyState", {
+          value: WebSocket.CLOSED,
+        });
+        reconnectWs.emit(
+          "close",
+          TunnelCloseCodes.TUNNEL_AUTH_FAILED,
+          Buffer.from("Tunnel auth failed"),
+        );
+
+        // Flush the failed connect()'s rejection microtasks.
+        await Promise.resolve();
+        await Promise.resolve();
+
+        // Exactly ONE refresh for this attempt — handleReconnection's only;
+        // establishWithAuthRetry added none on the reconnect path.
+        expect(mockDeviceFlowService.refreshToken).toHaveBeenCalledTimes(1);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    // The close handler's "first connect owns the outcome" skip is keyed off
+    // isReconnecting, so a pre-established close during a RECONNECT attempt still
+    // flows through handleReconnection. This keeps the backoff loop alive:
+    // reconnectAttempts increments and the next attempt is scheduled/constructed.
+    it("keeps the backoff loop alive after a reconnect attempt auth-closes pre-established", async () => {
+      jest.useFakeTimers();
+      try {
+        client.on("error", () => {});
+
+        const reconnectWs1 = createMockWs();
+        const reconnectWs2 = createMockWs();
+        (WebSocket as any)
+          .mockImplementationOnce(() => reconnectWs1)
+          .mockImplementationOnce(() => reconnectWs2);
+
+        // Mid-session auth drop → reconnect attempt #1 (reconnectAttempts → 1).
+        emitClose(TunnelCloseCodes.TUNNEL_AUTH_FAILED, "Tunnel auth failed");
+        await jest.advanceTimersByTimeAsync(
+          TUNNEL_DEFAULTS.RECONNECT_INITIAL_DELAY + 500,
+        );
+
+        // Attempt #1's socket auth-closes pre-established.
+        Object.defineProperty(reconnectWs1, "readyState", {
+          value: WebSocket.OPEN,
+        });
+        reconnectWs1.emit("open");
+        Object.defineProperty(reconnectWs1, "readyState", {
+          value: WebSocket.CLOSED,
+        });
+        reconnectWs1.emit(
+          "close",
+          TunnelCloseCodes.TUNNEL_AUTH_FAILED,
+          Buffer.from("Tunnel auth failed"),
+        );
+        await Promise.resolve();
+        await Promise.resolve();
+
+        // The first-connect skip did NOT kill the loop: the reconnect-path close
+        // routed through handleReconnection, incrementing the counter and
+        // scheduling attempt #2.
+        expect((client as any).reconnectAttempts).toBe(2);
+
+        const constructsBefore = (WebSocket as unknown as jest.Mock).mock.calls
+          .length;
+
+        // Fire attempt #2 (backoff ~2s) — but stop short of the 10s connection
+        // timeout so socket construction is the only observable timer effect.
+        await jest.advanceTimersByTimeAsync(
+          TUNNEL_DEFAULTS.RECONNECT_INITIAL_DELAY * 3 + 500,
+        );
+
+        // A further socket was constructed → the backoff loop survived.
+        expect(
+          (WebSocket as unknown as jest.Mock).mock.calls.length,
+        ).toBeGreaterThan(constructsBefore);
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 });

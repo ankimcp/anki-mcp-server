@@ -47,6 +47,15 @@ export class TunnelClientError extends Error {
 }
 
 /**
+ * Internal `TunnelClientError.code` marking a pre-established auth failure: a
+ * 4001/4003 close that arrives before `tunnel_established`. Produced by the
+ * close handler and consumed by `isAuthFailure()` to trigger a single
+ * refresh-and-retry. A single named constant keeps producer and consumer from
+ * drifting apart.
+ */
+const PRE_ESTABLISHED_AUTH_FAILURE_CODE = "tunnel_auth_failed";
+
+/**
  * WebSocket client for AnkiMCP tunnel service
  *
  * Events:
@@ -74,6 +83,12 @@ export class TunnelClient extends EventEmitter {
   private reconnectTimer: NodeJS.Timeout | null = null;
   private isConnecting = false;
   private isManualDisconnect = false;
+  // True only while a reconnect-timer-driven connect() is in flight. Lets the
+  // close handler and establishWithAuthRetry distinguish a background reconnect
+  // attempt from the first/CLI-driven connect(): the single-shot auth
+  // refresh+retry and the "connect() owns the outcome" close-handler skip apply
+  // to the first connect ONLY.
+  private isReconnecting = false;
   private currentTunnelUrl: string | null = null;
   private credentials: TunnelCredentials | null = null;
   private connectionTimeout: NodeJS.Timeout | null = null;
@@ -139,8 +154,14 @@ export class TunnelClient extends EventEmitter {
         await this.refreshTokenAndSave();
       }
 
-      // Connect to WebSocket with access token using the instance's tunnel URL
-      const tunnelUrl = await this.establishConnection(this.tunnelUrl);
+      // Connect to WebSocket with access token using the instance's tunnel
+      // URL. On the FIRST/CLI-driven connect, establishWithAuthRetry
+      // transparently recovers from a SINGLE pre-established auth failure
+      // (4001/4003) by refreshing the token once and retrying, so a
+      // stale-but-refreshable access token no longer forces the user to
+      // re-login. On reconnect-timer-driven connect()s it is a no-op passthrough
+      // (handleReconnection already owns their token refresh).
+      const tunnelUrl = await this.establishWithAuthRetry(this.tunnelUrl);
       this.reconnectAttempts = 0; // Reset on successful connection
       this.isConnecting = false;
       return tunnelUrl;
@@ -273,6 +294,10 @@ export class TunnelClient extends EventEmitter {
         const reasonStr = reason.toString();
         this.logger.log(`WebSocket closed: ${code} - ${reasonStr}`);
 
+        // Capture the pre-established state BEFORE nulling currentTunnelUrl
+        // below: it's the same signal the 'error' handler uses to tell whether
+        // the in-flight establishConnection promise is still pending.
+        const wasEstablished = this.currentTunnelUrl !== null;
         this.currentTunnelUrl = null;
 
         // Tell listeners whether this disconnect is recoverable so the CLI can
@@ -284,8 +309,56 @@ export class TunnelClient extends EventEmitter {
           this.reconnectAttempts < TUNNEL_DEFAULTS.RECONNECT_MAX_ATTEMPTS;
         this.emit("disconnected", code, reasonStr, willReconnect);
 
-        // Handle reconnection based on close code
-        if (!this.isManualDisconnect) {
+        // An auth failure (4001/4003) surfaces AFTER `open` as a 'close', not
+        // an 'error'. Detect it up front so a *pre-established* occurrence on the
+        // first/CLI connect can be routed through connect()'s single-shot
+        // refresh-and-retry rather than a hard failure.
+        const isAuthClose =
+          code === TunnelCloseCodes.AUTH_FAILED ||
+          code === TunnelCloseCodes.TUNNEL_AUTH_FAILED;
+
+        // A close that arrives BEFORE the tunnel is established (e.g. an
+        // application-level 4003 TUNNEL_AUTH_FAILED, which fires AFTER `open`
+        // and surfaces as a 'close' rather than an 'error') must reject the
+        // pending establishConnection promise — mirroring the pre-established
+        // branch of the 'error' handler. Without this the promise never
+        // settles, connect() never returns, and its `isConnecting` guard stays
+        // latched true, wedging the client permanently. An auth failure rejects
+        // with the dedicated PRE_ESTABLISHED_AUTH_FAILURE_CODE so
+        // establishWithAuthRetry can recognise it and refresh once; every other
+        // pre-established close rejects with "connection_closed" and fails fast
+        // (no refresh). Rejecting an already-settled promise (e.g. the
+        // connection-timeout path beat us here) is a no-op, so this is safe.
+        if (!wasEstablished) {
+          reject(
+            new TunnelClientError(
+              `Connection closed before tunnel established (code ${code})${
+                reasonStr ? `: ${reasonStr}` : ""
+              }`,
+              isAuthClose
+                ? PRE_ESTABLISHED_AUTH_FAILURE_CODE
+                : "connection_closed",
+            ),
+          );
+        }
+
+        // Handle reconnection based on close code.
+        //
+        // A pre-established close during the FIRST/CLI connect is deliberately
+        // NOT routed here: that in-flight connect() owns the outcome — it was
+        // rejected above, and for auth closes it is recovered via
+        // establishWithAuthRetry's single-shot refresh+retry. Scheduling a
+        // parallel background reconnect would race connect() and the user-facing
+        // CLI error. A pre-established close during a RECONNECT attempt, by
+        // contrast, MUST flow through handleReconnection so the backoff loop
+        // survives to the next attempt. Every established drop (wasEstablished
+        // === true, including mid-session auth failures) also flows through
+        // unchanged. Keying the skip off "first connect" (not "auth") means a
+        // non-auth first-connect close also stays owned by connect() — nothing
+        // schedules a parallel reconnect behind it.
+        const isFirstConnectPreEstablish =
+          !wasEstablished && !this.isReconnecting;
+        if (!this.isManualDisconnect && !isFirstConnectPreEstablish) {
           this.handleReconnection(code);
         }
       });
@@ -310,6 +383,93 @@ export class TunnelClient extends EventEmitter {
         }
       });
     });
+  }
+
+  /**
+   * Establish the tunnel for the FIRST/CLI-driven connect(), transparently
+   * recovering from a SINGLE pre-established auth failure.
+   *
+   * Reconnect-timer-driven connect()s skip this recovery entirely (plain
+   * establishConnection): handleReconnection() already refreshes the token for
+   * auth close codes before each reconnect, so retrying here too would
+   * double-refresh and fight the backoff loop. The `isReconnecting` flag makes
+   * this a no-op passthrough during reconnects.
+   *
+   * On the first connect, a 4001/4003 close that arrives before
+   * `tunnel_established` rejects establishConnection() with
+   * PRE_ESTABLISHED_AUTH_FAILURE_CODE. The stored access_token may simply be
+   * stale (expired or rotated server-side) while the refresh_token is still
+   * valid, so we refresh ONCE and retry — making the same recovery
+   * handleReconnection() performs mid-session available on the very first
+   * connect(), instead of forcing the user to re-login.
+   *
+   * Single-shot guard: there is no loop, so genuinely dead credentials fail fast
+   * rather than refreshing forever. A non-auth close, or a close after a manual
+   * disconnect, is rethrown untouched (fail fast, no refresh). If the retry
+   * STILL auth-closes, a freshly refreshed token was rejected — re-login is the
+   * real fix, so it is surfaced as "session_expired" (which the CLI maps to
+   * re-login guidance) rather than a generic connection error.
+   */
+  private async establishWithAuthRetry(url: string): Promise<string> {
+    // Reconnect attempts own their own token refresh (handleReconnection); a
+    // second refresh+retry here would double-refresh and truncate the backoff
+    // loop, so a reconnect-driven connect() just establishes plainly.
+    if (this.isReconnecting) {
+      return this.establishConnection(url);
+    }
+
+    try {
+      return await this.establishConnection(url);
+    } catch (error) {
+      if (!this.isAuthFailure(error) || this.isManualDisconnect) {
+        throw error;
+      }
+
+      this.logger.log(
+        "Auth failed before tunnel established — refreshing token and retrying once",
+      );
+      // Reuses the SAME refresh helper as handleReconnection (no duplicated
+      // refresh/device-flow code). Throws TunnelClientError("session_expired")
+      // when the refresh_token is dead, which the CLI surfaces as a re-login.
+      await this.refreshTokenAndSave();
+
+      // A manual disconnect may have landed during the refresh await; if so,
+      // bail instead of opening a fresh socket the user just asked us to drop.
+      if (this.isManualDisconnect) {
+        throw error;
+      }
+
+      // Single retry — intentionally NOT wrapped in another auth-retry, so we
+      // never loop on dead credentials.
+      try {
+        return await this.establishConnection(url);
+      } catch (retryError) {
+        // A freshly refreshed token still auth-closed => re-login is the real
+        // fix. Surface it with the existing session_expired code/copy the CLI
+        // already maps to re-login guidance, instead of a generic
+        // "Failed to connect (4003)".
+        if (this.isAuthFailure(retryError)) {
+          throw new TunnelClientError(
+            "Session expired. Please run `ankimcp --login` to re-authenticate.",
+            "session_expired",
+            retryError,
+          );
+        }
+        throw retryError;
+      }
+    }
+  }
+
+  /**
+   * Whether an error is a pre-established auth failure (4001/4003) surfaced by
+   * the close handler as a rejected establishConnection(). Drives the decision
+   * to attempt a single refresh-and-retry in establishWithAuthRetry().
+   */
+  private isAuthFailure(error: unknown): boolean {
+    return (
+      error instanceof TunnelClientError &&
+      error.code === PRE_ESTABLISHED_AUTH_FAILURE_CODE
+    );
   }
 
   /**
@@ -544,6 +704,13 @@ export class TunnelClient extends EventEmitter {
       closeCode === TunnelCloseCodes.TUNNEL_AUTH_FAILED;
 
     this.reconnectTimer = setTimeout(async () => {
+      // Mark this connect() as reconnect-driven so (a) the close handler keeps
+      // the backoff loop alive on a pre-established close instead of letting
+      // connect() own it, and (b) establishWithAuthRetry skips its
+      // first-connect-only refresh+retry (we already refreshed above for auth
+      // codes). Reset in `finally` so a later established drop is treated as a
+      // fresh first-connect again.
+      this.isReconnecting = true;
       try {
         if (isAuthError) {
           this.logger.log(
@@ -576,7 +743,14 @@ export class TunnelClient extends EventEmitter {
             ),
           );
         }
-        // handleReconnection will be called again via close handler
+        // The next backoff attempt is rescheduled by the close handler: this is
+        // a reconnect attempt (isReconnecting === true), so a pre-established
+        // close still routes through handleReconnection. If connect() failed
+        // before any socket opened (e.g. the pre-reconnect refresh threw), no
+        // close fires and the loop ends here — intended for unrecoverable auth
+        // errors.
+      } finally {
+        this.isReconnecting = false;
       }
     }, delay);
   }
