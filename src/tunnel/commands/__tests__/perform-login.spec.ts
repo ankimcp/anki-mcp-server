@@ -1,4 +1,8 @@
-import { performLogin, translateDeviceFlowError } from "../perform-login";
+import {
+  performLogin,
+  reportLoginError,
+  translateDeviceFlowError,
+} from "../perform-login";
 import {
   CredentialsService,
   DeviceFlowError,
@@ -70,6 +74,58 @@ describe("translateDeviceFlowError", () => {
     const err = new DeviceFlowError("boom", "weird_code");
     expect(translateDeviceFlowError(err)).toMatch(/Authentication failed/);
     expect(translateDeviceFlowError(err)).toMatch(/boom/);
+  });
+});
+
+describe("reportLoginError", () => {
+  let cli: jest.Mocked<Cli>;
+  let exitSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    cli = makeStubCli();
+    // Spy as a no-op (NOT a throw): reportLoginError must only PRINT, never
+    // terminate the process. If it ever called exit, the assertions below
+    // would catch it without killing the Jest worker.
+    exitSpy = jest
+      .spyOn(process, "exit")
+      .mockImplementation((() => undefined) as never);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("renders a DeviceFlowError via translateDeviceFlowError (single message arg)", () => {
+    const err = new DeviceFlowError("denied", "access_denied");
+
+    reportLoginError(cli, err);
+
+    // Exact wording the real translateDeviceFlowError produces for this code —
+    // pins that reportLoginError delegates to it for DeviceFlowErrors.
+    expect(cli.error).toHaveBeenCalledTimes(1);
+    expect(cli.error).toHaveBeenCalledWith(
+      "Authentication was denied. Please try again with 'ankimcp --login'",
+    );
+    // The DeviceFlow branch passes no second (Error) argument.
+    expect(cli.error.mock.calls[0]).toHaveLength(1);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it("renders a generic Error as `Login failed: <msg>` with the Error forwarded as 2nd arg", () => {
+    const err = new Error("boom");
+
+    reportLoginError(cli, err);
+
+    expect(cli.error).toHaveBeenCalledTimes(1);
+    expect(cli.error).toHaveBeenCalledWith("Login failed: boom", err);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it("stringifies a non-Error value and forwards no Error argument", () => {
+    reportLoginError(cli, "weird");
+
+    expect(cli.error).toHaveBeenCalledWith("Login failed: weird", undefined);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 });
 

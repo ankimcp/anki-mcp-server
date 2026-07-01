@@ -3,7 +3,6 @@ import { Logger, type INestApplicationContext } from "@nestjs/common";
 import { AppModule } from "@/app.module";
 import {
   CredentialsService,
-  DeviceFlowError,
   DeviceFlowService,
   McpRequestHandler,
   TunnelClient,
@@ -20,7 +19,7 @@ import {
   createLoggerService,
   LOG_DESTINATION,
 } from "@/bootstrap";
-import { performLogin, translateDeviceFlowError } from "./perform-login";
+import { performLogin, reportLoginError } from "./perform-login";
 
 /**
  * Display a URL in a nice box
@@ -164,16 +163,7 @@ async function ensureCredentials(
     return credentials;
   } catch (error) {
     cli.blank();
-
-    if (error instanceof DeviceFlowError) {
-      cli.error(translateDeviceFlowError(error));
-    } else {
-      cli.error(
-        `Login failed: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error : undefined,
-      );
-    }
-
+    reportLoginError(cli, error);
     cli.blank();
     process.exit(1);
   }
@@ -369,34 +359,80 @@ export async function handleTunnel(
       // Pre-connect errors are handled by the catch block below
     });
 
-    const connectSpinner = startSpinner("Connecting to tunnel service...");
+    let connectSpinner = startSpinner("Connecting to tunnel service...");
     let publicUrl: string;
 
-    try {
-      publicUrl = await tunnelClient.connect(credentials);
-      connectSpinner();
-      cli.success("Tunnel established");
-      cli.blank();
-    } catch (error) {
-      connectSpinner();
+    // Single-shot auto-relogin on the FIRST connect only. If the stored refresh
+    // token is dead the connect throws `session_expired`; rather than just
+    // exiting we run the interactive login once and retry the connect a single
+    // time with the fresh credentials. `reloginAttempted` bounds this to exactly
+    // ONE login + ONE retry, so a second `session_expired` — or any other error —
+    // exits cleanly with no chance of an infinite loop. Gated on a TTY: the
+    // device flow needs an interactive session (browser + visible code), so
+    // headless runs keep the original error+exit behaviour.
+    let connectCredentials = credentials;
+    let reloginAttempted = false;
 
-      // Check for session expired error
-      if (
-        error instanceof TunnelClientError &&
-        error.code === "session_expired"
-      ) {
+    for (;;) {
+      try {
+        publicUrl = await tunnelClient.connect(connectCredentials);
+        connectSpinner();
+        cli.success("Tunnel established");
         cli.blank();
-        cli.error(error.message);
-        // `return await` so TS sees this branch as terminating — without it
-        // `publicUrl` below is flagged as possibly-unassigned.
+        break;
+      } catch (error) {
+        connectSpinner();
+
+        const isSessionExpired =
+          error instanceof TunnelClientError &&
+          error.code === "session_expired";
+
+        // First-connect recovery path: re-authenticate once, then retry. After a
+        // first-connect throw the TunnelClient is quiescent (no background
+        // reconnect scheduled), so the SAME instance can be reused — a second
+        // connect() with fresh credentials simply opens a new socket.
+        if (isSessionExpired && !reloginAttempted && process.stdout.isTTY) {
+          reloginAttempted = true;
+          cli.blank();
+          cli.info("Session expired — re-authenticating...");
+          cli.blank();
+
+          let freshCredentials: TunnelCredentials;
+          try {
+            freshCredentials = await performLogin({
+              credentialsService,
+              deviceFlowService,
+              cli,
+            });
+          } catch (loginError) {
+            cli.blank();
+            reportLoginError(cli, loginError);
+            cli.blank();
+            return await gracefulExit(1);
+          }
+
+          connectCredentials = freshCredentials;
+          connectSpinner = startSpinner("Connecting to tunnel service...");
+          continue;
+        }
+
+        // Session expired with no retry left (already re-logged in, or headless):
+        // fall back to the original error + exit behaviour.
+        if (isSessionExpired) {
+          cli.blank();
+          cli.error((error as TunnelClientError).message);
+          // `return await` so TS sees this branch as terminating — without it
+          // `publicUrl` below is flagged as possibly-unassigned.
+          return await gracefulExit(1);
+        }
+
+        // Any other error: format a user-friendly message using the URL we
+        // actually tried.
+        const errorMessage = formatConnectionError(error, effectiveTunnelUrl);
+        cli.error(errorMessage, error instanceof Error ? error : undefined);
+        cli.blank();
         return await gracefulExit(1);
       }
-
-      // Format user-friendly error message using the URL we actually tried.
-      const errorMessage = formatConnectionError(error, effectiveTunnelUrl);
-      cli.error(errorMessage, error instanceof Error ? error : undefined);
-      cli.blank();
-      return await gracefulExit(1);
     }
 
     // Step 5: Display tunnel URL and the web dashboard URL in nice boxes.
