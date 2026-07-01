@@ -1,10 +1,38 @@
 // Mocks must be declared before module imports that depend on them.
-jest.mock("../perform-login", () => ({
-  performLogin: jest.fn(),
-  translateDeviceFlowError: jest.fn(
+//
+// `reportLoginError` is now imported by `login.command.ts`, so the factory MUST
+// export it — otherwise it resolves to `undefined` and the catch path throws
+// `TypeError: reportLoginError is not a function`. We give it a real-ish stub
+// that mirrors production (DeviceFlowError → translated line via the SAME
+// `translateDeviceFlowError` jest.fn the tests spy on; otherwise the generic
+// `Login failed: <msg>` line with the Error forwarded as the 2nd arg). This
+// keeps the existing `mockedTranslate.toHaveBeenCalledWith` / `cli.error`
+// assertions valid while exercising the new symbol.
+jest.mock("../perform-login", () => {
+  const translateDeviceFlowError = jest.fn(
     (err: { message: string }) => `translated: ${err.message}`,
-  ),
-}));
+  );
+  return {
+    performLogin: jest.fn(),
+    translateDeviceFlowError,
+    reportLoginError: jest.fn(
+      (
+        cli: { error: (msg: string, err?: unknown) => void },
+        error: unknown,
+      ) => {
+        const { DeviceFlowError } = jest.requireMock("@/tunnel");
+        if (error instanceof DeviceFlowError) {
+          cli.error(translateDeviceFlowError(error as { message: string }));
+        } else {
+          cli.error(
+            `Login failed: ${error instanceof Error ? error.message : String(error)}`,
+            error instanceof Error ? error : undefined,
+          );
+        }
+      },
+    ),
+  };
+});
 
 jest.mock("@/tunnel", () => {
   class DeviceFlowError extends Error {

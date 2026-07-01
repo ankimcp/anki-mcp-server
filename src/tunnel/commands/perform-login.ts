@@ -77,6 +77,29 @@ export function translateDeviceFlowError(error: DeviceFlowError): string {
 }
 
 /**
+ * Print a login / device-flow failure as a single user-facing CLI message.
+ *
+ * Shared by every caller that runs {@link performLogin} (the explicit `--login`
+ * command, the missing-credentials auto-login, and the session-expired
+ * auto-relogin) so the wording stays identical across all paths. A
+ * {@link DeviceFlowError} is rendered via {@link translateDeviceFlowError};
+ * anything else falls back to a generic `Login failed: …` line.
+ *
+ * This helper only PRINTS — it never terminates the process. Each call site
+ * keeps its own exit policy (`process.exit` vs. `gracefulExit`).
+ */
+export function reportLoginError(cli: Cli, error: unknown): void {
+  if (error instanceof DeviceFlowError) {
+    cli.error(translateDeviceFlowError(error));
+  } else {
+    cli.error(
+      `Login failed: ${error instanceof Error ? error.message : String(error)}`,
+      error instanceof Error ? error : undefined,
+    );
+  }
+}
+
+/**
  * Run the OAuth Device Flow end-to-end and persist credentials.
  *
  * This is the shared core used by both the explicit `--login` CLI command and

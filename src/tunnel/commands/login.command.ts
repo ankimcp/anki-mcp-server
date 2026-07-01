@@ -1,12 +1,8 @@
-import {
-  CredentialsService,
-  DeviceFlowError,
-  DeviceFlowService,
-} from "@/tunnel";
+import { CredentialsService, DeviceFlowService } from "@/tunnel";
 import { AppConfigService } from "@/app-config.service";
 import { loadValidatedConfig } from "@/config";
 import type { Cli } from "@/cli/cli-output";
-import { performLogin, translateDeviceFlowError } from "./perform-login";
+import { performLogin, reportLoginError } from "./perform-login";
 
 /**
  * Handle the explicit `--login` CLI command.
@@ -36,16 +32,7 @@ export async function handleLogin(cli: Cli, tunnelUrl?: string): Promise<void> {
     await performLogin({ credentialsService, deviceFlowService, cli });
   } catch (error) {
     cli.blank();
-
-    if (error instanceof DeviceFlowError) {
-      cli.error(translateDeviceFlowError(error));
-    } else {
-      cli.error(
-        `Login failed: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error : undefined,
-      );
-    }
-
+    reportLoginError(cli, error);
     cli.blank();
     process.exit(1);
   }
