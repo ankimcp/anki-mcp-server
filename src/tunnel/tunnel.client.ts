@@ -15,6 +15,7 @@ import {
 } from "./tunnel.protocol";
 import { CredentialsService, TunnelCredentials } from "./credentials.service";
 import { DeviceFlowService, DeviceFlowError } from "./device-flow.service";
+import { getVersion } from "../version";
 
 /**
  * Handler interface for processing incoming MCP requests
@@ -218,10 +219,15 @@ export class TunnelClient extends EventEmitter {
 
       this.logger.log(`Connecting to tunnel server: ${url}`);
 
-      // Create WebSocket with Authorization header
+      // Create WebSocket with Authorization header + client identification.
+      // The tunnel server strictly validates these and silently falls back to
+      // "unknown client" on anything invalid, so they're safe against older
+      // servers too — send unconditionally, no feature gating.
       this.ws = new WebSocket(url, {
         headers: {
           Authorization: `Bearer ${this.credentials.access_token}`,
+          "x-ankimcp-client-type": "cli",
+          "x-ankimcp-client-version": getVersion(),
         },
       });
 

@@ -132,6 +132,10 @@ describe("TunnelClient", () => {
         expect.objectContaining({
           headers: {
             Authorization: "Bearer mock_access_token",
+            "x-ankimcp-client-type": "cli",
+            "x-ankimcp-client-version": expect.stringMatching(
+              /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/,
+            ),
           },
         }),
       );
@@ -249,7 +253,9 @@ describe("TunnelClient", () => {
       expect(WebSocket).toHaveBeenCalledWith(
         TEST_TUNNEL_URL,
         expect.objectContaining({
-          headers: { Authorization: "Bearer caller_supplied_token" },
+          headers: expect.objectContaining({
+            Authorization: "Bearer caller_supplied_token",
+          }),
         }),
       );
     });
