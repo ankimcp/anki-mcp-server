@@ -60,13 +60,16 @@ export const mockDecks = {
   names: ["Default", "Spanish", "Japanese::JLPT N5", "French::Beginner"],
 };
 
+// `question`/`answer` mirror what AnkiConnect's `cardsInfo` returns: rendered,
+// per-card HTML. Answers start with the question (via `{{FrontSide}}`) then the
+// `<hr id=answer>` separator, so front/back extraction must split on the marker.
 export const mockCards = {
   dueCard: {
     cardId: 1502298033754,
     noteId: 1502298033753,
     deckName: "Spanish",
     question: "¿Cómo estás?",
-    answer: "How are you?",
+    answer: "¿Cómo estás?\n\n<hr id=answer>\n\nHow are you?",
     due: 1,
     interval: 1,
     factor: 2500,
@@ -85,7 +88,7 @@ export const mockCards = {
     noteId: 1502298033757,
     deckName: "Japanese::JLPT N5",
     question: "こんにちは",
-    answer: "Hello",
+    answer: "こんにちは\n\n<hr id=answer>\n\nHello",
     due: 0,
     interval: 0,
     factor: 2500,
@@ -96,6 +99,48 @@ export const mockCards = {
     modelName: "Basic (and reversed card)",
     fieldOrder: 0,
     ord: 0,
+    css: "",
+    note: 1502298033757,
+  },
+  // Two cards produced by a SINGLE "Basic (and reversed card)" note. They share
+  // the same fields but render in opposite directions per their template
+  // ordinal — the reason field-based extraction is wrong and per-card rendering
+  // (question/answer) is required.
+  reversedForward: {
+    cardId: 1502298033758,
+    noteId: 1502298033757,
+    deckName: "Japanese::JLPT N5",
+    question: "こんにちは",
+    answer: "こんにちは\n\n<hr id=answer>\n\nHello",
+    due: 1,
+    interval: 1,
+    factor: 2500,
+    reviews: 2,
+    lapses: 0,
+    type: 2,
+    queue: 2,
+    modelName: "Basic (and reversed card)",
+    fieldOrder: 0,
+    ord: 0,
+    css: "",
+    note: 1502298033757,
+  },
+  reversedBackward: {
+    cardId: 1502298033759,
+    noteId: 1502298033757,
+    deckName: "Japanese::JLPT N5",
+    question: "Hello",
+    answer: "Hello\n\n<hr id=answer>\n\nこんにちは",
+    due: 1,
+    interval: 1,
+    factor: 2500,
+    reviews: 2,
+    lapses: 0,
+    type: 2,
+    queue: 2,
+    modelName: "Basic (and reversed card)",
+    fieldOrder: 1,
+    ord: 1,
     css: "",
     note: 1502298033757,
   },

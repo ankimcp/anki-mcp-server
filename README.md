@@ -46,6 +46,8 @@ The server exposes **42 MCP tools** — 31 essential tools for everyday Anki ope
 - `present_card` - Show a card for review with its question/front side
 - `rate_card` - Rate card performance (Again, Hard, Good, Easy) and schedule the next review
 
+> **Note:** Card `front`/`back` content is rendered per card from its own template (as Anki shows it), so reversed and cloze cards display the correct direction. Static text added by your card templates appears in the output as well.
+
 #### Deck Management
 - `listDecks` - List all decks, optionally with per-deck card-count statistics
 - `deckStats` - Get comprehensive statistics for a single deck (counts, ease/interval distributions)

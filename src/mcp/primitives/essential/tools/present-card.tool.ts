@@ -4,7 +4,7 @@ import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, CardPresentation } from "@/mcp/types/anki.types";
 import {
-  extractCardContent,
+  extractRenderedCardContent,
   getCardType,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
@@ -82,13 +82,13 @@ export class PresentCardTool {
       }
 
       const card = cardsInfo[0];
-      const { front, back } = extractCardContent(card.fields);
+      const { front, back } = extractRenderedCardContent(card);
       const cardType = getCardType(card.type);
 
       // Build the presentation object
       const presentation: CardPresentation = {
         cardId: card.cardId,
-        front: front || card.question || "",
+        front,
         deckName: card.deckName,
         modelName: card.modelName,
         tags: card.tags || [],
@@ -102,7 +102,7 @@ export class PresentCardTool {
 
       // Only include answer if requested
       if (showAnswer) {
-        presentation.back = back || card.answer || "";
+        presentation.back = back;
       }
 
       this.logger.log(`Retrieved card ${card_id} for presentation`);

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, SimplifiedCard } from "@/mcp/types/anki.types";
 import {
-  extractCardContent,
+  extractRenderedCardContent,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
 
@@ -134,12 +134,12 @@ export class GetCardsTool {
 
       // Transform cards to simplified structure
       const cards: SimplifiedCard[] = cardsInfo.map((card) => {
-        const { front, back } = extractCardContent(card.fields);
+        const { front, back } = extractRenderedCardContent(card);
 
         return {
           cardId: card.cardId,
-          front: front || card.question || "",
-          back: back || card.answer || "",
+          front,
+          back,
           deckName: card.deckName,
           modelName: card.modelName,
           due: card.due || 0,

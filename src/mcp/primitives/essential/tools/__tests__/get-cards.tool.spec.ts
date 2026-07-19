@@ -299,6 +299,39 @@ describe("GetCardsTool", () => {
       });
     });
 
+    it("renders each card of a multi-card note per its template ordinal", async () => {
+      // A "Basic (and reversed card)" note yields two cards. The forward card
+      // (ord 0) renders Front->Back; the reversed card (ord 1) renders
+      // Back->Front. Field-based extraction returned identical content for both;
+      // per-card rendering (question/answer) must not.
+      const sharedFields = {
+        Front: { value: "こんにちは", order: 0 },
+        Back: { value: "Hello", order: 1 },
+      };
+      const reversedPair: AnkiCard[] = [
+        { ...mockCards.reversedForward, fields: sharedFields },
+        { ...mockCards.reversedBackward, fields: sharedFields },
+      ];
+
+      ankiClient.invoke
+        .mockResolvedValueOnce(reversedPair.map((c) => c.cardId))
+        .mockResolvedValueOnce(reversedPair);
+
+      const result = parseToolResult(await tool.getCards({}));
+
+      expect(result.success).toBe(true);
+      expect(result.cards[0]).toMatchObject({
+        front: "こんにちは",
+        back: "Hello",
+      });
+      // The reversed card must show the OPPOSITE direction, not a duplicate.
+      expect(result.cards[1]).toMatchObject({
+        front: "Hello",
+        back: "こんにちは",
+      });
+      expect(result.cards[1].front).not.toBe(result.cards[0].front);
+    });
+
     it("should report progress correctly", async () => {
       // Arrange
       ankiClient.invoke

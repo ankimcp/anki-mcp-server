@@ -7,71 +7,82 @@ import { AnkiCard, CardRating, CardType } from "../types/anki.types";
 import { AnkiConnectError } from "../clients/anki-connect.client";
 
 /**
- * Helper function to clean HTML from card content
+ * Matches Anki's answer separator that most back templates emit right after
+ * `{{FrontSide}}`. Matches any `<hr>` carrying an `id=answer` attribute
+ * regardless of quoting (`id=answer`, `id="answer"`, `id='answer'`) or where the
+ * attribute sits among others (e.g. `<hr class="sep" id=answer>`). Bounded by
+ * `[^>]*` so it stays linear (no catastrophic backtracking).
+ */
+const ANSWER_SEPARATOR_REGEX = /<hr\b[^>]*\bid=["']?answer["']?[^>]*>/i;
+
+/**
+ * Clean rendered card HTML down to readable plain text.
+ *
+ * Strips `<style>`/`<script>` blocks (including their contents, which rendered
+ * cards can embed), converts line-break/block tags to newlines, removes the
+ * remaining tags, decodes common HTML entities, and collapses excess
+ * whitespace. Anki media markers like `[sound:...]` and cloze-rendered text are
+ * left untouched.
  */
 export function cleanHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, "") // Remove HTML tags
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\n\s*\n/g, "\n") // Remove extra newlines
-    .trim();
+  if (!html) {
+    return "";
+  }
+
+  return (
+    html
+      // Drop <style>/<script> blocks entirely — their inner text is not content.
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+      // Convert line-break and block-closing tags to newlines.
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(?:div|p)>/gi, "\n")
+      // Remove all remaining tags. (Runs before entity decoding so that decoded
+      // "<"/">" can't be mistaken for real tags.)
+      .replace(/<[^>]*>/g, "")
+      // Decode common HTML entities. `&amp;` is resolved LAST so double-encoded
+      // input like `&amp;lt;` stays `&lt;` instead of chaining into `<`.
+      .replace(/&nbsp;/g, " ")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, "&")
+      // Collapse excess whitespace while preserving intentional line breaks.
+      .replace(/[ \t]+/g, " ")
+      .replace(/ *\n */g, "\n")
+      .replace(/\n{2,}/g, "\n")
+      .trim()
+  );
 }
 
 /**
- * Extract front and back content from Anki card fields
+ * Extract front and back text from a card's *rendered* output.
+ *
+ * Unlike field-based extraction, this uses AnkiConnect's per-card `question`
+ * and `answer` HTML (from `cardsInfo`), so it honors the card's template
+ * ordinal — reversed, cloze, and custom-template cards all render correctly.
+ *
+ * The rendered answer normally begins with the question (via `{{FrontSide}}`)
+ * followed by `<hr id=answer>`. When that marker is present we keep only the
+ * part after it so the back isn't a duplicate of the front; otherwise the whole
+ * cleaned answer is used.
  */
-export function extractCardContent(fields: AnkiCard["fields"]): {
-  front: string;
-  back: string;
-} {
-  let front = "";
-  let back = "";
+export function extractRenderedCardContent(
+  card: Pick<AnkiCard, "question" | "answer">,
+): { front: string; back: string } {
+  const question = card.question ?? "";
+  const answer = card.answer ?? "";
 
-  if (!fields) {
-    return { front, back };
-  }
-
-  // Common field names for different note types
-  const frontFieldNames = ["Front", "正面", "Question", "Text"];
-  const backFieldNames = ["Back", "背面", "Answer", "Extra", "Back Extra"];
-
-  // Find front field
-  for (const fieldName of frontFieldNames) {
-    if (fields[fieldName]) {
-      front = fields[fieldName].value;
-      break;
-    }
-  }
-
-  // Find back field
-  for (const fieldName of backFieldNames) {
-    if (fields[fieldName]) {
-      back = fields[fieldName].value;
-      break;
-    }
-  }
-
-  // Fallback to first two fields if standard names not found
-  if (!front && !back) {
-    const fieldEntries = Object.entries(fields).sort(
-      (a, b) => a[1].order - b[1].order,
-    );
-    if (fieldEntries.length > 0) {
-      front = fieldEntries[0][1].value;
-    }
-    if (fieldEntries.length > 1) {
-      back = fieldEntries[1][1].value;
-    }
-  }
+  const separatorMatch = answer.match(ANSWER_SEPARATOR_REGEX);
+  const backHtml =
+    separatorMatch && separatorMatch.index !== undefined
+      ? answer.slice(separatorMatch.index + separatorMatch[0].length)
+      : answer;
 
   return {
-    front: cleanHtml(front),
-    back: cleanHtml(back),
+    front: cleanHtml(question),
+    back: cleanHtml(backHtml),
   };
 }
 
