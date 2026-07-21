@@ -17,8 +17,13 @@ jest.mock("node:dns", () => {
   };
 });
 
-const mockLookup = dns.promises.lookup as jest.MockedFunction<
-  typeof dns.promises.lookup
+// Cast to the `{ all: true }` overload of dns.promises.lookup, which the
+// implementation uses (returns LookupAddress[] instead of a single address)
+const mockLookup = dns.promises.lookup as unknown as jest.MockedFunction<
+  (
+    hostname: string,
+    options: dns.LookupAllOptions,
+  ) => Promise<dns.LookupAddress[]>
 >;
 
 describe("StoreMediaFileTool", () => {
@@ -35,17 +40,11 @@ describe("StoreMediaFileTool", () => {
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
 
-    mockLookup.mockResolvedValue({
-      address: "93.184.216.34",
-      family: 4,
-    } as any);
+    mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
 
     jest.clearAllMocks();
 
-    mockLookup.mockResolvedValue({
-      address: "93.184.216.34",
-      family: 4,
-    } as any);
+    mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
   });
 
   it("should store media file with base64 data", async () => {
@@ -277,10 +276,9 @@ describe("StoreMediaFileTool", () => {
       });
 
       it("should reject URLs resolving to private IPs", async () => {
-        mockLookup.mockResolvedValueOnce({
-          address: "192.168.1.100",
-          family: 4,
-        } as any);
+        mockLookup.mockResolvedValueOnce([
+          { address: "192.168.1.100", family: 4 },
+        ]);
 
         const params = {
           filename: "internal.mp3",
@@ -298,10 +296,9 @@ describe("StoreMediaFileTool", () => {
       });
 
       it("should allow URLs resolving to public IPs", async () => {
-        mockLookup.mockResolvedValueOnce({
-          address: "93.184.216.34",
-          family: 4,
-        } as any);
+        mockLookup.mockResolvedValueOnce([
+          { address: "93.184.216.34", family: 4 },
+        ]);
 
         const params = {
           filename: "public.mp3",
@@ -322,10 +319,9 @@ describe("StoreMediaFileTool", () => {
       it("should respect MEDIA_ALLOWED_HOSTS env var", async () => {
         const originalEnv = process.env.MEDIA_ALLOWED_HOSTS;
         try {
-          mockLookup.mockResolvedValue({
-            address: "192.168.1.100",
-            family: 4,
-          } as any);
+          mockLookup.mockResolvedValue([
+            { address: "192.168.1.100", family: 4 },
+          ]);
 
           const params = {
             filename: "internal.mp3",
@@ -387,10 +383,9 @@ describe("StoreMediaFileTool", () => {
 
     describe("cloud metadata protection", () => {
       it("blocks cloud metadata endpoint (169.254.169.254)", async () => {
-        mockLookup.mockResolvedValue({
-          address: "169.254.169.254",
-          family: 4,
-        } as any);
+        mockLookup.mockResolvedValue([
+          { address: "169.254.169.254", family: 4 },
+        ]);
 
         const result = await tool.execute({
           filename: "metadata.txt",

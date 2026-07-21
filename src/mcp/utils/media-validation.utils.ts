@@ -78,21 +78,81 @@ export interface MediaUrlConfig {
 
 const DEFAULT_ALLOWED_PREFIXES = ["image/", "audio/", "video/"];
 
-// ── IP ranges that should be blocked for SSRF prevention ────────────────────
+// ── SSRF range allowlist ────────────────────────────────────────────────────
 
-const BLOCKED_RANGES = new Set([
-  "private",
-  "loopback",
-  "linkLocal",
-  "reserved",
-  "unspecified",
-  // IPv6-specific blocked ranges
-  "uniqueLocal",
-  // Additional ranges
-  "carrierGradeNat",
-  "multicast",
-  "broadcast",
-]);
+// SSRF guard: allowlist approach (fail-closed). Only ordinary public unicast
+// addresses may be fetched. Every other ipaddr.js range — private, loopback,
+// linkLocal, reserved, unspecified, uniqueLocal, carrierGradeNat, multicast,
+// broadcast, and IPv6 transition ranges (rfc6052/NAT64, rfc6145/SIIT, 6to4,
+// teredo, benchmarking, amt) — is rejected, including any range ipaddr.js may
+// add in future versions. IPv6 addresses that embed an IPv4 target (IPv4-mapped
+// ::ffff:0:0/96 and deprecated IPv4-compatible ::/96) are classified by the
+// embedded IPv4 instead: it is extracted first, then re-checked against this
+// allowlist, so wrapping an internal IPv4 in IPv6 does not bypass the guard.
+const ALLOWED_RANGE = "unicast";
+
+function isPublicUnicast(addr: ipaddr.IPv4 | ipaddr.IPv6): boolean {
+  return addr.range() === ALLOWED_RANGE;
+}
+
+// Deprecated IPv4-compatible IPv6 (::/96, RFC 4291 §2.5.5.1): top 96 bits are
+// zero, IPv4 embedded in the low 32 bits. ipaddr.js classifies the hex-group
+// form (e.g. ::a9fe:a9fe ≡ 169.254.169.254) as plain "unicast", so without
+// extraction it would pass the allowlist while targeting an internal IPv4.
+// Strictly requires parts[0..5] === 0, so it never matches IPv4-mapped
+// (parts[5] === 0xffff) or rfc6145/SIIT (::ffff:0:0/96). Also matches "::" and
+// "::1", which extract to 0.0.0.0 / 0.0.0.1 → non-unicast → blocked (fail-closed).
+function isIPv4CompatibleAddress(ipv6: ipaddr.IPv6): boolean {
+  return ipv6.parts.slice(0, 6).every((part) => part === 0);
+}
+
+// Build the embedded IPv4 from the low 32 bits (two 16-bit groups). ipaddr.js's
+// toIPv4Address() only accepts IPv4-mapped addresses, so construct it manually.
+function extractEmbeddedIPv4(ipv6: ipaddr.IPv6): ipaddr.IPv4 {
+  const high = ipv6.parts[6];
+  const low = ipv6.parts[7];
+  return new ipaddr.IPv4([high >> 8, high & 0xff, low >> 8, low & 0xff]);
+}
+
+// Parse an IP string and, for IPv6 that embeds an IPv4 target (IPv4-mapped
+// ::ffff:0:0/96 or deprecated IPv4-compatible ::/96), return the embedded IPv4
+// so downstream checks classify the real target. Returns null for
+// non-IP / unparseable input. Uses `instanceof ipaddr.IPv6` for narrowing so no
+// type cast is needed. Extraction is lossless — distinct addresses never
+// collapse to the same value.
+function parseTargetAddress(ip: string): ipaddr.IPv4 | ipaddr.IPv6 | null {
+  if (!ipaddr.isValid(ip)) return null;
+  let addr: ipaddr.IPv4 | ipaddr.IPv6 = ipaddr.parse(ip);
+  if (addr instanceof ipaddr.IPv6) {
+    if (addr.isIPv4MappedAddress()) addr = addr.toIPv4Address();
+    else if (isIPv4CompatibleAddress(addr)) addr = extractEmbeddedIPv4(addr);
+  }
+  return addr;
+}
+
+// Validate a single resolved address against the SSRF allowlist: parse it,
+// extract any embedded IPv4 target (mapped ::ffff:0:0/96 or deprecated
+// IPv4-compatible ::/96) so the check classifies the real target, then
+// require public unicast. Throws MediaUrlBlockedError on any failure
+// (fail-closed, including unparseable addresses).
+function assertAddressAllowed(ip: string): void {
+  const addr = parseTargetAddress(ip);
+  if (!addr || !isPublicUnicast(addr)) {
+    throw new MediaUrlBlockedError();
+  }
+}
+
+// Canonicalize an IP string for equality comparison. Routes through the same
+// embedded-IPv4 extraction as the SSRF check, so equivalent forms of the same
+// target compare equal (e.g. "::ffff:10.0.0.5" and "10.0.0.5" both normalize to
+// "10.0.0.5"; "::a9fe:a9fe" normalizes to "169.254.169.254"). Also collapses
+// compressed vs expanded IPv6 ("fd00::1" and "fd00:0:0:0:0:0:0:1" → "fd00::1").
+// Returns null for non-IP strings (hostnames), which are matched separately by
+// name and never participate in IP comparison. Extraction is lossless, so two
+// genuinely-different targets never normalize to the same string.
+function normalizeIp(value: string): string | null {
+  return parseTargetAddress(value)?.toString() ?? null;
+}
 
 // ── Path validation ─────────────────────────────────────────────────────────
 
@@ -156,16 +216,16 @@ export function validateMediaFilePath(
  * Checks:
  * 1. URL is valid and parseable
  * 2. Scheme is http: or https:
- * 3. Resolved IP is not in a private/reserved range (unless host is in allowedHosts)
+ * 3. ALL resolved IPs are public unicast addresses (unless host is in allowedHosts)
  *
- * NOTE: This validation is subject to DNS rebinding (TOCTOU). We resolve and validate the IP here,
+ * NOTE: This validation is subject to DNS rebinding (TOCTOU). We resolve and validate the IPs here,
  * but AnkiConnect re-resolves the hostname when fetching. An attacker controlling DNS could return
  * a public IP for our check and a private IP for AnkiConnect's fetch. This is an inherent limitation
  * when we cannot control the downstream HTTP client.
  *
- * @throws MediaUrlInvalidError if the URL cannot be parsed
+ * @throws MediaUrlInvalidError if the URL cannot be parsed or the hostname does not resolve
  * @throws MediaUrlSchemeError if the scheme is not http(s)
- * @throws MediaUrlBlockedError if the resolved IP is in a blocked range
+ * @throws MediaUrlBlockedError if any resolved IP is not a public unicast address
  */
 export async function validateMediaUrl(
   input: string,
@@ -192,44 +252,56 @@ export async function validateMediaUrl(
       ? hostname.slice(1, -1)
       : hostname;
 
-  // Resolve hostname to IP
-  let resolvedIp: string;
+  // Resolve hostname to ALL its addresses. A host can have multiple A/AAAA
+  // records; validating only the first would let a sibling private/internal
+  // record slip through the guard.
+  let resolved: dns.LookupAddress[];
   try {
-    const result = await dns.promises.lookup(hostnameForLookup);
-    resolvedIp = result.address;
+    resolved = await dns.promises.lookup(hostnameForLookup, { all: true });
   } catch {
     throw new MediaUrlInvalidError();
   }
+  if (resolved.length === 0) {
+    throw new MediaUrlInvalidError();
+  }
 
-  // Check if host is in the allowed list (skip range check if so)
+  // First resolved address, returned for informational purposes (backward compat)
+  const resolvedIp = resolved[0].address;
+
+  // Check if host is in the allowed list (skip range checks if so).
+  // Semantics: the escape hatch is an explicit user opt-in for a host, so it
+  // applies when the user listed this host by name — hostname matches either
+  // as-is or with IPv6-literal brackets stripped (hostnameForLookup), so
+  // "::1" and "[::1]" both work — OR by IP, where EVERY resolved address must
+  // be individually allowlisted. Requiring all addresses prevents a
+  // multi-record host from piggybacking a non-allowlisted internal address
+  // on one allowlisted IP.
   if (config.allowedHosts && config.allowedHosts.length > 0) {
-    const isAllowed = config.allowedHosts.some(
-      (allowed) => allowed === hostname || allowed === resolvedIp,
-    );
-    if (isAllowed) {
+    const allowedHosts = config.allowedHosts;
+    const hostnameAllowed =
+      allowedHosts.includes(hostname) ||
+      allowedHosts.includes(hostnameForLookup);
+    // IP-based match compares by NORMALIZED value so an allowlist entry written
+    // in a different-but-equivalent form (compressed vs expanded IPv6, or an
+    // embedded-IPv4 IPv6 vs the bare IPv4) still matches the resolved address.
+    // Non-IP entries normalize to null and are ignored here (already handled by
+    // the hostname match above).
+    const allowedIps = allowedHosts
+      .map(normalizeIp)
+      .filter((ip): ip is string => ip !== null);
+    const allIpsAllowed = resolved.every(({ address }) => {
+      const normalized = normalizeIp(address);
+      return normalized !== null && allowedIps.includes(normalized);
+    });
+    if (hostnameAllowed || allIpsAllowed) {
       return { hostname, resolvedIp };
     }
   }
 
-  // Parse and check IP range
-  let addr: ipaddr.IPv4 | ipaddr.IPv6;
-  try {
-    addr = ipaddr.parse(resolvedIp);
-  } catch {
-    throw new MediaUrlBlockedError();
-  }
-
-  // For IPv4-mapped IPv6 addresses, extract the IPv4 part
-  if (addr.kind() === "ipv6") {
-    const ipv6 = addr as ipaddr.IPv6;
-    if (ipv6.isIPv4MappedAddress()) {
-      addr = ipv6.toIPv4Address();
-    }
-  }
-
-  const range = addr.range();
-  if (BLOCKED_RANGES.has(range)) {
-    throw new MediaUrlBlockedError();
+  // Every resolved address must pass the allowlist — reject if ANY is not a
+  // public unicast target
+  for (const { address } of resolved) {
+    assertAddressAllowed(address);
   }
 
   return { hostname, resolvedIp };

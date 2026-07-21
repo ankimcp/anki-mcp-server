@@ -29,8 +29,13 @@ jest.mock("node:dns", () => {
   };
 });
 
-const mockLookup = dns.promises.lookup as jest.MockedFunction<
-  typeof dns.promises.lookup
+// Cast to the `{ all: true }` overload of dns.promises.lookup, which the
+// implementation uses (returns LookupAddress[] instead of a single address)
+const mockLookup = dns.promises.lookup as unknown as jest.MockedFunction<
+  (
+    hostname: string,
+    options: dns.LookupAllOptions,
+  ) => Promise<dns.LookupAddress[]>
 >;
 
 // ── validateMediaFilePath ───────────────────────────────────────────────────
@@ -238,7 +243,7 @@ describe("validateMediaUrl", () => {
 
   describe("allows normal HTTP/HTTPS URLs", () => {
     it("allows http URL", async () => {
-      mockLookup.mockResolvedValue({ address: "93.184.216.34", family: 4 });
+      mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
 
       const result = await validateMediaUrl("http://example.com/audio.mp3");
       expect(result.hostname).toBe("example.com");
@@ -246,7 +251,7 @@ describe("validateMediaUrl", () => {
     });
 
     it("allows https URL", async () => {
-      mockLookup.mockResolvedValue({ address: "93.184.216.34", family: 4 });
+      mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
 
       const result = await validateMediaUrl("https://example.com/image.jpg");
       expect(result.hostname).toBe("example.com");
@@ -254,7 +259,7 @@ describe("validateMediaUrl", () => {
     });
 
     it("allows URLs with ports", async () => {
-      mockLookup.mockResolvedValue({ address: "93.184.216.34", family: 4 });
+      mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
 
       const result = await validateMediaUrl(
         "https://example.com:8080/file.mp3",
@@ -309,7 +314,7 @@ describe("validateMediaUrl", () => {
     ] as const;
 
     it.each(blockedIps)("blocks %s (%s)", async (ip) => {
-      mockLookup.mockResolvedValue({ address: ip, family: 4 });
+      mockLookup.mockResolvedValue([{ address: ip, family: 4 }]);
 
       await expect(
         validateMediaUrl("http://internal-host/file.mp3"),
@@ -317,7 +322,7 @@ describe("validateMediaUrl", () => {
     });
 
     it("provides helpful error message", async () => {
-      mockLookup.mockResolvedValue({ address: "192.168.1.1", family: 4 });
+      mockLookup.mockResolvedValue([{ address: "192.168.1.1", family: 4 }]);
 
       await expect(validateMediaUrl("http://my-nas/file.mp3")).rejects.toThrow(
         /private\/internal networks/,
@@ -325,37 +330,83 @@ describe("validateMediaUrl", () => {
     });
 
     it("blocks 0.0.0.0 (unspecified)", async () => {
-      mockLookup.mockResolvedValue({ address: "0.0.0.0", family: 4 });
+      mockLookup.mockResolvedValue([{ address: "0.0.0.0", family: 4 }]);
       await expect(
         validateMediaUrl("http://zero-host/file.mp3"),
       ).rejects.toThrow(MediaUrlBlockedError);
     });
 
     it("blocks carrier-grade NAT (100.64.x.x)", async () => {
-      mockLookup.mockResolvedValue({ address: "100.64.0.1", family: 4 });
+      mockLookup.mockResolvedValue([{ address: "100.64.0.1", family: 4 }]);
       await expect(
         validateMediaUrl("http://cgnat-host/file.mp3"),
       ).rejects.toThrow(MediaUrlBlockedError);
     });
 
     it("blocks multicast addresses (224.x.x.x)", async () => {
-      mockLookup.mockResolvedValue({ address: "224.0.0.1", family: 4 });
+      mockLookup.mockResolvedValue([{ address: "224.0.0.1", family: 4 }]);
       await expect(
         validateMediaUrl("http://multicast-host/file.mp3"),
       ).rejects.toThrow(MediaUrlBlockedError);
     });
 
     it("blocks broadcast address (255.255.255.255)", async () => {
-      mockLookup.mockResolvedValue({ address: "255.255.255.255", family: 4 });
+      mockLookup.mockResolvedValue([
+        { address: "255.255.255.255", family: 4 },
+      ]);
       await expect(
         validateMediaUrl("http://broadcast-host/file.mp3"),
       ).rejects.toThrow(MediaUrlBlockedError);
     });
   });
 
+  describe("multi-record DNS resolution", () => {
+    it("blocks when first record is public but a sibling is private", async () => {
+      mockLookup.mockResolvedValue([
+        { address: "8.8.8.8", family: 4 },
+        { address: "10.0.0.1", family: 4 },
+      ]);
+
+      await expect(
+        validateMediaUrl("http://multi-host.com/file.mp3"),
+      ).rejects.toThrow(MediaUrlBlockedError);
+    });
+
+    it("blocks when a sibling record is an IPv6-embedded internal target", async () => {
+      // ::a9fe:a9fe is IPv4-compatible hex form of 169.254.169.254 (cloud metadata)
+      mockLookup.mockResolvedValue([
+        { address: "8.8.8.8", family: 4 },
+        { address: "::a9fe:a9fe", family: 6 },
+      ]);
+
+      await expect(
+        validateMediaUrl("http://multi-host.com/file.mp3"),
+      ).rejects.toThrow(MediaUrlBlockedError);
+    });
+
+    it("allows when all records are public and returns the first as resolvedIp", async () => {
+      mockLookup.mockResolvedValue([
+        { address: "8.8.8.8", family: 4 },
+        { address: "1.1.1.1", family: 4 },
+      ]);
+
+      const result = await validateMediaUrl("http://multi-host.com/file.mp3");
+      expect(result.hostname).toBe("multi-host.com");
+      expect(result.resolvedIp).toBe("8.8.8.8");
+    });
+
+    it("rejects when resolution returns no addresses", async () => {
+      mockLookup.mockResolvedValue([]);
+
+      await expect(
+        validateMediaUrl("http://empty-host.com/file.mp3"),
+      ).rejects.toThrow(MediaUrlInvalidError);
+    });
+  });
+
   describe("MEDIA_ALLOWED_HOSTS env var", () => {
     it("allows whitelisted hostname", async () => {
-      mockLookup.mockResolvedValue({ address: "192.168.1.50", family: 4 });
+      mockLookup.mockResolvedValue([{ address: "192.168.1.50", family: 4 }]);
 
       const result = await validateMediaUrl("http://my-nas/file.mp3", {
         allowedHosts: ["my-nas"],
@@ -365,7 +416,7 @@ describe("validateMediaUrl", () => {
     });
 
     it("allows whitelisted IP", async () => {
-      mockLookup.mockResolvedValue({ address: "10.0.0.5", family: 4 });
+      mockLookup.mockResolvedValue([{ address: "10.0.0.5", family: 4 }]);
 
       const result = await validateMediaUrl("http://internal/file.mp3", {
         allowedHosts: ["10.0.0.5"],
@@ -374,7 +425,7 @@ describe("validateMediaUrl", () => {
     });
 
     it("still blocks non-whitelisted private IPs", async () => {
-      mockLookup.mockResolvedValue({ address: "192.168.1.100", family: 4 });
+      mockLookup.mockResolvedValue([{ address: "192.168.1.100", family: 4 }]);
 
       await expect(
         validateMediaUrl("http://other-host/file.mp3", {
@@ -384,9 +435,101 @@ describe("validateMediaUrl", () => {
     });
 
     it("does not bypass blocking with empty allowedHosts array", async () => {
-      mockLookup.mockResolvedValue({ address: "192.168.1.1", family: 4 });
+      mockLookup.mockResolvedValue([{ address: "192.168.1.1", family: 4 }]);
       await expect(
         validateMediaUrl("http://internal/file.mp3", { allowedHosts: [] }),
+      ).rejects.toThrow(MediaUrlBlockedError);
+    });
+
+    it("blocks multi-record host when only one of its IPs is allowlisted", async () => {
+      // IP-based escape hatch requires EVERY resolved address to be
+      // allowlisted — one allowlisted IP must not whitelist a sibling
+      mockLookup.mockResolvedValue([
+        { address: "10.0.0.5", family: 4 },
+        { address: "192.168.1.99", family: 4 },
+      ]);
+
+      await expect(
+        validateMediaUrl("http://internal/file.mp3", {
+          allowedHosts: ["10.0.0.5"],
+        }),
+      ).rejects.toThrow(MediaUrlBlockedError);
+    });
+
+    it("matches unbracketed IPv6 allowedHosts entry against bracketed URL host", async () => {
+      // URL.hostname keeps brackets for IPv6 literals ("[::1]") while users
+      // naturally allowlist the unbracketed form ("::1") — both must match
+      mockLookup.mockResolvedValue([{ address: "::1", family: 6 }]);
+
+      const result = await validateMediaUrl("http://[::1]:8080/file.mp3", {
+        allowedHosts: ["::1"],
+      });
+      expect(result.hostname).toBe("[::1]");
+      expect(result.resolvedIp).toBe("::1");
+    });
+
+    it("hostname allowlist bypasses per-address range checks (escape hatch)", async () => {
+      // Documents intended semantics: listing a host BY NAME is an explicit
+      // opt-in that deliberately skips per-address range validation, even if
+      // the host resolves to private/internal siblings. A future refactor must
+      // not silently tighten this into a per-IP check.
+      mockLookup.mockResolvedValue([
+        { address: "8.8.8.8", family: 4 },
+        { address: "192.168.1.50", family: 4 },
+      ]);
+
+      const result = await validateMediaUrl("http://my-nas/file.mp3", {
+        allowedHosts: ["my-nas"],
+      });
+      expect(result.hostname).toBe("my-nas");
+      expect(result.resolvedIp).toBe("8.8.8.8");
+    });
+
+    it("matches non-canonical IPv6 allowedHosts entry against canonical resolved address", async () => {
+      // IP-based match compares by normalized value: the expanded form
+      // "fd00:0:0:0:0:0:0:1" and the compressed resolved "fd00::1" are the same
+      // address, so the escape hatch must apply despite the raw strings differing.
+      mockLookup.mockResolvedValue([{ address: "fd00::1", family: 6 }]);
+
+      const result = await validateMediaUrl("http://ipv6-nas/file.mp3", {
+        allowedHosts: ["fd00:0:0:0:0:0:0:1"],
+      });
+      expect(result.resolvedIp).toBe("fd00::1");
+    });
+
+    it("matches bare IPv4 allowedHosts entry against IPv4-mapped resolved address", async () => {
+      // normalizeIp routes through embedded-IPv4 extraction, so the mapped form
+      // "::ffff:10.0.0.5" and the bare "10.0.0.5" both normalize to "10.0.0.5".
+      // Before this fix the mapped resolved address would not match the bare
+      // allowlist entry and the request would be blocked (fail-closed miss).
+      mockLookup.mockResolvedValue([{ address: "::ffff:10.0.0.5", family: 6 }]);
+
+      const result = await validateMediaUrl("http://internal/file.mp3", {
+        allowedHosts: ["10.0.0.5"],
+      });
+      expect(result.resolvedIp).toBe("::ffff:10.0.0.5");
+    });
+
+    it("matches IPv4-mapped allowedHosts entry against bare IPv4 resolved address", async () => {
+      // Reverse direction: the allowlist entry is the mapped form and the host
+      // resolves to the bare IPv4 — normalization makes both "10.0.0.5".
+      mockLookup.mockResolvedValue([{ address: "10.0.0.5", family: 4 }]);
+
+      const result = await validateMediaUrl("http://internal/file.mp3", {
+        allowedHosts: ["::ffff:10.0.0.5"],
+      });
+      expect(result.resolvedIp).toBe("10.0.0.5");
+    });
+
+    it("does not match a different IP even across mapped/bare forms", async () => {
+      // Negative guard: extraction is lossless and distinct IPs never collide,
+      // so allowlisting 10.0.0.5 must NOT let a sibling 10.0.0.6 through.
+      mockLookup.mockResolvedValue([{ address: "10.0.0.6", family: 4 }]);
+
+      await expect(
+        validateMediaUrl("http://internal/file.mp3", {
+          allowedHosts: ["10.0.0.5"],
+        }),
       ).rejects.toThrow(MediaUrlBlockedError);
     });
   });
@@ -415,7 +558,7 @@ describe("validateMediaUrl", () => {
 
   describe("IPv6 handling", () => {
     it("blocks IPv6 loopback", async () => {
-      mockLookup.mockResolvedValue({ address: "::1", family: 6 });
+      mockLookup.mockResolvedValue([{ address: "::1", family: 6 }]);
 
       await expect(
         validateMediaUrl("http://localhost/file.mp3"),
@@ -423,10 +566,9 @@ describe("validateMediaUrl", () => {
     });
 
     it("blocks IPv4-mapped IPv6 private addresses", async () => {
-      mockLookup.mockResolvedValue({
-        address: "::ffff:192.168.1.1",
-        family: 6,
-      });
+      mockLookup.mockResolvedValue([
+        { address: "::ffff:192.168.1.1", family: 6 },
+      ]);
 
       await expect(
         validateMediaUrl("http://internal/file.mp3"),
@@ -435,27 +577,90 @@ describe("validateMediaUrl", () => {
 
     it("allows public IPv6 addresses", async () => {
       // 2607:f8b0:4004:800::200e is a Google public IPv6 address (unicast range)
-      mockLookup.mockResolvedValue({
-        address: "2607:f8b0:4004:800::200e",
-        family: 6,
-      });
+      mockLookup.mockResolvedValue([
+        { address: "2607:f8b0:4004:800::200e", family: 6 },
+      ]);
 
       const result = await validateMediaUrl("http://ipv6host.com/file.mp3");
       expect(result.resolvedIp).toBe("2607:f8b0:4004:800::200e");
     });
 
     it("blocks IPv6 unique-local (fc00::/fd00::)", async () => {
-      mockLookup.mockResolvedValue({ address: "fd12:3456:789a::1", family: 6 });
+      mockLookup.mockResolvedValue([
+        { address: "fd12:3456:789a::1", family: 6 },
+      ]);
       await expect(
         validateMediaUrl("http://ipv6-local/file.mp3"),
       ).rejects.toThrow(MediaUrlBlockedError);
     });
 
     it("blocks IPv6 literal loopback URL", async () => {
-      mockLookup.mockResolvedValue({ address: "::1", family: 6 });
+      mockLookup.mockResolvedValue([{ address: "::1", family: 6 }]);
       await expect(validateMediaUrl("http://[::1]/file.mp3")).rejects.toThrow(
         MediaUrlBlockedError,
       );
+    });
+  });
+
+  describe("blocks IPv6 transition addresses (SSRF bypass)", () => {
+    // These ranges are IPv6-to-IPv4 transition mechanisms that can wrap
+    // internal IPv4 targets (e.g. cloud metadata). The allowlist (unicast-only)
+    // rejects them all — GHSA-5286-6cm5-w3qv.
+    const transitionIps = [
+      ["64:ff9b::169.254.169.254", "rfc6052 / NAT64 wrapping cloud metadata"],
+      ["2002:a9fe:a9fe::", "6to4"],
+      ["2001:0:4136:e378:8000:63bf:3fff:fdd2", "teredo"],
+      ["::ffff:0:169.254.169.254", "rfc6145 / SIIT"],
+      ["::ffff:169.254.169.254", "IPv4-mapped wrapping cloud metadata"],
+      ["::a9fe:a9fe", "IPv4-compatible (hex form) wrapping cloud metadata"],
+      ["::7f00:1", "IPv4-compatible (hex form) wrapping loopback"],
+    ] as const;
+
+    it.each(transitionIps)("blocks %s (%s)", async (ip) => {
+      mockLookup.mockResolvedValue([{ address: ip, family: 6 }]);
+
+      await expect(
+        validateMediaUrl("http://transition-host/file.mp3"),
+      ).rejects.toThrow(MediaUrlBlockedError);
+    });
+
+    it("blocks IPv4-mapped private addresses after extraction", async () => {
+      mockLookup.mockResolvedValue([{ address: "::ffff:10.0.0.1", family: 6 }]);
+
+      await expect(
+        validateMediaUrl("http://mapped-private/file.mp3"),
+      ).rejects.toThrow(MediaUrlBlockedError);
+    });
+  });
+
+  describe("allowlist does not over-block legitimate public traffic", () => {
+    it("allows public IPv4", async () => {
+      mockLookup.mockResolvedValue([{ address: "8.8.8.8", family: 4 }]);
+
+      const result = await validateMediaUrl("http://public-host.com/file.mp3");
+      expect(result.hostname).toBe("public-host.com");
+      expect(result.resolvedIp).toBe("8.8.8.8");
+    });
+
+    it("allows public IPv6 (Cloudflare)", async () => {
+      mockLookup.mockResolvedValue([
+        { address: "2606:4700:4700::1111", family: 6 },
+      ]);
+
+      const result = await validateMediaUrl("http://cf-host.com/file.mp3");
+      expect(result.hostname).toBe("cf-host.com");
+      expect(result.resolvedIp).toBe("2606:4700:4700::1111");
+    });
+
+    it("allows IPv4-mapped public addresses via extraction", async () => {
+      // ipaddr.js reports "ipv4Mapped" (not "unicast") for ::ffff:8.8.8.8.
+      // The mapped-extraction branch converts it to 8.8.8.8 (unicast) before
+      // the allowlist check — regression guard against over-blocking.
+      mockLookup.mockResolvedValue([{ address: "::ffff:8.8.8.8", family: 6 }]);
+
+      const result = await validateMediaUrl("http://mapped-public/file.mp3");
+      expect(result.hostname).toBe("mapped-public");
+      expect(result.resolvedIp).toBe("::ffff:8.8.8.8");
     });
   });
 });

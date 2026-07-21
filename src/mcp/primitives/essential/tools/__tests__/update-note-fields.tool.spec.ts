@@ -22,8 +22,13 @@ jest.mock("node:dns", () => {
   };
 });
 
-const mockLookup = dns.promises.lookup as jest.MockedFunction<
-  typeof dns.promises.lookup
+// Cast to the `{ all: true }` overload of dns.promises.lookup, which the
+// implementation uses (returns LookupAddress[] instead of a single address)
+const mockLookup = dns.promises.lookup as unknown as jest.MockedFunction<
+  (
+    hostname: string,
+    options: dns.LookupAllOptions,
+  ) => Promise<dns.LookupAddress[]>
 >;
 
 describe("UpdateNoteFieldsTool", () => {
@@ -43,10 +48,7 @@ describe("UpdateNoteFieldsTool", () => {
     jest.clearAllMocks();
 
     // Default: resolve to a public IP so non-security tests aren't affected
-    mockLookup.mockResolvedValue({
-      address: "93.184.216.34",
-      family: 4,
-    } as any);
+    mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
   });
 
   describe("updateNoteFields", () => {
@@ -390,10 +392,9 @@ describe("UpdateNoteFieldsTool", () => {
       });
 
       it("should reject private IP URLs in audio[].url", async () => {
-        mockLookup.mockResolvedValueOnce({
-          address: "192.168.1.50",
-          family: 4,
-        } as any);
+        mockLookup.mockResolvedValueOnce([
+          { address: "192.168.1.50", family: 4 },
+        ]);
 
         const rawResult = await tool.updateNoteFields({
           note: {
@@ -418,10 +419,9 @@ describe("UpdateNoteFieldsTool", () => {
       });
 
       it("should allow public URLs in audio[].url", async () => {
-        mockLookup.mockResolvedValueOnce({
-          address: "93.184.216.34",
-          family: 4,
-        } as any);
+        mockLookup.mockResolvedValueOnce([
+          { address: "93.184.216.34", family: 4 },
+        ]);
 
         ankiClient.invoke
           .mockResolvedValueOnce([mockNotes.spanish]) // notesInfo
@@ -449,8 +449,8 @@ describe("UpdateNoteFieldsTool", () => {
       it("rejects if any audio URL in array is malicious", async () => {
         // First lookup returns public IP, second returns private
         mockLookup
-          .mockResolvedValueOnce({ address: "93.184.216.34", family: 4 })
-          .mockResolvedValueOnce({ address: "192.168.1.1", family: 4 });
+          .mockResolvedValueOnce([{ address: "93.184.216.34", family: 4 }])
+          .mockResolvedValueOnce([{ address: "192.168.1.1", family: 4 }]);
 
         const result = await tool.updateNoteFields({
           note: {
@@ -502,10 +502,7 @@ describe("UpdateNoteFieldsTool", () => {
       });
 
       it("should reject private IP URLs in picture[].url", async () => {
-        mockLookup.mockResolvedValueOnce({
-          address: "10.0.0.1",
-          family: 4,
-        } as any);
+        mockLookup.mockResolvedValueOnce([{ address: "10.0.0.1", family: 4 }]);
 
         const rawResult = await tool.updateNoteFields({
           note: {
@@ -530,10 +527,9 @@ describe("UpdateNoteFieldsTool", () => {
       });
 
       it("should allow public URLs in picture[].url", async () => {
-        mockLookup.mockResolvedValueOnce({
-          address: "151.101.1.67",
-          family: 4,
-        } as any);
+        mockLookup.mockResolvedValueOnce([
+          { address: "151.101.1.67", family: 4 },
+        ]);
 
         ankiClient.invoke
           .mockResolvedValueOnce([mockNotes.spanish]) // notesInfo
@@ -563,8 +559,8 @@ describe("UpdateNoteFieldsTool", () => {
       it("validates both audio and picture URLs in same request", async () => {
         // Audio URL is fine, picture URL resolves to private IP
         mockLookup
-          .mockResolvedValueOnce({ address: "93.184.216.34", family: 4 })
-          .mockResolvedValueOnce({ address: "10.0.0.1", family: 4 });
+          .mockResolvedValueOnce([{ address: "93.184.216.34", family: 4 }])
+          .mockResolvedValueOnce([{ address: "10.0.0.1", family: 4 }]);
 
         const result = await tool.updateNoteFields({
           note: {
@@ -597,10 +593,7 @@ describe("UpdateNoteFieldsTool", () => {
 
     describe("media filename sanitization", () => {
       it("sanitizes audio filename path traversal", async () => {
-        mockLookup.mockResolvedValue({
-          address: "93.184.216.34",
-          family: 4,
-        } as any);
+        mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
 
         // Mock the notesInfo call that happens before updateNoteFields
         ankiClient.invoke.mockImplementation(async (action: string) => {
