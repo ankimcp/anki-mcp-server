@@ -351,9 +351,7 @@ describe("validateMediaUrl", () => {
     });
 
     it("blocks broadcast address (255.255.255.255)", async () => {
-      mockLookup.mockResolvedValue([
-        { address: "255.255.255.255", family: 4 },
-      ]);
+      mockLookup.mockResolvedValue([{ address: "255.255.255.255", family: 4 }]);
       await expect(
         validateMediaUrl("http://broadcast-host/file.mp3"),
       ).rejects.toThrow(MediaUrlBlockedError);
