@@ -1,5 +1,7 @@
 # Anki MCP Server
 
+[![MCP Toplist](https://mcptoplist.com/badge/ai.ankimcp%2Fanki-mcp-server.svg)](https://mcptoplist.com/server/ai.ankimcp%2Fanki-mcp-server)
+
 [![Tests](https://github.com/ankimcp/anki-mcp-server/actions/workflows/test.yml/badge.svg)](https://github.com/ankimcp/anki-mcp-server/actions/workflows/test.yml)
 [![npm version](https://badge.fury.io/js/@ankimcp%2Fanki-mcp-server.svg)](https://www.npmjs.com/package/@ankimcp/anki-mcp-server)
 
