@@ -166,6 +166,48 @@ describe("GetDueCardsTool", () => {
       });
     });
 
+    it("should escape Anki wildcards so a deck name matches literally", async () => {
+      // `_` and `*` stay active inside double quotes, so an unescaped
+      // "JLPT_N5" would also match a sibling deck named "JLPT-N5".
+      ankiClient.invoke.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+      await tool.getDueCards({ deck_name: "JLPT_N5" });
+
+      expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "findCards", {
+        query: '"deck:JLPT\\_N5" -is:suspended (is:due OR is:learn)',
+      });
+    });
+
+    it("should escape backslashes in a deck name", async () => {
+      // Unescaped, `\P` is an invalid escape sequence and AnkiConnect errors.
+      ankiClient.invoke.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+      await tool.getDueCards({ deck_name: "Math\\Physics" });
+
+      expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "findCards", {
+        query: '"deck:Math\\\\Physics" -is:suspended (is:due OR is:learn)',
+      });
+    });
+
+    it("should escape the deck name in the new-card count query too", async () => {
+      // The second query built for include_new must use the same escaping.
+      ankiClient.invoke
+        .mockResolvedValueOnce([1])
+        .mockResolvedValueOnce([1])
+        .mockResolvedValueOnce([]);
+
+      await tool.getDueCards({ deck_name: "JLPT_N5", include_new: true });
+
+      const queries = ankiClient.invoke.mock.calls
+        .filter(([action]) => action === "findCards")
+        .map(([, params]) => (params as { query: string }).query);
+
+      expect(queries).toEqual([
+        '"deck:JLPT\\_N5" -is:suspended (is:due OR is:learn OR is:new)',
+        '"deck:JLPT\\_N5" -is:suspended (is:new)',
+      ]);
+    });
+
     it("should respect the limit parameter", async () => {
       // Arrange
       const manyCardIds = Array.from(

@@ -1,3 +1,7 @@
+import type {
+  CardStateCounts,
+  DueTreeCounts,
+} from "@/mcp/utils/card-states.utils";
 import { DistributionMetrics } from "@/mcp/utils/stats.utils";
 
 /**
@@ -12,35 +16,31 @@ export interface CollectionStatsParams {
 }
 
 /**
- * Per-deck breakdown structure.
+ * Per-deck breakdown structure — today's study queue, NOT card totals. See
+ * {@link DueTreeCounts} for the full semantics of each count field.
  *
- * All count fields are rolled up over the deck and its descendants so the
- * breakdown matches Anki's deck browser: a row for `"German"` includes
- * cards from `"German::Verbs"`. Invariant: `total === new + learning + review + other`.
+ * All fields are rolled up over the deck and its descendants, so a row for
+ * `"German"` includes cards from `"German::Verbs"`.
+ *
+ * True per-state counts are only reported collection-wide (see
+ * {@link CollectionStatsResult.states}); per-deck state counts would cost five
+ * extra queries per deck and are intentionally not included. Call the
+ * `deckStats` tool for a single deck's `states`.
  */
-export interface PerDeckStats {
+export interface PerDeckStats extends DueTreeCounts {
   /** Deck name */
   deck: string;
-  /**
-   * Total cards in this deck AND all of its descendants
-   * (e.g. row for `"German"` includes cards in `"German::Verbs"`).
-   */
-  total: number;
-  /** New cards (never studied), rolled up over descendants */
-  new: number;
-  /** Learning/relearning cards, rolled up over descendants */
-  learning: number;
-  /** Review cards (mature), rolled up over descendants */
-  review: number;
-  /**
-   * Cards not in new/learning/review (typically suspended or buried),
-   * rolled up over descendants. Computed as `total - new - learning - review`.
-   */
-  other: number;
 }
 
 /**
  * Result structure for collection_stats tool.
+ *
+ * Two different views, deliberately kept apart:
+ *
+ * - `counts` / `per_deck` — today's **study queue** from the scheduler's due
+ *   tree: due-today only, capped by daily limits. Anki's deck browser numbers.
+ * - `states` — true **card-state** counts across the whole collection, from
+ *   Anki searches. No due-date filter, no daily limits.
  *
  * `counts` aggregates ROOT decks only (names without `::`) so children
  * aren't double-counted — each root's per-deck entry is already rolled up
@@ -51,26 +51,22 @@ export interface CollectionStatsResult {
   total_decks: number;
 
   /**
-   * Aggregated card counts across the collection. Summed over ROOT decks
-   * only (names without `::`) so a parent's rollup is not added on top of
-   * its children. Invariant: `total === new + learning + review + other`.
+   * Today's study queue across the collection — NOT card totals. See
+   * {@link DueTreeCounts} for the full semantics of each field.
+   *
+   * Summed over ROOT decks only (names without `::`) so a parent's rollup is
+   * not added on top of its children.
+   *
+   * Use {@link CollectionStatsResult.states} for "how many cards are in state X".
    */
-  counts: {
-    /** Total cards in collection (sum of root decks' rolled-up totals) */
-    total: number;
-    /** New cards (never studied), summed over root decks' rolled-up counts */
-    new: number;
-    /** Learning/relearning cards, summed over root decks' rolled-up counts */
-    learning: number;
-    /** Review cards (mature), summed over root decks' rolled-up counts */
-    review: number;
-    /**
-     * Cards not in new/learning/review (typically suspended or buried),
-     * summed over root decks' rolled-up counts.
-     * Computed as `total - new - learning - review`.
-     */
-    other: number;
-  };
+  counts: DueTreeCounts;
+
+  /**
+   * True card-state counts across the whole collection, from Anki searches.
+   * Unaffected by due dates and daily limits. The five values are mutually
+   * exclusive and together cover every card in the collection.
+   */
+  states: CardStateCounts;
 
   /** Ease factor distribution (only for cards with ease values) */
   ease: DistributionMetrics;
@@ -79,10 +75,11 @@ export interface CollectionStatsResult {
   intervals: DistributionMetrics;
 
   /**
-   * Per-deck breakdown of card counts. One entry per deck returned by
-   * `deckNames` (includes children). Each entry's counts are rolled up over
-   * that deck's descendants; invariant per row:
-   * `total === new + learning + review + other`.
+   * Per-deck breakdown of today's study queue (same semantics as `counts`).
+   * One entry per deck returned by `deckNames` (includes children). Each
+   * entry's counts are rolled up over that deck's descendants; per row,
+   * normally `total === new + learning + review + other`, with the same
+   * clamping caveat as {@link CollectionStatsResult.counts}.
    */
   per_deck: PerDeckStats[];
 }

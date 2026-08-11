@@ -5,6 +5,14 @@ import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import type { AnkiDeckStatsResponse } from "@/mcp/types/anki.types";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import {
+  cardStatesSchema,
+  DUE_TREE_INVARIANT_NOTE,
+  dueTreeCountsSchema,
+  dueTreeCountsShape,
+  emptyCardStateCounts,
+  fetchCardStateCounts,
+} from "@/mcp/utils/card-states.utils";
+import {
   getRootDeckNames,
   rollupDeckTotal,
 } from "@/mcp/utils/deck-hierarchy.utils";
@@ -28,10 +36,13 @@ export class CollectionStatsTool {
     name: "collection_stats",
     description:
       "Get aggregated statistics across all decks in the collection including card counts, ease factor distribution, and interval distribution. " +
-      "Per-deck counts are rolled up over descendants (a parent deck includes its children), matching Anki's deck browser. " +
-      "Collection-level `counts` sum the ROOT decks only to avoid double-counting children. " +
-      "Invariant: for every deck and for the collection, total === new + learning + review + other. " +
-      "Use this to analyze overall collection health and compare deck statistics. " +
+      "Returns TWO different views, do not mix them up: " +
+      "`counts` and `per_deck` are today's study queue as shown in Anki's deck browser (cards DUE TODAY, capped by each deck's daily new/review limits, suspended/buried excluded); " +
+      "`states` is the true number of cards in each state (new / learning / review / suspended / buried) across the whole collection, ignoring due dates and daily limits. " +
+      'To answer "how many cards do I have" use `states`; to answer "what will I study today" use `counts`. ' +
+      "Per-deck counts are rolled up over descendants (a parent deck includes its children); collection-level `counts` sum the ROOT decks only to avoid double-counting children. " +
+      "`states` is collection-wide only (it costs 5 additional Anki searches per call) — call the `deckStats` tool for a single deck's true state counts. " +
+      `For every deck and for the collection: ${DUE_TREE_INVARIANT_NOTE} ` +
       "Ease buckets and interval buckets can be customized to focus on specific ranges.",
     parameters: z.object({
       ease_buckets: z
@@ -69,44 +80,17 @@ export class CollectionStatsTool {
     }),
     outputSchema: z.object({
       total_decks: z.number(),
-      counts: z
-        .object({
-          total: z
-            .number()
-            .describe(
-              "Total cards in the collection. Computed as the sum of " +
-                "ROOT-deck rolled-up totals (decks without `::` in the name), " +
-                "which prevents double-counting children. Invariant: " +
-                "total === new + learning + review + other.",
-            ),
-          new: z
-            .number()
-            .describe(
-              "New cards (never studied), summed over root decks' rolled-up counts.",
-            ),
-          learning: z
-            .number()
-            .describe(
-              "Learning/relearning cards, summed over root decks' rolled-up counts.",
-            ),
-          review: z
-            .number()
-            .describe(
-              "Review cards (mature), summed over root decks' rolled-up counts.",
-            ),
-          other: z
-            .number()
-            .describe(
-              "Cards not in new/learning/review (typically suspended or buried), " +
-                "summed over root decks' rolled-up counts. " +
-                "Computed as total - new - learning - review.",
-            ),
-        })
-        .describe(
-          "Aggregated card counts across the collection. Summed over ROOT " +
-            "decks only (names without `::`) so that a parent's rollup is not " +
-            "added on top of its children.",
-        ),
+      counts: dueTreeCountsSchema({
+        scope: "the whole collection",
+        total:
+          "Total cards in the collection, including suspended and buried. " +
+          "Computed as the sum of ROOT-deck rolled-up totals (decks without " +
+          "`::` in the name), which prevents double-counting children.",
+        note:
+          "Summed over ROOT decks only (names without `::`) so that a " +
+          "parent's rollup is not added on top of its children.",
+      }),
+      states: cardStatesSchema("the whole collection"),
       ease: z.object({
         mean: z.number(),
         median: z.number(),
@@ -126,19 +110,22 @@ export class CollectionStatsTool {
       per_deck: z
         .array(
           z.object({
-            deck: z.string(),
-            total: z.number(),
-            new: z.number(),
-            learning: z.number(),
-            review: z.number(),
-            other: z.number(),
+            deck: z.string().describe('Full deck name, e.g. "German::Verbs".'),
+            ...dueTreeCountsShape(
+              "Total cards in this deck AND all of its descendants, " +
+                "including suspended and buried.",
+            ),
           }),
         )
         .describe(
-          "Per-deck breakdown with one entry per deck. Each entry's counts " +
-            'are rolled up over that deck\'s descendants (entry for "German" ' +
-            'includes cards from "German::Verbs"). Invariant per row: ' +
-            "total === new + learning + review + other.",
+          "Per-deck breakdown of today's study queue — same due-today, " +
+            "daily-limit-capped semantics as `counts`, NOT card totals. One " +
+            "entry per deck; each entry's counts are rolled up over that " +
+            'deck\'s descendants (entry for "German" includes cards from ' +
+            '"German::Verbs"). Normally total === new + learning + review + ' +
+            "other per row, but `other` is clamped at 0 so the sum can exceed " +
+            "total in rare filtered-deck cases. Per-deck true state counts are " +
+            "not included here — call the `deckStats` tool for a specific deck.",
         ),
     }),
     annotations: {
@@ -177,6 +164,7 @@ export class CollectionStatsTool {
             review: 0,
             other: 0,
           },
+          states: emptyCardStateCounts(),
           ease: computeDistribution([], { boundaries: ease_buckets }),
           intervals: computeDistribution([], {
             boundaries: interval_buckets,
@@ -287,22 +275,12 @@ export class CollectionStatsTool {
           `(${deckNames.length} total decks including children)`,
       );
 
-      // Handle empty collection case
-      if (counts.total === 0) {
-        this.logger.log("Collection is empty (no cards)");
-        const result: CollectionStatsResult = {
-          total_decks: deckNames.length,
-          counts,
-          ease: computeDistribution([], { boundaries: ease_buckets }),
-          intervals: computeDistribution([], {
-            boundaries: interval_buckets,
-            unitSuffix: "d",
-          }),
-          per_deck,
-        };
-
-        return result;
-      }
+      // NOTE: deliberately no `counts.total === 0` short-circuit. `total` is
+      // summed from `total_in_deck`, the storage-deck row count this tool
+      // cannot trust — cards borrowed by a filtered deck can make it read 0
+      // while `deck:*` still matches them. The `findCards` result below is the
+      // single emptiness gate, derived from the same search the state counts
+      // use.
 
       // Step 3: Get all card IDs across the entire collection
       this.logger.log("Finding all cards in collection...");
@@ -311,12 +289,13 @@ export class CollectionStatsTool {
       });
 
       if (!cardIds || cardIds.length === 0) {
-        this.logger.warn(
-          "No cards found via findCards, using counts from getDeckStats",
+        this.logger.log(
+          "No cards found via findCards; reporting getDeckStats counts with zeroed states",
         );
         const result: CollectionStatsResult = {
           total_decks: deckNames.length,
           counts,
+          states: emptyCardStateCounts(),
           ease: computeDistribution([], { boundaries: ease_buckets }),
           intervals: computeDistribution([], {
             boundaries: interval_buckets,
@@ -330,7 +309,19 @@ export class CollectionStatsTool {
 
       this.logger.log(`Found ${cardIds.length} cards in collection`);
 
-      // Step 4: Get ease factors for all cards (divide by 1000!)
+      // Step 4: True card-state counts for the whole collection (5 findCards
+      // queries). `counts` above is the scheduler's due-today view and cannot
+      // answer "how many cards are new/suspended/..." — this can. Deliberately
+      // collection-wide only: per-deck states would cost 5 queries per deck.
+      this.logger.log("Counting cards by state...");
+      const states = await fetchCardStateCounts(this.ankiClient);
+      this.logger.log(
+        `Card states: ${states.new} new, ${states.learning} learning, ` +
+          `${states.review} review, ${states.suspended} suspended, ` +
+          `${states.buried} buried`,
+      );
+
+      // Step 5: Get ease factors for all cards (divide by 1000!)
       this.logger.log(`Fetching ease factors for ${cardIds.length} cards...`);
       const easeFactorsRaw = await this.ankiClient.invoke<number[]>(
         "getEaseFactors",
@@ -350,7 +341,7 @@ export class CollectionStatsTool {
 
       this.logger.log(`Processed ${easeValues.length} ease values`);
 
-      // Step 5: Get intervals for all cards (filter negatives!)
+      // Step 6: Get intervals for all cards (filter negatives!)
       this.logger.log(`Fetching intervals for ${cardIds.length} cards...`);
       const intervalsRaw = await this.ankiClient.invoke<number[]>(
         "getIntervals",
@@ -368,7 +359,7 @@ export class CollectionStatsTool {
 
       this.logger.log(`Processed ${intervalValues.length} interval values`);
 
-      // Step 6: Compute distributions
+      // Step 7: Compute distributions
       this.logger.log("Computing distributions...");
       const ease = computeDistribution(easeValues, {
         boundaries: ease_buckets,
@@ -382,6 +373,7 @@ export class CollectionStatsTool {
       const result: CollectionStatsResult = {
         total_decks: deckNames.length,
         counts,
+        states,
         ease,
         intervals,
         per_deck,

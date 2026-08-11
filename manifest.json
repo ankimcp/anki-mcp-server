@@ -2,7 +2,7 @@
   "manifest_version": "0.4",
   "name": "anki-mcp-server",
   "display_name": "Anki MCP Server",
-  "version": "0.22.5",
+  "version": "0.23.0",
   "license": "MIT",
   "description": "Model Context Protocol server for Anki spaced repetition flashcard application",
   "long_description": "Transform your Anki experience with natural language interaction - like having a private tutor. This MCP server enables AI assistants to interact with Anki, allowing them to explain concepts, make learning more engaging, provide context, and adapt to your learning style. Features include review sessions, deck management, note creation and editing, and more.\n\nRequires Anki with the AnkiConnect plugin installed.",
@@ -177,11 +177,11 @@
     },
     {
       "name": "listDecks",
-      "description": "List all Anki decks, optionally with card count statistics for each deck"
+      "description": "List all Anki decks, optionally with per-deck study-queue counts (cards due today, capped by daily limits — not card totals)"
     },
     {
       "name": "deckStats",
-      "description": "Get comprehensive statistics for a single deck including card counts, ease and interval distributions"
+      "description": "Get statistics for a single deck: today's study queue, true card-state counts (new/learning/review/suspended/buried), and ease/interval distributions"
     },
     {
       "name": "createDeck",
@@ -225,7 +225,7 @@
     },
     {
       "name": "collection_stats",
-      "description": "Get aggregated statistics across all decks in the collection with per-deck breakdown"
+      "description": "Get aggregated statistics across all decks: per-deck study queues plus collection-wide true card-state counts"
     },
     {
       "name": "review_stats",

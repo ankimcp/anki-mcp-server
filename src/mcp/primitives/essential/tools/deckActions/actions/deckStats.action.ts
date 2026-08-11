@@ -5,6 +5,13 @@ import {
   DistributionMetrics,
 } from "@/mcp/utils/stats.utils";
 import { isDescendantOf } from "@/mcp/utils/deck-hierarchy.utils";
+import {
+  deckScopeQuery,
+  emptyCardStateCounts,
+  fetchCardStateCounts,
+  type CardStateCounts,
+  type DueTreeCounts,
+} from "@/mcp/utils/card-states.utils";
 
 /**
  * Parameters for deckStats action
@@ -23,9 +30,16 @@ export interface DeckStatsParams {
 /**
  * Result structure for deckStats action.
  *
- * All `counts` fields roll up descendants: a stat for `"German"` covers
- * `"German"` + `"German::Verbs"` + `"German::Verbs::Irregular"` etc., matching
- * how the Anki UI displays parent decks.
+ * Two different views of the same deck, deliberately kept apart:
+ *
+ * - `counts` — today's **study queue**, straight from AnkiConnect's
+ *   `getDeckStats` (the scheduler due tree). Due-today only and capped by daily
+ *   limits. These are the numbers Anki's deck browser shows.
+ * - `states` — true **card-state** counts from Anki searches. No due-date
+ *   filter, no daily limits.
+ *
+ * Both views roll up descendants: stats for `"German"` cover `"German"` +
+ * `"German::Verbs"` + `"German::Verbs::Irregular"` etc.
  */
 export interface DeckStatsResult {
   /** Whether the operation succeeded */
@@ -35,29 +49,20 @@ export interface DeckStatsResult {
   deck: string;
 
   /**
-   * Card counts by status. All values are rolled up over the deck and all of
-   * its descendants (matches Anki UI convention for parent decks).
-   * Invariant: `total === new + learning + review + other`.
+   * Today's study queue for this deck and all of its descendants, as shown in
+   * Anki's deck browser — NOT card totals. See {@link DueTreeCounts} for the
+   * full semantics of each field.
+   *
+   * Use {@link DeckStatsResult.states} for "how many cards are in state X".
    */
-  counts: {
-    /**
-     * Total cards in this deck AND all of its descendants
-     * (e.g. stats for `"German"` include cards in `"German::Verbs"`).
-     */
-    total: number;
-    /** New cards (never studied), rolled up over descendants */
-    new: number;
-    /** Learning/relearning cards, rolled up over descendants */
-    learning: number;
-    /** Review cards (mature), rolled up over descendants */
-    review: number;
-    /**
-     * Cards not in new/learning/review (typically suspended or buried),
-     * rolled up over descendants. Computed as
-     * `total - new - learning - review`.
-     */
-    other: number;
-  };
+  counts: DueTreeCounts;
+
+  /**
+   * True card-state counts for this deck and its subdecks, from Anki searches.
+   * Unaffected by due dates and daily limits. The five values are mutually
+   * exclusive and together cover every card matched by `deck:<name>`.
+   */
+  states: CardStateCounts;
 
   /** Ease factor distribution (only for cards with ease values) */
   ease: DistributionMetrics;
@@ -72,16 +77,23 @@ export interface DeckStatsResult {
 export type ProgressCallback = (progress: number) => Promise<void>;
 
 /**
- * Get comprehensive statistics for a single deck including card counts,
- * ease factor distribution, and interval distribution.
+ * Get comprehensive statistics for a single deck: today's study queue
+ * (`counts`), true card-state counts (`states`), and ease/interval
+ * distributions.
  *
- * Counts are rolled up over descendant decks (e.g. `"German"` includes
- * cards from `"German::Verbs"`). This matches how AnkiConnect reports
- * scheduler buckets for parent decks and how the Anki UI displays them.
- * Without this rollup, `total_in_deck` (direct cards only) would be
- * inconsistent with `new_count` / `learn_count` / `review_count`
- * (descendants included), producing nonsense like `new > total`.
+ * `counts` mirrors Anki's deck browser — due-today numbers capped by daily
+ * limits — while `states` answers "how many cards are in state X" via searches.
+ * Keeping both is deliberate: neither can be derived from the other.
  *
+ * Both are rolled up over descendant decks (e.g. `"German"` includes cards from
+ * `"German::Verbs"`). For `counts` this matches how AnkiConnect reports
+ * scheduler buckets for parent decks; without rolling up `total_in_deck`
+ * (direct cards only) it would be inconsistent with `new_count` /
+ * `learn_count` / `review_count` (descendants included), producing nonsense
+ * like `new > total`. For `states` the rollup is free — Anki's `deck:` search
+ * includes subdecks by default.
+ *
+ * @see https://docs.ankiweb.net/searching.html#card-state
  * @see https://git.sr.ht/~foosoft/anki-connect#getdeckstats
  * @see https://git.sr.ht/~foosoft/anki-connect#findcards
  * @see https://git.sr.ht/~foosoft/anki-connect#geteasefactors
@@ -149,9 +161,12 @@ export async function deckStats(
     total += descStats?.total_in_deck ?? 0;
   }
 
-  // Anything not in the three scheduler buckets (typically suspended or
-  // buried cards) lands in `other`. Clamp to zero in the pathological case
-  // where AnkiConnect's counts disagree with its own card listing.
+  // `other` is a residual, not a card state: the three buckets above only
+  // count cards DUE TODAY and are capped by the deck's daily limits, while
+  // `total` counts every card. So `other` is dominated by review cards not due
+  // today and new cards beyond the daily new limit; suspended and buried cards
+  // land here too. Clamp to zero in the pathological case where AnkiConnect's
+  // counts disagree with its own card listing.
   const other = Math.max(0, total - newCount - learning - review);
 
   const counts = {
@@ -164,32 +179,33 @@ export async function deckStats(
 
   await onProgress?.(30);
 
-  // Handle empty deck case
-  if (counts.total === 0) {
-    return {
-      success: true,
-      deck,
-      counts,
-      ease: computeDistribution([], { boundaries: easeBuckets }),
-      intervals: computeDistribution([], {
-        boundaries: intervalBuckets,
-        unitSuffix: "d",
-      }),
-    };
-  }
+  // NOTE: deliberately no `counts.total === 0` short-circuit. `total` is the
+  // storage-deck row count, the very number this tool cannot trust — a deck
+  // whose cards are currently borrowed by a filtered deck can report
+  // `total_in_deck: 0` while `deck:X` still matches every one of its cards.
+  // The `findCards` result below is the single emptiness gate, and it is
+  // derived from the same search the state counts use.
 
-  // Step 3: Get all card IDs for this deck (Anki's `deck:` query includes
-  // subdecks by default, so this already covers the whole subtree).
-  const escapedDeckName = deck.replace(/"/g, '\\"');
+  // Step 3: Get all card IDs for this deck. Anki's `deck:` term matches the
+  // deck AND its descendants (and cards pulled into a filtered deck from the
+  // subtree), so this single query already covers the whole subtree.
+  const deckScope = deckScopeQuery(deck);
   const cardIds = await client.invoke<number[]>("findCards", {
-    query: `"deck:${escapedDeckName}"`,
+    query: deckScope,
   });
+
+  // Unlike fetchCardStateCounts (which throws on ANY non-array), null/undefined
+  // is allowed through here to preserve the long-standing empty-deck path below.
+  if (cardIds != null && !Array.isArray(cardIds)) {
+    throw new Error("Invalid findCards response: expected array");
+  }
 
   if (!cardIds || cardIds.length === 0) {
     return {
       success: true,
       deck,
       counts,
+      states: emptyCardStateCounts(),
       ease: computeDistribution([], { boundaries: easeBuckets }),
       intervals: computeDistribution([], {
         boundaries: intervalBuckets,
@@ -198,31 +214,46 @@ export async function deckStats(
     };
   }
 
-  await onProgress?.(50);
+  await onProgress?.(40);
 
-  // Step 4: Get ease factors (divide by 1000!)
+  // Step 4: True card-state counts (5 `findCards` queries). These are what
+  // `counts` cannot give us: totals per state, ignoring due dates and daily
+  // limits.
+  const states = await fetchCardStateCounts(client, deckScope);
+
+  await onProgress?.(55);
+
+  // Step 5: Get ease factors (divide by 1000!)
   const easeFactorsRaw = await client.invoke<number[]>("getEaseFactors", {
     cards: cardIds,
   });
+
+  if (!Array.isArray(easeFactorsRaw)) {
+    throw new Error("Invalid getEaseFactors response: expected array");
+  }
 
   // Transform: divide by 1000 and filter invalid values
   const easeValues = easeFactorsRaw
     .map((e) => e / 1000) // 4100 → 4.1
     .filter((e) => e > 0); // Filter out invalid values (0 = new cards)
 
-  await onProgress?.(70);
+  await onProgress?.(75);
 
-  // Step 5: Get intervals (filter negatives = learning cards)
+  // Step 6: Get intervals (filter negatives = learning cards)
   const intervalsRaw = await client.invoke<number[]>("getIntervals", {
     cards: cardIds,
   });
+
+  if (!Array.isArray(intervalsRaw)) {
+    throw new Error("Invalid getIntervals response: expected array");
+  }
 
   // Transform: filter out negative values (learning cards in seconds)
   const intervalValues = intervalsRaw.filter((i) => i > 0); // Only review cards (positive = days)
 
   await onProgress?.(90);
 
-  // Step 6: Compute distributions
+  // Step 7: Compute distributions
   const ease = computeDistribution(easeValues, {
     boundaries: easeBuckets,
   });
@@ -236,6 +267,7 @@ export async function deckStats(
     success: true,
     deck,
     counts,
+    states,
     ease,
     intervals,
   };

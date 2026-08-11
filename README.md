@@ -49,10 +49,12 @@ The server exposes **42 MCP tools** — 31 essential tools for everyday Anki ope
 > **Note:** Card `front`/`back` content is rendered per card from its own template (as Anki shows it), so reversed and cloze cards display the correct direction. Static text added by your card templates appears in the output as well.
 
 #### Deck Management
-- `listDecks` - List all decks, optionally with per-deck card-count statistics
-- `deckStats` - Get comprehensive statistics for a single deck (counts, ease/interval distributions)
+- `listDecks` - List all decks, optionally with per-deck study-queue statistics
+- `deckStats` - Get comprehensive statistics for a single deck (study queue, true card-state counts, ease/interval distributions)
 - `createDeck` - Create a new empty deck (supports `Parent::Child`, max 2 levels)
 - `changeDeck` - Move cards to a different deck (created if it doesn't exist)
+
+> **Note:** Deck statistics come in two flavours. The `counts` block (and everything `listDecks` reports) mirrors Anki's deck browser: cards **due today**, capped by each deck's **daily new/review limits**, with suspended and buried cards excluded — so `review` is not "mature cards" and the `other` bucket is just the arithmetic remainder (mostly review cards not due today plus new cards over the daily limit). For true per-state totals use the `states` block on `deckStats` / `collection_stats`, which counts `new`, `learning`, `review`, `suspended` and `buried` via Anki searches, ignoring due dates and daily limits.
 
 #### Note Management
 - `addNote` - Create a single note with specified fields and tags
@@ -96,7 +98,7 @@ Just tell Claude where the image is, and it will handle the upload automatically
 - `repositionModelField` - Change the position of a field within an existing note type
 
 #### Statistics
-- `collection_stats` - Aggregated statistics across all decks with per-deck breakdown
+- `collection_stats` - Aggregated statistics across all decks with per-deck breakdown and collection-wide card-state counts
 - `review_stats` - Review history analysis (temporal patterns, retention metrics, study streaks)
 
 ### GUI Tools

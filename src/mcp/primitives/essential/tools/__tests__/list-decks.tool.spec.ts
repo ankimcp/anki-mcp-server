@@ -105,10 +105,12 @@ describe("ListDecksTool", () => {
       "1111111111": {
         deck_id: 1111111111,
         name: "Test",
-        new_count: 0,
-        learn_count: 0,
-        review_count: 0,
-        total_in_deck: 0,
+        // The scheduler rolls a parent's due-tree buckets up over its
+        // children, so the parent mirrors the child's counts here.
+        new_count: 5,
+        learn_count: 2,
+        review_count: 8,
+        total_in_deck: 0, // ...but total_in_deck is own cards only
       },
       "2222222222": {
         deck_id: 2222222222,
@@ -141,11 +143,109 @@ describe("ListDecksTool", () => {
     expect(childDeck.stats.review_count).toBe(8);
     expect(childDeck.stats.name).toBe("Test::STDIO-AddNotes");
 
+    // total_cards sums every deck (own cards only: 0 + 15). The three
+    // scheduler buckets sum ROOT decks only — "Test" already includes
+    // "Test::STDIO-AddNotes", so adding the child again would double them.
     expect(result.summary).toMatchObject({
       total_cards: 15,
       new_cards: 5,
       learning_cards: 2,
       review_cards: 8,
+    });
+  });
+
+  it("should not double-count subdeck cards in the summary buckets", async () => {
+    // Regression: the due-today buckets AnkiConnect returns are already rolled
+    // up over subdecks. Summing every deck row counted each child's cards once
+    // for the child and again for every ancestor — a 3-level tree reported 3x
+    // the real study load.
+    const deckNames = ["German", "German::Verbs", "German::Verbs::Irregular"];
+    const deckNamesAndIds = {
+      German: 1,
+      "German::Verbs": 2,
+      "German::Verbs::Irregular": 3,
+    };
+    // 4 new cards, all of them stored in the deepest deck.
+    const statsResponse = {
+      "1": {
+        deck_id: 1,
+        name: "German",
+        new_count: 4,
+        learn_count: 1,
+        review_count: 2,
+        total_in_deck: 0,
+      },
+      "2": {
+        deck_id: 2,
+        name: "Verbs",
+        new_count: 4,
+        learn_count: 1,
+        review_count: 2,
+        total_in_deck: 0,
+      },
+      "3": {
+        deck_id: 3,
+        name: "Irregular",
+        new_count: 4,
+        learn_count: 1,
+        review_count: 2,
+        total_in_deck: 7,
+      },
+    };
+    ankiClient.invoke
+      .mockResolvedValueOnce(deckNames)
+      .mockResolvedValueOnce(deckNamesAndIds)
+      .mockResolvedValueOnce(statsResponse);
+
+    const rawResult = await tool.execute({ includeStats: true });
+    const result = parseToolResult(rawResult);
+
+    expect(result.summary).toEqual({
+      // Own-card counts, so every row contributes: 0 + 0 + 7.
+      total_cards: 7,
+      // Root deck only — NOT 4 + 4 + 4.
+      new_cards: 4,
+      learning_cards: 1,
+      review_cards: 2,
+    });
+  });
+
+  it("should sum summary buckets across sibling root decks", async () => {
+    // Two independent roots must both contribute — the root-only rule must not
+    // be mistaken for "first deck only".
+    const deckNames = ["German", "Spanish"];
+    const deckNamesAndIds = { German: 1, Spanish: 2 };
+    const statsResponse = {
+      "1": {
+        deck_id: 1,
+        name: "German",
+        new_count: 3,
+        learn_count: 1,
+        review_count: 5,
+        total_in_deck: 10,
+      },
+      "2": {
+        deck_id: 2,
+        name: "Spanish",
+        new_count: 2,
+        learn_count: 4,
+        review_count: 6,
+        total_in_deck: 20,
+      },
+    };
+    ankiClient.invoke
+      .mockResolvedValueOnce(deckNames)
+      .mockResolvedValueOnce(deckNamesAndIds)
+      .mockResolvedValueOnce(statsResponse);
+
+    const rawResult = await tool.execute({ includeStats: true });
+    const result = parseToolResult(rawResult);
+
+    expect(result.summary).toEqual({
+      total_cards: 30,
+      new_cards: 5,
+      learning_cards: 5,
+      review_cards: 11,
     });
   });
 

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { DeckStatsTool } from "../deck-stats.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import { parseToolResult } from "@/test-fixtures/test-helpers";
+import { findCardsFor, parseToolResult } from "@/test-fixtures/test-helpers";
 import type { DeckStatsResult } from "../deckActions/actions/deckStats.action";
 
 jest.mock("@/mcp/clients/anki-connect.client");
@@ -25,7 +25,9 @@ describe("DeckStatsTool", () => {
   it("should return deck stats with distributions", async () => {
     const deckName = "Test Deck";
 
-    ankiClient.invoke.mockImplementation((action: string) => {
+    const allCardIds = Array.from({ length: 35 }, (_, i) => i + 1);
+
+    ankiClient.invoke.mockImplementation((action: string, params?: any) => {
       if (action === "deckNamesAndIds") {
         return Promise.resolve({ [deckName]: 1234567890 });
       }
@@ -42,7 +44,16 @@ describe("DeckStatsTool", () => {
         });
       }
       if (action === "findCards") {
-        return Promise.resolve(Array.from({ length: 35 }, (_, i) => i + 1));
+        // 35 cards: 12 new, 5 learning, 15 review, 2 suspended, 1 buried.
+        return Promise.resolve(
+          findCardsFor(params.query, allCardIds, {
+            new: allCardIds.slice(0, 12),
+            learning: allCardIds.slice(12, 17),
+            review: allCardIds.slice(17, 32),
+            suspended: allCardIds.slice(32, 34),
+            buried: allCardIds.slice(34, 35),
+          }),
+        );
       }
       if (action === "getEaseFactors") {
         return Promise.resolve([
@@ -66,7 +77,9 @@ describe("DeckStatsTool", () => {
     const rawResult = await tool.execute({ deck: deckName });
     const result = parseToolResult(rawResult) as DeckStatsResult;
 
-    expect(ankiClient.invoke).toHaveBeenCalledTimes(5);
+    // deckNamesAndIds + getDeckStats + findCards(deck) + 5 state queries
+    // + getEaseFactors + getIntervals
+    expect(ankiClient.invoke).toHaveBeenCalledTimes(10);
     expect(result.deck).toBe(deckName);
     expect(result.counts).toEqual({
       total: 35,
@@ -75,14 +88,77 @@ describe("DeckStatsTool", () => {
       review: 20,
       other: 0,
     });
+    // `states` reports true card states, independent of the due-today buckets
+    // in `counts` — note new(12) != counts.new(10) because the deck's daily
+    // new limit caps the scheduler bucket.
+    expect(result.states).toEqual({
+      new: 12,
+      learning: 5,
+      review: 15,
+      suspended: 2,
+      buried: 1,
+    });
+    // The five states partition every card matched by `deck:<name>`.
+    expect(
+      result.states.new +
+        result.states.learning +
+        result.states.review +
+        result.states.suspended +
+        result.states.buried,
+    ).toBe(35);
     expect(result.ease.count).toBe(25);
     expect(result.intervals.count).toBe(20);
+  });
+
+  it("should scope state queries to the deck and escape quotes in its name", async () => {
+    const deckName = 'Say "hi"';
+
+    ankiClient.invoke.mockImplementation((action: string, params?: any) => {
+      if (action === "deckNamesAndIds") {
+        return Promise.resolve({ [deckName]: 42 });
+      }
+      if (action === "getDeckStats") {
+        return Promise.resolve({
+          "42": {
+            deck_id: 42,
+            name: deckName,
+            new_count: 1,
+            learn_count: 0,
+            review_count: 0,
+            total_in_deck: 1,
+          },
+        });
+      }
+      if (action === "findCards") {
+        return Promise.resolve(findCardsFor(params.query, [1], { new: [1] }));
+      }
+      if (action === "getEaseFactors") return Promise.resolve([0]);
+      if (action === "getIntervals") return Promise.resolve([0]);
+      return Promise.resolve({});
+    });
+
+    await tool.execute({ deck: deckName });
+
+    const queries = ankiClient.invoke.mock.calls
+      .filter(([action]) => action === "findCards")
+      .map(([, params]) => (params as { query: string }).query);
+
+    expect(queries).toEqual([
+      '"deck:Say \\"hi\\""',
+      '"deck:Say \\"hi\\"" is:new -is:suspended -is:buried',
+      '"deck:Say \\"hi\\"" is:learn -is:suspended -is:buried',
+      '"deck:Say \\"hi\\"" is:review -is:learn -is:suspended -is:buried',
+      '"deck:Say \\"hi\\"" is:suspended',
+      '"deck:Say \\"hi\\"" is:buried',
+    ]);
   });
 
   it("should resolve child deck stats by ID when getDeckStats returns short name", async () => {
     const fullDeckName = "Test::STDIO-AddNotes";
 
-    ankiClient.invoke.mockImplementation((action: string) => {
+    const childCardIds = Array.from({ length: 15 }, (_, i) => i + 1);
+
+    ankiClient.invoke.mockImplementation((action: string, params?: any) => {
       if (action === "deckNamesAndIds") {
         return Promise.resolve({
           Test: 1111111111,
@@ -102,7 +178,11 @@ describe("DeckStatsTool", () => {
         });
       }
       if (action === "findCards") {
-        return Promise.resolve(Array.from({ length: 15 }, (_, i) => i + 1));
+        return Promise.resolve(
+          findCardsFor(params.query, childCardIds, {
+            review: childCardIds,
+          }),
+        );
       }
       if (action === "getEaseFactors") {
         return Promise.resolve(Array(15).fill(2500));
@@ -122,6 +202,8 @@ describe("DeckStatsTool", () => {
     expect(result.counts.learning).toBe(2);
     expect(result.counts.review).toBe(8);
     expect(result.counts.other).toBe(0);
+    // All 15 cards are review-state, even though only 8 are due today.
+    expect(result.states.review).toBe(15);
   });
 
   it("should handle deck not found", async () => {
@@ -153,6 +235,9 @@ describe("DeckStatsTool", () => {
           },
         });
       }
+      if (action === "findCards") {
+        return Promise.resolve([]);
+      }
       return Promise.resolve({});
     });
 
@@ -162,8 +247,62 @@ describe("DeckStatsTool", () => {
     expect(result.deck).toBe(deckName);
     expect(result.counts.total).toBe(0);
     expect(result.counts.other).toBe(0);
+    expect(result.states).toEqual({
+      new: 0,
+      learning: 0,
+      review: 0,
+      suspended: 0,
+      buried: 0,
+    });
     expect(result.ease.count).toBe(0);
     expect(result.intervals.count).toBe(0);
+    // Emptiness is decided by the `deck:` search, never by total_in_deck:
+    // deckNamesAndIds + getDeckStats + findCards, then short-circuit.
+    expect(ankiClient.invoke).toHaveBeenCalledTimes(3);
+  });
+
+  it("should trust the deck search over total_in_deck when a filtered deck borrowed the cards", async () => {
+    // A filtered deck holds every card of "Loaned", so AnkiConnect reports
+    // total_in_deck: 0 — but `deck:Loaned` still matches all 4 cards (they
+    // keep their home deck in `odid`). Short-circuiting on counts.total would
+    // report states as all-zero, i.e. lie.
+    const deckName = "Loaned";
+
+    ankiClient.invoke.mockImplementation((action: string, params?: any) => {
+      if (action === "deckNamesAndIds") {
+        return Promise.resolve({ [deckName]: 99 });
+      }
+      if (action === "getDeckStats") {
+        return Promise.resolve({
+          "99": {
+            deck_id: 99,
+            name: deckName,
+            new_count: 0,
+            learn_count: 0,
+            review_count: 0,
+            total_in_deck: 0, // cards live in the filtered deck's row
+          },
+        });
+      }
+      if (action === "findCards") {
+        return Promise.resolve(
+          findCardsFor(params.query, [1, 2, 3, 4], {
+            review: [1, 2, 3, 4],
+          }),
+        );
+      }
+      if (action === "getEaseFactors")
+        return Promise.resolve(Array(4).fill(2500));
+      if (action === "getIntervals") return Promise.resolve(Array(4).fill(10));
+      return Promise.resolve({});
+    });
+
+    const rawResult = await tool.execute({ deck: deckName });
+    const result = parseToolResult(rawResult) as DeckStatsResult;
+
+    expect(result.counts.total).toBe(0);
+    // `states` comes from the search, so it sees the borrowed cards.
+    expect(result.states.review).toBe(4);
   });
 
   it("should report 'other' bucket when total exceeds new+learning+review (Bug #2 regression)", async () => {
@@ -171,7 +310,7 @@ describe("DeckStatsTool", () => {
     // 0 review — the missing card is suspended/buried and should land in `other`.
     const deckName = "Spanish";
 
-    ankiClient.invoke.mockImplementation((action: string) => {
+    ankiClient.invoke.mockImplementation((action: string, params?: any) => {
       if (action === "deckNamesAndIds") {
         return Promise.resolve({ [deckName]: 1651445861967 });
       }
@@ -190,7 +329,12 @@ describe("DeckStatsTool", () => {
       }
 
       if (action === "findCards") {
-        return Promise.resolve([1, 2, 3, 4]);
+        return Promise.resolve(
+          findCardsFor(params.query, [1, 2, 3, 4], {
+            new: [1, 2, 3],
+            suspended: [4],
+          }),
+        );
       }
 
       if (action === "getEaseFactors") {
@@ -221,6 +365,63 @@ describe("DeckStatsTool", () => {
         result.counts.review +
         result.counts.other,
     ).toBe(result.counts.total);
+
+    // `other` here really is the suspended card, but `states` says so
+    // explicitly instead of leaving the caller to guess.
+    expect(result.states).toEqual({
+      new: 3,
+      learning: 0,
+      review: 0,
+      suspended: 1,
+      buried: 0,
+    });
+  });
+
+  it("should surface not-due review cards in states rather than hiding them in `other`", async () => {
+    // Issue #50: a deck of 100 review cards with a daily review limit of 20
+    // reports review=20 and other=80. `other` is NOT suspended/buried here —
+    // it is review cards that simply are not due today.
+    const deckName = "Kanji";
+    const allCardIds = Array.from({ length: 100 }, (_, i) => i + 1);
+
+    ankiClient.invoke.mockImplementation((action: string, params?: any) => {
+      if (action === "deckNamesAndIds") {
+        return Promise.resolve({ [deckName]: 777 });
+      }
+      if (action === "getDeckStats") {
+        return Promise.resolve({
+          "777": {
+            deck_id: 777,
+            name: deckName,
+            new_count: 0,
+            learn_count: 0,
+            review_count: 20, // capped by the daily review limit
+            total_in_deck: 100,
+          },
+        });
+      }
+      if (action === "findCards") {
+        return Promise.resolve(
+          findCardsFor(params.query, allCardIds, { review: allCardIds }),
+        );
+      }
+      if (action === "getEaseFactors")
+        return Promise.resolve(Array(100).fill(2500));
+      if (action === "getIntervals")
+        return Promise.resolve(Array(100).fill(30));
+      return Promise.resolve({});
+    });
+
+    const rawResult = await tool.execute({ deck: deckName });
+    const result = parseToolResult(rawResult) as DeckStatsResult;
+
+    // Study queue: only 20 due today, the other 80 are the residual.
+    expect(result.counts.review).toBe(20);
+    expect(result.counts.other).toBe(80);
+    // True state: all 100 are review cards, nothing is suspended or buried.
+    expect(result.states.review).toBe(100);
+    expect(result.states.suspended).toBe(0);
+    expect(result.states.buried).toBe(0);
   });
 
   it("should roll up child deck totals for parent deck (Bug #3 regression)", async () => {
@@ -269,7 +470,10 @@ describe("DeckStatsTool", () => {
       }
       if (action === "findCards") {
         // `deck:German` matches parent AND children (Anki default)
-        return Promise.resolve(Array.from({ length: 12 }, (_, i) => i + 1));
+        const allCardIds = Array.from({ length: 12 }, (_, i) => i + 1);
+        return Promise.resolve(
+          findCardsFor(params.query, allCardIds, { new: allCardIds }),
+        );
       }
       if (action === "getEaseFactors") {
         return Promise.resolve(Array(12).fill(0));
@@ -299,12 +503,14 @@ describe("DeckStatsTool", () => {
         result.counts.review +
         result.counts.other,
     ).toBe(result.counts.total);
+    // A single `deck:` term already covers the subtree, so states roll up too.
+    expect(result.states.new).toBe(12);
   });
 
   it("should use custom bucket boundaries", async () => {
     const deckName = "Custom Buckets";
 
-    ankiClient.invoke.mockImplementation((action: string) => {
+    ankiClient.invoke.mockImplementation((action: string, params?: any) => {
       if (action === "deckNamesAndIds") {
         return Promise.resolve({ [deckName]: 1234567890 });
       }
@@ -321,7 +527,10 @@ describe("DeckStatsTool", () => {
         });
       }
       if (action === "findCards") {
-        return Promise.resolve(Array.from({ length: 10 }, (_, i) => i + 1));
+        const allCardIds = Array.from({ length: 10 }, (_, i) => i + 1);
+        return Promise.resolve(
+          findCardsFor(params.query, allCardIds, { review: allCardIds }),
+        );
       }
       if (action === "getEaseFactors") {
         return Promise.resolve(Array(10).fill(2000));
@@ -352,7 +561,7 @@ describe("DeckStatsTool", () => {
   it("should correctly divide ease factors by 1000", async () => {
     const deckName = "Ease Factor Test";
 
-    ankiClient.invoke.mockImplementation((action: string) => {
+    ankiClient.invoke.mockImplementation((action: string, params?: any) => {
       if (action === "deckNamesAndIds") {
         return Promise.resolve({ [deckName]: 1234567890 });
       }
@@ -369,7 +578,9 @@ describe("DeckStatsTool", () => {
         });
       }
       if (action === "findCards") {
-        return Promise.resolve([1, 2, 3]);
+        return Promise.resolve(
+          findCardsFor(params.query, [1, 2, 3], { review: [1, 2, 3] }),
+        );
       }
       if (action === "getEaseFactors") {
         return Promise.resolve([4100, 2500, 3000]);
@@ -392,7 +603,7 @@ describe("DeckStatsTool", () => {
   it("should filter out negative intervals (learning cards)", async () => {
     const deckName = "Mixed Intervals";
 
-    ankiClient.invoke.mockImplementation((action: string) => {
+    ankiClient.invoke.mockImplementation((action: string, params?: any) => {
       if (action === "deckNamesAndIds") {
         return Promise.resolve({ [deckName]: 1234567890 });
       }
@@ -409,7 +620,13 @@ describe("DeckStatsTool", () => {
         });
       }
       if (action === "findCards") {
-        return Promise.resolve(Array.from({ length: 15 }, (_, i) => i + 1));
+        const allCardIds = Array.from({ length: 15 }, (_, i) => i + 1);
+        return Promise.resolve(
+          findCardsFor(params.query, allCardIds, {
+            learning: allCardIds.slice(0, 5),
+            review: allCardIds.slice(5),
+          }),
+        );
       }
       if (action === "getEaseFactors") {
         return Promise.resolve(Array(15).fill(2500));
@@ -428,5 +645,7 @@ describe("DeckStatsTool", () => {
 
     expect(result.intervals.count).toBe(10);
     expect(result.intervals.mean).toBe(25);
+    expect(result.states.learning).toBe(5);
+    expect(result.states.review).toBe(10);
   });
 });

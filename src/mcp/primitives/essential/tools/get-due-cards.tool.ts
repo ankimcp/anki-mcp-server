@@ -3,6 +3,7 @@ import { Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, SimplifiedCard } from "@/mcp/types/anki.types";
+import { deckScopeQuery } from "@/mcp/utils/card-states.utils";
 import {
   extractRenderedCardContent,
   createErrorResponse,
@@ -100,9 +101,10 @@ export class GetDueCardsTool {
 
       let query = `-is:suspended (${states.join(" OR ")})`;
       if (deck_name) {
-        // Escape special characters in deck name for Anki search
-        const escapedDeckName = deck_name.replace(/"/g, '\\"');
-        query = `"deck:${escapedDeckName}" ${query}`;
+        // `deck_name` is a literal deck name, not a pattern — deckScopeQuery
+        // escapes `"`, `*`, `_` and `\` so a deck like "JLPT_N5" cannot also
+        // match a sibling "JLPT-N5".
+        query = `${deckScopeQuery(deck_name)} ${query}`;
       }
 
       // Find cards using AnkiConnect
@@ -128,8 +130,7 @@ export class GetDueCardsTool {
         const newOnlyStates = ["is:new"];
         let newQuery = `-is:suspended (${newOnlyStates.join(" OR ")})`;
         if (deck_name) {
-          const escapedDeckName = deck_name.replace(/"/g, '\\"');
-          newQuery = `"deck:${escapedDeckName}" ${newQuery}`;
+          newQuery = `${deckScopeQuery(deck_name)} ${newQuery}`;
         }
         try {
           const newIds = await this.ankiClient.invoke<number[]>("findCards", {

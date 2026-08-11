@@ -6,9 +6,13 @@
  * AnkiConnect's `getDeckStats` returns in `new_count` / `learn_count` /
  * `review_count`). However `total_in_deck` from the same response is the
  * count of cards stored *directly* in that deck's table — it does NOT
- * include descendants. To keep per-deck arithmetic consistent
- * (`total >= new + learning + review`) we need to roll up `total_in_deck`
- * the same way.
+ * include descendants. Rolling up `total_in_deck` the same way keeps per-deck
+ * arithmetic sane, so `total >= new + learning + review` normally holds.
+ *
+ * It is NOT guaranteed, though: the buckets are due-today counts drawn from the
+ * scheduler while `total_in_deck` counts rows by storage deck, so a filtered
+ * deck that has borrowed cards can push the buckets above `total`. Callers
+ * clamp the derived `other` bucket at 0 for exactly that reason.
  */
 
 /**

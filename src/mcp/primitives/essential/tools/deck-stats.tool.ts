@@ -3,6 +3,11 @@ import { Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
+import {
+  cardStatesSchema,
+  DUE_TREE_INVARIANT_NOTE,
+  dueTreeCountsSchema,
+} from "@/mcp/utils/card-states.utils";
 import { deckStats } from "./deckActions/actions/deckStats.action";
 
 @Injectable()
@@ -15,8 +20,13 @@ export class DeckStatsTool {
     name: "deckStats",
     description:
       'Get comprehensive statistics for a single deck including card counts, ease and interval distributions. Pass a deck name (e.g., "Japanese::JLPT N5") and optional bucket boundaries. ' +
-      "Counts are rolled up over descendant decks (parent decks include their children), matching Anki's deck browser. " +
-      "Invariant: total === new + learning + review + other.",
+      "Returns TWO different views, do not mix them up: " +
+      "`counts` is today's study queue as shown in Anki's deck browser (cards DUE TODAY, capped by the deck's daily new/review limits, suspended/buried excluded); " +
+      "`states` is the true number of cards in each state (new / learning / review / suspended / buried), ignoring due dates and daily limits. " +
+      'To answer "how many cards do I have" use `states`; to answer "what will I study today" use `counts`. ' +
+      "Both are rolled up over descendant decks (parent decks include their children). " +
+      "`states` costs 5 additional Anki searches per call. " +
+      `For counts: ${DUE_TREE_INVARIANT_NOTE}`,
     parameters: z.object({
       deck: z.string().describe('Deck name (e.g., "Japanese::JLPT N5")'),
       easeBuckets: z
@@ -37,43 +47,15 @@ export class DeckStatsTool {
     outputSchema: z.object({
       success: z.boolean(),
       deck: z.string(),
-      counts: z
-        .object({
-          total: z
-            .number()
-            .describe(
-              "Total cards in this deck AND all of its descendants. " +
-                'Example: stats for "German" include cards in "German::Verbs" ' +
-                'and "German::Verbs::Irregular". Invariant: ' +
-                "total === new + learning + review + other.",
-            ),
-          new: z
-            .number()
-            .describe(
-              "New cards (never studied), rolled up over descendant decks.",
-            ),
-          learning: z
-            .number()
-            .describe(
-              "Learning/relearning cards, rolled up over descendant decks.",
-            ),
-          review: z
-            .number()
-            .describe(
-              "Review cards (mature), rolled up over descendant decks.",
-            ),
-          other: z
-            .number()
-            .describe(
-              "Cards not in new/learning/review (typically suspended or buried), " +
-                "rolled up over descendant decks. " +
-                "Computed as total - new - learning - review.",
-            ),
-        })
-        .describe(
-          "Card counts rolled up over the deck and all of its descendants. " +
-            "Matches Anki's deck browser behaviour for parent decks.",
-        ),
+      counts: dueTreeCountsSchema({
+        scope: "this deck and all of its descendants",
+        total:
+          "Total cards in this deck AND all of its descendants, including " +
+          'suspended and buried. Example: stats for "German" include cards in ' +
+          '"German::Verbs" and "German::Verbs::Irregular".',
+        note: "All four bucket counts are rolled up over descendant decks.",
+      }),
+      states: cardStatesSchema("this deck and all of its subdecks"),
       ease: z.object({
         mean: z.number(),
         median: z.number(),

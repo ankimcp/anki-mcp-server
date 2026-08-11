@@ -135,6 +135,41 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
       expect(counts.review).toBe(0);
     });
 
+    it("should return true card-state counts for test deck", () => {
+      const result = callTool("deckStats", { deck: testDeck1.deckName });
+
+      // The fixture adds 10 Basic notes (1 card each) and never studies,
+      // suspends or buries them, so every card is in the New state.
+      expect(result.states).toEqual({
+        new: 10,
+        learning: 0,
+        review: 0,
+        suspended: 0,
+        buried: 0,
+      });
+    });
+
+    it("states should partition every card in the deck", () => {
+      const result = callTool("deckStats", { deck: testDeck1.deckName });
+
+      const counts = result.counts as Record<string, number>;
+      const states = result.states as Record<string, number>;
+
+      // The five states are mutually exclusive and cover every card matched
+      // by `deck:<name>` — nothing double-counted, nothing missed.
+      // stateSum === counts.total holds only while no e2e fixture uses
+      // filtered decks: `states` follows the search (odid included), while
+      // `counts.total` follows storage decks. A filtered deck would split them.
+      const stateSum =
+        states.new +
+        states.learning +
+        states.review +
+        states.suspended +
+        states.buried;
+
+      expect(stateSum).toBe(counts.total);
+    });
+
     it("should handle new cards with no ease data", () => {
       const result = callTool("deckStats", { deck: testDeck1.deckName });
 
@@ -294,6 +329,55 @@ describe("E2E: Stats Tools (HTTP Streamable)", () => {
 
       expect(counts.total).toBeGreaterThanOrEqual(testDeckTotals.total);
       expect(counts.new).toBeGreaterThanOrEqual(testDeckTotals.new);
+    });
+
+    it("should report collection-wide card states that partition the collection", () => {
+      const result = callTool("collection_stats");
+
+      const counts = result.counts as Record<string, number>;
+      const states = result.states as Record<string, number>;
+
+      for (const key of ["new", "learning", "review", "suspended", "buried"]) {
+        expect(states).toHaveProperty(key);
+        expect(states[key]).toBeGreaterThanOrEqual(0);
+      }
+
+      // The two numbers come from completely independent code paths —
+      // `counts.total` sums getDeckStats' per-deck row counts over root decks,
+      // while `states` counts via five Anki searches. They must agree —
+      // but only while no e2e fixture uses filtered decks, which would
+      // split the two counting bases (search vs storage deck).
+      const stateSum =
+        states.new +
+        states.learning +
+        states.review +
+        states.suspended +
+        states.buried;
+
+      expect(stateSum).toBe(counts.total);
+
+      // Both fixture decks (10 new cards each) are in the collection, and
+      // nothing in this suite studies them.
+      expect(states.new).toBeGreaterThanOrEqual(20);
+    });
+
+    it("collection states should account for both fixture decks", () => {
+      const deck1 = callTool("deckStats", { deck: testDeck1.deckName });
+      const deck2 = callTool("deckStats", { deck: testDeck2.deckName });
+      const collection = callTool("collection_stats");
+
+      const deck1States = deck1.states as Record<string, number>;
+      const deck2States = deck2.states as Record<string, number>;
+      const collectionStates = collection.states as Record<string, number>;
+
+      // Deck-scoped state counts must roll into the collection-wide ones.
+      for (const key of ["new", "learning", "review", "suspended", "buried"]) {
+        expect(collectionStates[key]).toBeGreaterThanOrEqual(
+          deck1States[key] + deck2States[key],
+        );
+      }
+
+      expect(deck1States.new + deck2States.new).toBe(20);
     });
 
     it("should accept custom ease buckets", () => {

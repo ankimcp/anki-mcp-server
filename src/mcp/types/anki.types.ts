@@ -80,15 +80,31 @@ export interface DeckInfo {
 }
 
 /**
- * Deck statistics
+ * Deck statistics as surfaced by the `listDecks` tool.
+ *
+ * Mapped from {@link AnkiDeckStatsResponse}, so the same caveats apply: the
+ * three bucket counts are **due-today** numbers **capped by daily limits**
+ * (not card totals), rolled up over subdecks. The `total_*` field names are
+ * historical and do NOT mean "all cards in this state".
  */
 export interface DeckStats {
   deck_id: number;
   name: string;
+  /** New cards due today, capped by the daily new-card limit. Subdecks included. */
   new_count: number;
+  /** Learning/relearning cards due now or today. Subdecks included. */
   learn_count: number;
+  /** Review cards due today, capped by the daily review limit. Subdecks included. */
   review_count: number;
+  /**
+   * Misleading legacy name: a copy of {@link DeckStats.new_count}, i.e. new
+   * cards due today, NOT the total number of new cards in the deck.
+   */
   total_new: number;
+  /**
+   * AnkiConnect's `total_in_deck`: cards stored **directly** in this deck
+   * (subdecks NOT included), including suspended and buried.
+   */
   total_cards: number;
 }
 
@@ -96,10 +112,30 @@ export interface DeckStats {
  * Response structure from AnkiConnect getDeckStats action.
  * The response is a record keyed by deck ID (as string).
  *
- * Note: `total_in_deck` counts every card in the deck, while
- * `new_count`/`learn_count`/`review_count` come from the scheduler's due tree
- * and exclude suspended/buried cards — so the three buckets won't always sum
- * to `total_in_deck`.
+ * IMPORTANT — these are NOT card-state totals. AnkiConnect derives
+ * `new_count`/`learn_count`/`review_count` from the scheduler's due tree
+ * (`deck_due_tree()`), i.e. the exact numbers Anki's deck browser shows. They
+ * count cards **due to be studied today** and are **capped by the deck's daily
+ * new/review limits** (including limits inherited from parent decks):
+ *
+ * - `new_count` — new cards queued for today, capped by the new/day limit.
+ * - `learn_count` — intraday + interday learning/relearning cards due now or
+ *   today; the interday part is capped by the review/day limit.
+ * - `review_count` — review cards **due today only**, capped by the review/day
+ *   limit. Not "mature" cards, and not all review cards.
+ *
+ * Suspended and buried cards sit in queues the due tree never counts, so they
+ * are excluded from all three. The three buckets ARE rolled up over subdecks.
+ *
+ * `total_in_deck` differs in every respect: it is a plain row count of the cards
+ * stored **directly** in that deck (no subdecks) and it **does** include
+ * suspended/buried cards. So the three buckets will not sum to `total_in_deck`,
+ * and for a parent deck they can even exceed it.
+ *
+ * For true card-state counts use `fetchCardStateCounts` from
+ * `@/mcp/utils/card-states.utils`, which counts via Anki searches instead.
+ *
+ * @see https://docs.ankiweb.net/deck-options.html#daily-limits
  */
 export interface AnkiDeckStatsResponse {
   deck_id: number;
