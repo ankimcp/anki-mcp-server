@@ -56,17 +56,17 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.29.0",
-    "@nestjs/common": "^11.1.28",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@nestjs/common": "^11.1.29",
     "@nestjs/config": "^4.0.4",
-    "@nestjs/core": "11.1.28",
+    "@nestjs/core": "11.1.29",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
-    "@nestjs/platform-express": "^11.1.28",
+    "@nestjs/platform-express": "^11.1.29",
     "@rekog/mcp-nest": "^1.9.11",
     "async-mutex": "^0.5.0",
     "commander": "^15.0.0",
-    "ipaddr.js": "^2.4.0",
+    "ipaddr.js": "^2.5.0",
     "jsonwebtoken": "^9.0.3",
     "ky": "^2.0.2",
     "mime": "^4.1.0",
@@ -80,7 +80,7 @@
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0",
     "update-notifier": "^7.3.1",
-    "ws": "^8.21.1",
+    "ws": "^8.21.3",
     "zod": "^4.4.3",
     "zod-to-json-schema": "^3.25.2"
   },
@@ -91,31 +91,31 @@
     "@modelcontextprotocol/inspector": "^1.0.0",
     "@nestjs/cli": "^11.0.24",
     "@nestjs/schematics": "^11.1.0",
-    "@nestjs/testing": "^11.1.28",
+    "@nestjs/testing": "^11.1.29",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mdast": "^4.0.4",
-    "@types/node": "^26.1.1",
+    "@types/node": "^26.2.0",
     "@types/supertest": "^7.2.1",
     "@types/update-notifier": "^6.0.8",
     "@types/ws": "^8.18.1",
-    "eslint": "^10.7.0",
+    "eslint": "^10.8.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.6",
-    "globals": "^17.7.0",
+    "globals": "^17.9.0",
     "husky": "^9.1.7",
     "jest": "^30.4.2",
     "prettier": "^3.9.6",
     "sharp": "^0.35.3",
     "source-map-support": "^0.5.21",
     "supertest": "^7.2.2",
-    "ts-jest": "^29.4.11",
+    "ts-jest": "^29.4.12",
     "ts-loader": "^9.6.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.65.0"
+    "typescript-eslint": "^8.67.0"
   },
   "jest": {
     "moduleFileExtensions": [
@@ -168,7 +168,7 @@
     ],
     "forceExit": true
   },
-  "packageManager": "npm@12.0.1",
+  "packageManager": "npm@12.0.2",
   "engines": {
     "node": ">=22.12.0"
   },
@@ -197,5 +197,9 @@
     "README.md",
     "LICENSE",
     "package.json"
-  ]
+  ],
+  "allowScripts": {
+    "fsevents@2.3.3": true,
+    "unrs-resolver@1.12.2": true
+  }
 }

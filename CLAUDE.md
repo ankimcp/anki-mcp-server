@@ -138,7 +138,7 @@ These are upstream behaviors that shape tool design — surface them in tool des
 ### Key Dependencies
 
 - **Zod v4** (`zod@^4.x`) — NOT v3. Zod 4 has different APIs (e.g., `z.interface()`, changed error handling). Don't use v3 patterns.
-- **`@modelcontextprotocol/sdk`** — Pinned to exact version (`1.29.0`). Don't bump without testing MCP protocol compatibility.
+- **`@modelcontextprotocol/sdk`** — Pinned to exact version (`1.30.0`). Don't bump without testing MCP protocol compatibility.
 - **TypeScript** — `strict: true`, `module: "nodenext"`, target `ES2023`. Path aliases (`@/`, `@test/`) handle most imports.
 - **ESLint** — Flat config (`eslint.config.mjs`), not legacy `.eslintrc`.
 
