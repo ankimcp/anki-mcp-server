@@ -77,7 +77,9 @@ describe("E2E: Stats Tools (STDIO)", () => {
 
     testDeck1 = await createStatsTestDeck(uid1);
     testDeck2 = await createStatsTestDeck(uid2);
-  }, 60000);
+    // 42 inspector spawns, each booting a fresh server in STDIO mode — the HTTP
+    // twin reuses one running server and still needs 90s for the same fixture.
+  }, 180000);
 
   // No cleanup needed - Docker container is one-time use
 
@@ -478,13 +480,14 @@ describe("E2E: Stats Tools (STDIO)", () => {
     });
 
     it("should validate date format", () => {
-      // MCP inspector throws on validation errors, so we catch and verify
-      expect(() => {
-        callTool("review_stats", {
-          deck: testDeck1.deckName,
-          start_date: "invalid-date",
-        });
-      }).toThrow(/date|format|iso|invalid/i);
+      // Validation errors return a response with error text instead of throwing
+      const result = callTool("review_stats", {
+        deck: testDeck1.deckName,
+        start_date: "invalid-date",
+      });
+
+      const text = result.text as string;
+      expect(text).toMatch(/date|format|iso|invalid/i);
     });
 
     it("should default end_date to today when omitted", () => {

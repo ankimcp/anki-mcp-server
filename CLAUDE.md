@@ -286,7 +286,9 @@ Bundle uses STDIO entry point. Key gotchas:
 
 ## Environment
 
-Node.js requirement: `>=22.12.0` (Node 20 reached end-of-life on 2026-04-30; oldest supported LTS is Node 22)
+Node.js requirement: `>=22.12.0` (Node 20 reached end-of-life on 2026-04-30; oldest supported LTS is Node 22). That is the runtime floor — the highest `engines.node` among production deps is `commander`'s `>=22.12.0`.
+
+**Development needs a newer Node than `engines` declares**: `@modelcontextprotocol/inspector` (devDependency, drives the E2E suite) requires `>=22.19.0`. `engines.node` deliberately stays at the runtime floor so consumers aren't forced higher for a tool they never install. On an older Node 22, `npm install` warns `EBADENGINE` and E2E fails.
 
 Key environment variables (all have defaults, see `src/config/config.schema.ts`):
 - `ANKI_CONNECT_URL` — AnkiConnect URL (default: `http://localhost:8765`)
