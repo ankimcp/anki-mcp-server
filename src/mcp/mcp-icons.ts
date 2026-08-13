@@ -1,4 +1,4 @@
-import type { Icon } from "@modelcontextprotocol/sdk/types.js";
+import type { Icon } from "@modelcontextprotocol/server";
 
 /**
  * MCP-protocol icons advertised via the server's `Implementation.icons` field.

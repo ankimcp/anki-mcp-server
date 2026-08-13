@@ -1,11 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { retrieveMediaFile } from "./mediaActions/actions/retrieveMediaFile.action";
 
-@Injectable()
+@McpController()
 export class RetrieveMediaFileTool {
   private readonly logger = new Logger(RetrieveMediaFileTool.name);
 
@@ -36,7 +37,7 @@ export class RetrieveMediaFileTool {
       idempotentHint: true,
     },
   })
-  async execute(params: { filename: string }) {
+  async execute(@Payload() params: { filename: string }) {
     try {
       this.logger.log(`Executing retrieveMediaFile: ${params.filename}`);
 

@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -12,7 +13,7 @@ import {
 /**
  * Tool for updating fields of existing notes
  */
-@Injectable()
+@McpController()
 export class UpdateNoteFieldsTool {
   private readonly logger = new Logger(UpdateNoteFieldsTool.name);
 
@@ -77,24 +78,27 @@ export class UpdateNoteFieldsTool {
       idempotentHint: true,
     },
   })
-  async updateNoteFields({
-    note,
-  }: {
-    note: {
-      id: number;
-      fields: Record<string, string>;
-      audio?: Array<{
-        url: string;
-        filename: string;
-        fields: string[];
-      }>;
-      picture?: Array<{
-        url: string;
-        filename: string;
-        fields: string[];
-      }>;
-    };
-  }) {
+  async updateNoteFields(
+    @Payload()
+    {
+      note,
+    }: {
+      note: {
+        id: number;
+        fields: Record<string, string>;
+        audio?: Array<{
+          url: string;
+          filename: string;
+          fields: string[];
+        }>;
+        picture?: Array<{
+          url: string;
+          filename: string;
+          fields: string[];
+        }>;
+      };
+    },
+  ) {
     try {
       const fieldCount = Object.keys(note.fields).length;
       this.logger.log(

@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for updating card templates of an existing model
  */
-@Injectable()
+@McpController()
 export class UpdateModelTemplatesTool {
   private readonly logger = new Logger(UpdateModelTemplatesTool.name);
 
@@ -64,13 +65,16 @@ export class UpdateModelTemplatesTool {
       idempotentHint: true,
     },
   })
-  async updateModelTemplates({
-    modelName,
-    templates,
-  }: {
-    modelName: string;
-    templates: Record<string, { Front: string; Back: string }>;
-  }) {
+  async updateModelTemplates(
+    @Payload()
+    {
+      modelName,
+      templates,
+    }: {
+      modelName: string;
+      templates: Record<string, { Front: string; Back: string }>;
+    },
+  ) {
     try {
       this.logger.log(`Updating templates for model: ${modelName}`);
 

@@ -109,7 +109,7 @@ import { TwentyRulesPrompt } from "./prompts/twenty-rules.prompt";
 import { SystemInfoResource } from "./resources/system-info.resource";
 
 // MCP primitives that need to be discovered by McpNest (tools, prompts, resources)
-// These are exported for use in AppModule.providers (required by MCP-Nest 1.9.0+)
+// Registered as this module's controllers array below; AppModule does not re-list them.
 export const ESSENTIAL_MCP_TOOLS = [
   SyncTool,
   GetDueCardsTool,
@@ -158,9 +158,6 @@ export const ESSENTIAL_MCP_TOOLS = [
   SystemInfoResource,
 ];
 
-// All providers for the module (includes infrastructure like AnkiConnectClient)
-const ESSENTIAL_MCP_PRIMITIVES = [AnkiConnectClient, ...ESSENTIAL_MCP_TOOLS];
-
 export interface McpPrimitivesAnkiEssentialModuleOptions {
   ankiConfigProvider: Provider;
   /** Required when ankiConfigProvider uses AppConfigService (provides APP_CONFIG dependency) */
@@ -172,9 +169,10 @@ export class McpPrimitivesAnkiEssentialModule {
   static forRoot(
     options: McpPrimitivesAnkiEssentialModuleOptions,
   ): DynamicModule {
+    // Capability classes are controllers; AnkiConnectClient is the only provider.
     const providers: Provider[] = [
       options.ankiConfigProvider,
-      ...ESSENTIAL_MCP_PRIMITIVES,
+      AnkiConnectClient,
     ];
 
     // Add appConfigProvider if provided (needed for AppConfigService injection)
@@ -184,8 +182,9 @@ export class McpPrimitivesAnkiEssentialModule {
 
     return {
       module: McpPrimitivesAnkiEssentialModule,
+      controllers: ESSENTIAL_MCP_TOOLS,
       providers,
-      exports: ESSENTIAL_MCP_PRIMITIVES,
+      exports: [AnkiConnectClient],
     };
   }
 }

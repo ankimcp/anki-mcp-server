@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for opening Anki Card Browser and searching for cards
  */
-@Injectable()
+@McpController()
 export class GuiBrowseTool {
   private readonly logger = new Logger(GuiBrowseTool.name);
 
@@ -56,16 +57,19 @@ export class GuiBrowseTool {
       idempotentHint: true,
     },
   })
-  async guiBrowse({
-    query,
-    reorderCards,
-  }: {
-    query: string;
-    reorderCards?: {
-      order: "ascending" | "descending";
-      columnId: string;
-    };
-  }) {
+  async guiBrowse(
+    @Payload()
+    {
+      query,
+      reorderCards,
+    }: {
+      query: string;
+      reorderCards?: {
+        order: "ascending" | "descending";
+        columnId: string;
+      };
+    },
+  ) {
     try {
       this.logger.log(`Opening Card Browser with query: "${query}"`);
 

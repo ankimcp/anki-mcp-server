@@ -1,5 +1,6 @@
 import { NestFactory } from "@nestjs/core";
 import { Logger } from "@nestjs/common";
+import type { CustomStrategy } from "@nestjs/microservices";
 import { AppModule } from "./app.module";
 import {
   createPinoLogger,
@@ -16,6 +17,7 @@ import { createCli } from "@/cli";
 import { NgrokService } from "./services/ngrok.service";
 import { buildConfigInput, configSchema, transformEnvToConfig } from "./config";
 import { shouldWarnLoopbackOnly } from "./http/guards/host-validation.guard";
+import { createMcpHttpServer } from "./http/mcp-http.factory";
 
 async function bootstrap() {
   // Check for updates (non-blocking, cached)
@@ -43,6 +45,7 @@ async function bootstrap() {
     ngrok: options.ngrok,
     debug: options.debug,
   });
+  const validatedConfig = configSchema.parse(transformEnvToConfig(configInput));
 
   // Create logger that writes to stdout for HTTP mode
   // Log level comes from configInput (set by --debug flag or LOG_LEVEL env)
@@ -55,17 +58,20 @@ async function bootstrap() {
   // HTTP mode - create NestJS HTTP application
   // Security guards (Origin + Host validation, required by the MCP Streamable
   // HTTP spec) are registered at module level via APP_GUARD in forHttp().
-  const app = await NestFactory.create(AppModule.forHttp(configInput), {
-    logger: loggerService,
-    bufferLogs: true,
-  });
+  const mcpHttp = createMcpHttpServer(validatedConfig.mcpServer);
+  const app = await NestFactory.create(
+    AppModule.forHttp(mcpHttp, configInput),
+    {
+      logger: loggerService,
+      bufferLogs: true,
+    },
+  );
 
   // Fail-closed warning: binding to a non-loopback address without an explicit
   // ALLOWED_HOSTS means only loopback Host headers are accepted, so requests
   // arriving via the machine's LAN/public hostname will be rejected. The
   // emptiness check is sourced from the validated config (not raw process.env)
   // so CLI overrides and Zod parsing are honored.
-  const validatedConfig = configSchema.parse(transformEnvToConfig(configInput));
   const boundHost = options.host;
   if (shouldWarnLoopbackOnly(boundHost, validatedConfig.allowedHosts)) {
     new Logger("HttpBootstrap").warn(
@@ -76,6 +82,13 @@ async function bootstrap() {
         `(comma-separated hostnames) to permit them.`,
     );
   }
+
+  // The MCP strategy runs as a connected microservice. It must be started
+  // before `listen()` so the MCP capabilities are bound before the server
+  // accepts connections.
+  mcpHttp.strategy.setHttpAdapter(app.getHttpAdapter());
+  app.connectMicroservice<CustomStrategy>({ strategy: mcpHttp.strategy });
+  await app.startAllMicroservices();
 
   await app.listen(options.port, options.host);
 

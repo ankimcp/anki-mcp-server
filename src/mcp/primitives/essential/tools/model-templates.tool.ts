@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for retrieving card templates (Front/Back HTML) for a specific model/note type
  */
-@Injectable()
+@McpController()
 export class ModelTemplatesTool {
   private readonly logger = new Logger(ModelTemplatesTool.name);
 
@@ -45,7 +46,7 @@ export class ModelTemplatesTool {
       idempotentHint: true,
     },
   })
-  async modelTemplates({ modelName }: { modelName: string }) {
+  async modelTemplates(@Payload() { modelName }: { modelName: string }) {
     try {
       this.logger.log(`Retrieving templates for model: ${modelName}`);
 

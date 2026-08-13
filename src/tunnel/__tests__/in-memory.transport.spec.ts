@@ -1,5 +1,8 @@
 import { InMemoryTransport } from "../in-memory.transport";
-import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import type { JSONRPCMessage, RequestId } from "@modelcontextprotocol/server";
+
+const idOf = (message: JSONRPCMessage): RequestId | undefined =>
+  "id" in message ? (message.id as RequestId | undefined) : undefined;
 
 describe("InMemoryTransport", () => {
   let transport: InMemoryTransport;
@@ -57,7 +60,12 @@ describe("InMemoryTransport", () => {
         id: 1,
         result: { success: true },
       });
-      expect(transport.onmessage).toHaveBeenCalledWith(request);
+
+      // Dispatched under an internal id; everything else is untouched
+      const dispatched = (transport.onmessage as jest.Mock).mock
+        .calls[0][0] as JSONRPCMessage;
+      expect(idOf(dispatched)).not.toBe(1);
+      expect({ ...dispatched, id: 1 }).toEqual(request);
     });
 
     it("should handle string request ids", async () => {
@@ -136,27 +144,27 @@ describe("InMemoryTransport", () => {
 
       const responses = await Promise.all(promises);
 
-      // All requests should have been received
+      // All requests should have been received, each under its own internal id
       expect(receivedRequests).toHaveLength(3);
-      expect(
-        receivedRequests.map((r) => ("id" in r ? r.id : undefined)),
-      ).toEqual([1, 2, 3]);
+      const dispatchedIds = receivedRequests.map(idOf);
+      expect(new Set(dispatchedIds).size).toBe(3);
+      expect(dispatchedIds).not.toContain(1);
 
-      // All responses should match their request ids
+      // All responses should come back under the caller's own id
       expect(responses[0]).toEqual({
         jsonrpc: "2.0",
         id: 1,
-        result: { requestId: 1 },
+        result: { requestId: dispatchedIds[0] },
       });
       expect(responses[1]).toEqual({
         jsonrpc: "2.0",
         id: 2,
-        result: { requestId: 2 },
+        result: { requestId: dispatchedIds[1] },
       });
       expect(responses[2]).toEqual({
         jsonrpc: "2.0",
         id: 3,
-        result: { requestId: 3 },
+        result: { requestId: dispatchedIds[2] },
       });
     });
 
@@ -197,6 +205,192 @@ describe("InMemoryTransport", () => {
           result: { method: `test/method${i}` },
         });
       });
+    });
+  });
+
+  describe("request id isolation", () => {
+    it("should not cross-deliver responses when two callers share an id", async () => {
+      // Two independent MCP clients both number their first request `id: 1`.
+      // Caller A is first in and answered first, which is what displaced the
+      // pending entry back when the map was keyed by the caller's id.
+      transport.onmessage = jest.fn((request: JSONRPCMessage) => {
+        const caller = (request as { params?: { caller?: string } }).params
+          ?.caller;
+        setTimeout(
+          () => {
+            transport.send({
+              jsonrpc: "2.0",
+              id: idOf(request) as RequestId,
+              result: { secret: `${caller}-PRIVATE` },
+            });
+          },
+          caller === "A" ? 0 : 20,
+        );
+      });
+
+      const callerA = transport.handleRequest({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "test/method",
+        params: { caller: "A" },
+      });
+      const callerB = transport.handleRequest({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "test/method",
+        params: { caller: "B" },
+      });
+
+      // B is awaited first on purpose: under id-keyed correlation it settles
+      // early with A's payload, so the leak shows up as a failed assertion
+      // rather than as A hanging until the request timeout.
+      await expect(callerB).resolves.toEqual({
+        jsonrpc: "2.0",
+        id: 1,
+        result: { secret: "B-PRIVATE" },
+      });
+      await expect(callerA).resolves.toEqual({
+        jsonrpc: "2.0",
+        id: 1,
+        result: { secret: "A-PRIVATE" },
+      });
+    });
+
+    it("should allocate a distinct internal id per request with the same caller id", async () => {
+      const dispatched: JSONRPCMessage[] = [];
+      transport.onmessage = jest.fn((request: JSONRPCMessage) => {
+        dispatched.push(request);
+      });
+
+      const pending = [
+        transport.handleRequest({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "test/method",
+          params: {},
+        }),
+        transport.handleRequest({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "test/method",
+          params: {},
+        }),
+      ].map((promise) => promise.catch(() => {}));
+
+      expect(idOf(dispatched[0])).not.toEqual(idOf(dispatched[1]));
+
+      await transport.close();
+      await Promise.all(pending);
+    });
+
+    it("should pass a notification through untouched while a request with the same id is pending", async () => {
+      const dispatched: JSONRPCMessage[] = [];
+      transport.onmessage = jest.fn((message: JSONRPCMessage) => {
+        dispatched.push(message);
+      });
+
+      const pending = transport.handleRequest({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "test/method",
+        params: {},
+      });
+
+      const notification: JSONRPCMessage = {
+        jsonrpc: "2.0",
+        method: "notifications/cancelled",
+        params: { requestId: 1 },
+      };
+
+      await expect(transport.handleRequest(notification)).resolves.toBeNull();
+      expect(dispatched[1]).toBe(notification);
+
+      // The pending request is untouched by the notification
+      await transport.send({
+        jsonrpc: "2.0",
+        id: idOf(dispatched[0]) as RequestId,
+        result: { success: true },
+      });
+      await expect(pending).resolves.toEqual({
+        jsonrpc: "2.0",
+        id: 1,
+        result: { success: true },
+      });
+    });
+
+    it("should restore the original id on error responses", async () => {
+      transport.onmessage = jest.fn((request: JSONRPCMessage) => {
+        setImmediate(() => {
+          transport.send({
+            jsonrpc: "2.0",
+            id: idOf(request) as RequestId,
+            error: { code: -32601, message: "Method not found" },
+          });
+        });
+      });
+
+      const response = await transport.handleRequest({
+        jsonrpc: "2.0",
+        id: "caller-uuid",
+        method: "test/missing",
+        params: {},
+      });
+
+      expect(response).toEqual({
+        jsonrpc: "2.0",
+        id: "caller-uuid",
+        error: { code: -32601, message: "Method not found" },
+      });
+    });
+
+    it("should not let a timing-out request evict a later request with the same id", async () => {
+      jest.useFakeTimers();
+
+      try {
+        const dispatched: JSONRPCMessage[] = [];
+        transport.onmessage = jest.fn((request: JSONRPCMessage) => {
+          dispatched.push(request);
+        });
+
+        const stale = transport.handleRequest({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "test/slow",
+          params: {},
+        });
+        const staleRejection = expect(stale).rejects.toThrow(
+          "MCP request timeout",
+        );
+
+        // A client reconnects and starts numbering from 1 again, just before
+        // the orphaned request hits its timeout
+        jest.advanceTimersByTime(24900);
+        const fresh = transport.handleRequest({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "test/fast",
+          params: {},
+        });
+
+        jest.advanceTimersByTime(200);
+        await staleRejection;
+
+        await transport.send({
+          jsonrpc: "2.0",
+          id: idOf(dispatched[1]) as RequestId,
+          result: { success: true },
+        });
+
+        await expect(fresh).resolves.toEqual({
+          jsonrpc: "2.0",
+          id: 1,
+          result: { success: true },
+        });
+      } finally {
+        jest.useRealTimers();
+        await transport.close().catch(() => {});
+        transport = new InMemoryTransport();
+      }
     });
   });
 
@@ -657,6 +851,40 @@ describe("InMemoryTransport", () => {
           params: {},
         }),
       ).resolves.toBeUndefined();
+    });
+
+    it("should leave a caller pending when a server-initiated request reuses its id", async () => {
+      transport.onmessage = jest.fn();
+
+      const pending = transport.handleRequest({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "test/method",
+        params: {},
+      });
+
+      // The SDK numbers server-initiated requests from 0, so a numeric internal
+      // counter would let this one match the caller's pending entry and hand the
+      // caller a *request* object as its response.
+      await transport.send({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "sampling/createMessage",
+        params: {},
+      });
+
+      // Drained first so the race is decided by settlement rather than by task
+      // ordering: an already-settled promise wins by array order, so only a
+      // caller still in flight lets the sentinel through.
+      await new Promise((resolve) => setImmediate(resolve));
+      const unsettled = Symbol("unsettled");
+      await expect(
+        Promise.race([pending, Promise.resolve(unsettled)]),
+      ).resolves.toBe(unsettled);
+
+      const rejection = expect(pending).rejects.toThrow("Transport closed");
+      await transport.close();
+      await rejection;
     });
   });
 });

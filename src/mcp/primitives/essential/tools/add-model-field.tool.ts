@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for adding a new field to an existing note type
  */
-@Injectable()
+@McpController()
 export class AddModelFieldTool {
   private readonly logger = new Logger(AddModelFieldTool.name);
 
@@ -56,15 +57,18 @@ export class AddModelFieldTool {
       idempotentHint: false,
     },
   })
-  async addModelField({
-    modelName,
-    fieldName,
-    index,
-  }: {
-    modelName: string;
-    fieldName: string;
-    index?: number;
-  }) {
+  async addModelField(
+    @Payload()
+    {
+      modelName,
+      fieldName,
+      index,
+    }: {
+      modelName: string;
+      fieldName: string;
+      index?: number;
+    },
+  ) {
     try {
       this.logger.log(
         `Adding field "${fieldName}" to model "${modelName}"${index !== undefined ? ` at index ${index}` : ""}`,

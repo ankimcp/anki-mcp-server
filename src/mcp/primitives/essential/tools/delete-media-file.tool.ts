@@ -1,11 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { deleteMediaFile } from "./mediaActions/actions/deleteMediaFile.action";
 
-@Injectable()
+@McpController()
 export class DeleteMediaFileTool {
   private readonly logger = new Logger(DeleteMediaFileTool.name);
 
@@ -34,7 +35,7 @@ export class DeleteMediaFileTool {
       idempotentHint: true,
     },
   })
-  async execute(params: { filename: string }) {
+  async execute(@Payload() params: { filename: string }) {
     try {
       this.logger.log(`Executing deleteMediaFile: ${params.filename}`);
 

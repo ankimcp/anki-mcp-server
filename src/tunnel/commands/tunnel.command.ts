@@ -1,5 +1,5 @@
 import { NestFactory } from "@nestjs/core";
-import { Logger, type INestApplicationContext } from "@nestjs/common";
+import { Logger, type INestMicroservice } from "@nestjs/common";
 import { AppModule } from "@/app.module";
 import {
   CredentialsService,
@@ -9,7 +9,7 @@ import {
   TunnelClientError,
   TunnelCredentials,
 } from "@/tunnel";
-import { TunnelMcpService } from "@/tunnel/tunnel-mcp.service";
+import { TunnelTransport } from "@/tunnel/tunnel.transport";
 import { AppConfigService } from "@/app-config.service";
 import { loadValidatedConfig } from "@/config";
 import { formatBanner, type Cli } from "@/cli/cli-output";
@@ -17,6 +17,7 @@ import { startSpinner } from "@/cli/spinner";
 import {
   createPinoLogger,
   createLoggerService,
+  createMcpStrategy,
   LOG_DESTINATION,
 } from "@/bootstrap";
 import { performLogin, reportLoginError } from "./perform-login";
@@ -175,8 +176,8 @@ async function ensureCredentials(
  *
  * Flow:
  * 1. Load credentials (auto-triggers `--login` flow if missing)
- * 2. Create NestJS application context with in-memory MCP service
- * 3. Create McpRequestHandler that calls TunnelMcpService directly
+ * 2. Create the NestJS MCP microservice bound to the tunnel transport
+ * 3. Create McpRequestHandler that calls the tunnel transport directly
  * 4. Connect to tunnel service via TunnelClient (passing the loaded
  *    credentials so it doesn't re-read them from disk, and the fully
  *    resolved URL so the client doesn't re-resolve internally)
@@ -212,7 +213,7 @@ export async function handleTunnel(
   // Closed over by `gracefulExit` below. Declared up front so the helper can
   // see whichever values exist when a signal arrives — `app` is undefined
   // until step 2 succeeds, `tunnelClient` until step 4.
-  let app: INestApplicationContext | undefined;
+  let app: INestMicroservice | undefined;
   let tunnelClient: TunnelClient | undefined;
 
   // Reentrancy guard for the shutdown helper. A second Ctrl+C during cleanup
@@ -270,9 +271,11 @@ export async function handleTunnel(
       deviceFlowService,
     );
 
-    // Step 2: Create NestJS application context with in-memory MCP service
+    // Step 2: Create the MCP microservice. `TunnelTransport` is the channel the
+    // relay talks to; the strategy owns capability discovery and request handling.
     const stopSpinner = startSpinner("Starting MCP service...");
-    let tunnelMcpService: TunnelMcpService;
+    const mcpTransport = new TunnelTransport();
+    const mcp = createMcpStrategy([mcpTransport], validatedConfig.mcpServer);
 
     // Create logger that writes to stderr (keeps stdout clear for CLI output)
     const logLevel = debug ? "debug" : "info";
@@ -288,13 +291,16 @@ export async function handleTunnel(
     Logger.overrideLogger(loggerService);
 
     try {
-      app = await NestFactory.createApplicationContext(
-        AppModule.forTunnel({ debug, readOnly }),
+      app = await NestFactory.createMicroservice(
+        AppModule.forTunnel(mcp, { debug, readOnly }),
         {
+          strategy: mcp,
           logger: loggerService,
         },
       );
-      tunnelMcpService = app.get(TunnelMcpService);
+      // Starts the strategy, which starts `mcpTransport` — the bound MCP server
+      // must exist before the tunnel client accepts its first request.
+      await app.listen();
       stopSpinner();
       cli.success("MCP service ready");
     } catch (error) {
@@ -310,10 +316,10 @@ export async function handleTunnel(
 
     cli.blank();
 
-    // Step 3: Create McpRequestHandler that calls TunnelMcpService directly
+    // Step 3: Create McpRequestHandler that calls the tunnel transport directly
     const mcpHandler: McpRequestHandler = {
       async handle(request) {
-        const responseBody = await tunnelMcpService.handleRequest(request.body);
+        const responseBody = await mcpTransport.handleRequest(request.body);
         return {
           status: 200,
           headers: { "content-type": "application/json" },

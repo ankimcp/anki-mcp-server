@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for removing a field from an existing note type
  */
-@Injectable()
+@McpController()
 export class RemoveModelFieldTool {
   private readonly logger = new Logger(RemoveModelFieldTool.name);
 
@@ -49,15 +50,18 @@ export class RemoveModelFieldTool {
       idempotentHint: false,
     },
   })
-  async removeModelField({
-    modelName,
-    fieldName,
-    confirmDeletion,
-  }: {
-    modelName: string;
-    fieldName: string;
-    confirmDeletion: boolean;
-  }) {
+  async removeModelField(
+    @Payload()
+    {
+      modelName,
+      fieldName,
+      confirmDeletion,
+    }: {
+      modelName: string;
+      fieldName: string;
+      confirmDeletion: boolean;
+    },
+  ) {
     try {
       if (!confirmDeletion) {
         return createErrorResponse(new Error("Deletion not confirmed"), {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getVersion } from "@/version";
 
 /**
  * Zod schema for application configuration
@@ -36,6 +37,16 @@ export const configSchema = z.object({
   port: z.coerce.number().int().positive().default(3000),
   host: z.string().default("127.0.0.1"),
   nodeEnv: z.enum(["development", "production", "test"]).default("development"),
+
+  // MCP server identity, advertised as `serverInfo` on every transport.
+  // `prefault` (not `default`) so an absent object still gets the inner
+  // defaults — Zod 4 returns a `default` value without re-parsing it.
+  mcpServer: z
+    .object({
+      name: z.string().default("anki-mcp-server"),
+      version: z.string().default(() => getVersion()),
+    })
+    .prefault({}),
 
   // DNS-rebinding protection (HTTP transport)
   // Extra Host headers to accept beyond the built-in loopback set
@@ -92,6 +103,10 @@ export function transformEnvToConfig(env: Record<string, any>): any {
     port: env.PORT,
     host: env.HOST,
     nodeEnv: env.NODE_ENV,
+    mcpServer: {
+      name: env.MCP_SERVER_NAME,
+      version: env.MCP_SERVER_VERSION,
+    },
     allowedHosts: env.ALLOWED_HOSTS,
     allowedOrigins: env.ALLOWED_ORIGINS,
     ankiConnect: {

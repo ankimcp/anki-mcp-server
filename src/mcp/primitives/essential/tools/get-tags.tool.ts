@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -12,7 +13,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
  *
  * @see https://github.com/ankimcp/anki-mcp-server/issues/13
  */
-@Injectable()
+@McpController()
 export class GetTagsTool {
   private readonly logger = new Logger(GetTagsTool.name);
 
@@ -45,7 +46,7 @@ export class GetTagsTool {
       idempotentHint: true,
     },
   })
-  async getTags({ pattern }: { pattern?: string }) {
+  async getTags(@Payload() { pattern }: { pattern?: string }) {
     try {
       this.logger.log(
         `Retrieving tags from Anki${pattern ? ` (filter: ${pattern})` : ""}`,

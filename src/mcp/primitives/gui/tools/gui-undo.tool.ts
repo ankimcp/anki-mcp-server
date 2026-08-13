@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for undoing the last action in Anki
  */
-@Injectable()
+@McpController()
 export class GuiUndoTool {
   private readonly logger = new Logger(GuiUndoTool.name);
 
@@ -34,7 +35,7 @@ export class GuiUndoTool {
       idempotentHint: false,
     },
   })
-  async guiUndo(_args: Record<string, never>) {
+  async guiUndo(@Payload() _args: Record<string, never>) {
     try {
       this.logger.log("Undoing last action in Anki");
 

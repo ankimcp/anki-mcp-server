@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for deleting notes and their associated cards
  */
-@Injectable()
+@McpController()
 export class DeleteNotesTool {
   private readonly logger = new Logger(DeleteNotesTool.name);
 
@@ -51,13 +52,10 @@ export class DeleteNotesTool {
       idempotentHint: true,
     },
   })
-  async deleteNotes({
-    notes,
-    confirmDeletion,
-  }: {
-    notes: number[];
-    confirmDeletion: boolean;
-  }) {
+  async deleteNotes(
+    @Payload()
+    { notes, confirmDeletion }: { notes: number[]; confirmDeletion: boolean },
+  ) {
     try {
       // Safety check - require explicit confirmation
       if (!confirmDeletion) {

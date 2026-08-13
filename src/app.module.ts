@@ -1,18 +1,15 @@
 import { DynamicModule, Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
-import { McpModule, McpTransportType } from "@rekog/mcp-nest";
+import { MCP_STRATEGY, McpStrategy } from "@rekog/mcp-nest";
 import { OriginValidationGuard } from "./http/guards/origin-validation.guard";
 import { HostValidationGuard } from "./http/guards/host-validation.guard";
+import type { McpHttpServer } from "./http/mcp-http.factory";
 import {
   McpPrimitivesAnkiEssentialModule,
   ANKI_CONFIG,
-  ESSENTIAL_MCP_TOOLS,
 } from "./mcp/primitives/essential";
-import {
-  McpPrimitivesAnkiGuiModule,
-  GUI_MCP_TOOLS,
-} from "./mcp/primitives/gui";
+import { McpPrimitivesAnkiGuiModule } from "./mcp/primitives/gui";
 import { AppConfigService } from "./app-config.service";
 import {
   configSchema,
@@ -22,16 +19,22 @@ import {
   loadValidatedConfig,
   CliOverrides,
 } from "@/config";
-import { MCP_ICONS } from "./mcp/mcp-icons";
-import { TunnelMcpService } from "./tunnel/tunnel-mcp.service";
 
+/**
+ * The capability classes themselves are registered as `controllers` by
+ * `McpPrimitivesAnkiEssentialModule` / `McpPrimitivesAnkiGuiModule`. NestJS
+ * scans every module's controllers for the `@MessagePattern` handlers that
+ * `@Tool`/`@Prompt`/`@Resource` compile to, so the strategy sees them without
+ * AppModule re-listing them.
+ */
 @Module({})
 export class AppModule {
   /**
    * Creates AppModule configured for STDIO transport
+   * @param mcp - MCP strategy the bootstrap connects as a microservice
    * @param configInput - Raw config input (merged env + CLI overrides)
    */
-  static forStdio(configInput: ConfigInput): DynamicModule {
+  static forStdio(mcp: McpStrategy, configInput: ConfigInput): DynamicModule {
     // Parse config once, use everywhere (single source of truth)
     const validatedConfig = configSchema.parse(
       transformEnvToConfig(configInput),
@@ -45,14 +48,6 @@ export class AppModule {
           isGlobal: true,
           cache: true,
           load: [() => validatedConfig],
-        }),
-
-        // MCP Module with STDIO transport
-        McpModule.forRoot({
-          name: process.env.MCP_SERVER_NAME || "anki-mcp-server",
-          version: process.env.MCP_SERVER_VERSION || "1.0.0",
-          transport: McpTransportType.STDIO,
-          icons: MCP_ICONS,
         }),
 
         // Import MCP primitives with config
@@ -79,15 +74,16 @@ export class AppModule {
           },
         }),
       ],
-      // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured.
       providers: [
         {
           provide: APP_CONFIG,
           useValue: validatedConfig,
         },
+        {
+          provide: MCP_STRATEGY,
+          useValue: mcp,
+        },
         AppConfigService,
-        ...ESSENTIAL_MCP_TOOLS,
-        ...GUI_MCP_TOOLS,
       ],
       exports: [APP_CONFIG, AppConfigService],
     };
@@ -95,9 +91,13 @@ export class AppModule {
 
   /**
    * Creates AppModule configured for HTTP (Streamable HTTP) transport
+   * @param mcpHttp - Strategy + the controller that owns the `/` MCP route
    * @param configInput - Raw config input (merged env + CLI overrides)
    */
-  static forHttp(configInput: ConfigInput): DynamicModule {
+  static forHttp(
+    mcpHttp: McpHttpServer,
+    configInput: ConfigInput,
+  ): DynamicModule {
     // Parse config once, use everywhere (single source of truth)
     const validatedConfig = configSchema.parse(
       transformEnvToConfig(configInput),
@@ -111,15 +111,6 @@ export class AppModule {
           isGlobal: true,
           cache: true,
           load: [() => validatedConfig],
-        }),
-
-        // MCP Module with Streamable HTTP transport
-        McpModule.forRoot({
-          name: process.env.MCP_SERVER_NAME || "anki-mcp-server",
-          version: process.env.MCP_SERVER_VERSION || "1.0.0",
-          transport: McpTransportType.STREAMABLE_HTTP,
-          mcpEndpoint: "/",
-          icons: MCP_ICONS,
         }),
 
         // Import MCP primitives with config
@@ -146,11 +137,18 @@ export class AppModule {
           },
         }),
       ],
-      // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured.
+      // The MCP endpoint is a controller we own rather than a route the
+      // transport self-mounts, so it goes through the Nest pipeline and the
+      // APP_GUARD guards below apply to it.
+      controllers: [mcpHttp.controller],
       providers: [
         {
           provide: APP_CONFIG,
           useValue: validatedConfig,
+        },
+        {
+          provide: MCP_STRATEGY,
+          useValue: mcpHttp.strategy,
         },
         AppConfigService,
         // DNS-rebinding protection (HTTP transport only). Registered at module
@@ -163,18 +161,20 @@ export class AppModule {
           provide: APP_GUARD,
           useClass: HostValidationGuard,
         },
-        ...ESSENTIAL_MCP_TOOLS,
-        ...GUI_MCP_TOOLS,
       ],
       exports: [APP_CONFIG, AppConfigService],
     };
   }
 
   /**
-   * Creates AppModule configured for Tunnel transport (in-memory MCP service)
+   * Creates AppModule configured for Tunnel transport
+   * @param mcp - MCP strategy carrying the tunnel transport
    * @param cliOverrides - Optional CLI argument overrides
    */
-  static forTunnel(cliOverrides?: CliOverrides): DynamicModule {
+  static forTunnel(
+    mcp: McpStrategy,
+    cliOverrides?: CliOverrides,
+  ): DynamicModule {
     // Use loadValidatedConfig to parse CLI overrides + env
     const validatedConfig = loadValidatedConfig(cliOverrides);
 
@@ -186,15 +186,6 @@ export class AppModule {
           isGlobal: true,
           cache: true,
           load: [() => validatedConfig],
-        }),
-
-        // MCP Module with NO transport (TunnelMcpService handles transport via InMemoryTransport)
-        // Using empty array prevents StdioService from blocking stdin in watch mode
-        McpModule.forRoot({
-          name: process.env.MCP_SERVER_NAME || "anki-mcp-server",
-          version: process.env.MCP_SERVER_VERSION || "1.0.0",
-          transport: [],
-          icons: MCP_ICONS,
         }),
 
         // Import MCP primitives with config
@@ -227,14 +218,13 @@ export class AppModule {
           provide: APP_CONFIG,
           useValue: validatedConfig,
         },
+        {
+          provide: MCP_STRATEGY,
+          useValue: mcp,
+        },
         AppConfigService,
-        // Custom tunnel MCP service (instead of StdioModule)
-        TunnelMcpService,
-        // MCP-Nest requires tools in root module providers for discovery
-        ...ESSENTIAL_MCP_TOOLS,
-        ...GUI_MCP_TOOLS,
       ],
-      exports: [APP_CONFIG, AppConfigService, TunnelMcpService],
+      exports: [APP_CONFIG, AppConfigService],
     };
   }
 }

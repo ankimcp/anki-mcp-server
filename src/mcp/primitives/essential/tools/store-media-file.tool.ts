@@ -1,11 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { storeMediaFile } from "./mediaActions/actions/storeMediaFile.action";
 
-@Injectable()
+@McpController()
 export class StoreMediaFileTool {
   private readonly logger = new Logger(StoreMediaFileTool.name);
 
@@ -49,13 +50,16 @@ export class StoreMediaFileTool {
       openWorldHint: true,
     },
   })
-  async execute(params: {
-    filename: string;
-    data?: string;
-    path?: string;
-    url?: string;
-    deleteExisting?: boolean;
-  }) {
+  async execute(
+    @Payload()
+    params: {
+      filename: string;
+      data?: string;
+      path?: string;
+      url?: string;
+      deleteExisting?: boolean;
+    },
+  ) {
     try {
       this.logger.log(`Executing storeMediaFile: ${params.filename}`);
 

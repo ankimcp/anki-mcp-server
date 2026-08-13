@@ -7,6 +7,10 @@ describe("AppConfigService", () => {
     port: 3000,
     host: "127.0.0.1",
     nodeEnv: "development",
+    mcpServer: {
+      name: "anki-mcp-server",
+      version: "0.0.0-test",
+    },
     allowedHosts: [],
     allowedOrigins: [
       "http://localhost:*",

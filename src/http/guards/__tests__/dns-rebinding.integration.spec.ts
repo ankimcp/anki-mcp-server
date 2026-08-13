@@ -1,8 +1,30 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication } from "@nestjs/common";
+import type { CustomStrategy } from "@nestjs/microservices";
 import request from "supertest";
 import { AppModule } from "../../../app.module";
-import { buildConfigInput } from "../../../config";
+import { createMcpHttpServer } from "../../mcp-http.factory";
+import { buildConfigInput, loadValidatedConfig } from "../../../config";
+
+/**
+ * Boots the HTTP module the way main-http.ts does: the MCP endpoint is a
+ * controller AppModule owns, and the strategy is connected as a microservice so
+ * that endpoint actually serves MCP. Owning the route is what puts the guards in
+ * front of it — a transport-mounted route bypasses the Nest pipeline entirely.
+ */
+async function bootHttpApp(): Promise<INestApplication> {
+  const mcpHttp = createMcpHttpServer(loadValidatedConfig().mcpServer);
+  const moduleFixture: TestingModule = await Test.createTestingModule({
+    imports: [AppModule.forHttp(mcpHttp, buildConfigInput())],
+  }).compile();
+
+  const app = moduleFixture.createNestApplication();
+  mcpHttp.strategy.setHttpAdapter(app.getHttpAdapter());
+  app.connectMicroservice<CustomStrategy>({ strategy: mcpHttp.strategy });
+  await app.init();
+  await app.startAllMicroservices();
+  return app;
+}
 
 /**
  * Integration tests for DNS-rebinding protection on the HTTP transport.
@@ -50,12 +72,7 @@ describe("DNS-rebinding protection (HTTP module integration)", () => {
   const REJECT_STATUSES = [403, 421];
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule.forHttp(buildConfigInput())],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
+    app = await bootHttpApp();
   });
 
   afterEach(async () => {
@@ -98,6 +115,20 @@ describe("DNS-rebinding protection (HTTP module integration)", () => {
 
     expect(REJECT_STATUSES).toContain(res.status);
   });
+
+  it("serves MCP on exactly one route: the transport never self-mounts /mcp", async () => {
+    // The transport's default self-mount path is /mcp, registered straight on
+    // the Express adapter — outside the Nest pipeline, so neither guard above
+    // would run on it. `mount: false` in the factory forbids that; a 404 here
+    // proves the only MCP route is the guarded controller at "/".
+    const res = await request(app.getHttpServer())
+      .post("/mcp")
+      .set("Content-Type", "application/json")
+      .set("Accept", "application/json, text/event-stream")
+      .send(initializeBody);
+
+    expect(res.status).toBe(404);
+  });
 });
 
 /**
@@ -124,12 +155,7 @@ describe("DNS-rebinding protection — ALLOWED_HOSTS escape hatch (HTTP module i
   beforeEach(async () => {
     process.env = { ...originalEnv, ALLOWED_HOSTS: "attacker.example" };
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule.forHttp(buildConfigInput())],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
+    app = await bootHttpApp();
   });
 
   afterEach(async () => {

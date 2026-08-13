@@ -2,7 +2,7 @@
  * Anki utility functions for MCP tools
  */
 
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolResult } from "@modelcontextprotocol/server";
 import { AnkiCard, CardRating, CardType } from "../types/anki.types";
 import { AnkiConnectError } from "../clients/anki-connect.client";
 

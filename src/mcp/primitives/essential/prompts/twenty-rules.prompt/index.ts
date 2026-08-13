@@ -1,5 +1,5 @@
-import { Injectable, Scope } from "@nestjs/common";
-import { Prompt } from "@rekog/mcp-nest";
+import { Scope } from "@nestjs/common";
+import { McpController, Prompt } from "@rekog/mcp-nest";
 import { z } from "zod";
 import * as fs from "fs";
 import * as path from "path";
@@ -13,7 +13,7 @@ const PROMPT_SECTIONS = (() => {
   return parseMarkdownSections(markdown);
 })();
 
-@Injectable({ scope: Scope.REQUEST })
+@McpController({ scope: Scope.REQUEST })
 export class TwentyRulesPrompt {
   @Prompt({
     name: "twenty_rules",

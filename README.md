@@ -325,7 +325,9 @@ If no credentials exist, `--tunnel` automatically starts the login flow first, t
 
 The device-flow auth endpoints (`/auth/device`, `/auth/token`) are derived from `TUNNEL_SERVER_URL`, so pointing `--tunnel` (or `TUNNEL_SERVER_URL`) at a different host also moves authentication to that host.
 
-**How it works:** Tunnel mode runs the MCP server in-process behind an in-memory transport (`McpModule` is started with no built-in transport). `TunnelMcpService` connects that in-memory transport to the MCP server, and `TunnelClient` bridges it to the remote tunnel service over a WebSocket — relaying MCP requests in and responses out. AnkiConnect is still only ever reached on your local machine.
+**How it works:** Tunnel mode runs the MCP server in-process behind an in-memory transport (`TunnelTransport`). That transport owns the MCP server and turns each relayed request body into a response, and `TunnelClient` bridges it to the remote tunnel service over a WebSocket — relaying MCP requests in and responses out. AnkiConnect is still only ever reached on your local machine.
+
+**Protocol revisions:** Because the tunnel connects the MCP server in-process, tunnel mode serves the 2025 revision of the MCP protocol only, while STDIO and HTTP modes serve both 2025 and the newer 2026-07-28 revision. Every tool behaves the same either way — but a client that speaks only 2026-07-28 is turned away over the tunnel with a protocol-version error; run [STDIO](#stdio-primary-local-integration) or [HTTP](#http-local-web-based-ai) mode for that client.
 
 #### ngrok (unauthenticated alternative)
 
@@ -609,7 +611,8 @@ This server supports three MCP transport modes via **separate entry points**:
 
 #### Tunnel Mode (Managed WebSocket Tunnel)
 - For web-based AI assistants via the managed AnkiMCP tunnel service, with built-in authentication
-- The MCP server runs in-process behind an in-memory transport; `TunnelMcpService` wires it to the MCP server and `TunnelClient` bridges it to the tunnel service over a WebSocket
+- The MCP server runs in-process behind an in-memory transport; `TunnelTransport` owns the MCP server and `TunnelClient` bridges it to the tunnel service over a WebSocket
+- **Protocol**: serves the 2025 MCP revision only (STDIO and HTTP also serve 2026-07-28)
 - **Entry point**: `dist/main-tunnel.js`
 - **Run**: `node dist/main-tunnel.js --tunnel` (or `ankimcp --tunnel`)
 - **Auth**: `ankimcp --login` / `ankimcp --logout`; credentials stored at `~/.ankimcp/credentials.json` (`0600`)

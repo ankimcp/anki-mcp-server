@@ -21,6 +21,9 @@ export {
   type McpRequestHandler,
 } from "./tunnel.client";
 
+// MCP transport (passed to McpStrategy via `transports`)
+export { TunnelTransport } from "./tunnel.transport";
+
 // Protocol types
 export * from "./tunnel.protocol";
 

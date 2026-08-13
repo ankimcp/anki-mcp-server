@@ -1,4 +1,5 @@
 import { configSchema, transformEnvToConfig } from "../config.schema";
+import { getVersion } from "@/version";
 import { ZodError } from "zod";
 
 describe("Config Schema", () => {
@@ -15,6 +16,8 @@ describe("Config Schema", () => {
         TUNNEL_AUTH_CLIENT_ID: "test-client",
         TUNNEL_SERVER_URL: "wss://tunnel.example.com",
         LOG_LEVEL: "debug",
+        MCP_SERVER_NAME: "custom-server",
+        MCP_SERVER_VERSION: "9.9.9",
       };
 
       const config = transformEnvToConfig(env);
@@ -23,6 +26,10 @@ describe("Config Schema", () => {
         port: "8080",
         host: "0.0.0.0",
         nodeEnv: "production",
+        mcpServer: {
+          name: "custom-server",
+          version: "9.9.9",
+        },
         allowedHosts: undefined,
         allowedOrigins: undefined,
         ankiConnect: {
@@ -48,6 +55,10 @@ describe("Config Schema", () => {
         port: undefined,
         host: undefined,
         nodeEnv: undefined,
+        mcpServer: {
+          name: undefined,
+          version: undefined,
+        },
         allowedHosts: undefined,
         allowedOrigins: undefined,
         ankiConnect: {
@@ -80,6 +91,10 @@ describe("Config Schema", () => {
           port: 3000,
           host: "127.0.0.1",
           nodeEnv: "development",
+          mcpServer: {
+            name: "anki-mcp-server",
+            version: getVersion(),
+          },
           allowedHosts: [],
           allowedOrigins: [
             "http://localhost:*",

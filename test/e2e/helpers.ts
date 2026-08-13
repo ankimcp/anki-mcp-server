@@ -111,14 +111,17 @@ export function runInspector(
 ): unknown {
   const args = ["@modelcontextprotocol/inspector", "--cli"];
 
-  // Add transport-specific arguments
+  // Add transport-specific arguments. Inspector v2 treats only the leading
+  // non-dash tokens as the target, so server flags (e.g. --read-only) must sit
+  // before the `--` separator or they are dropped instead of forwarded.
   if (currentConfig.mode === "http") {
-    args.push(currentConfig.url!, "--transport", "http");
+    args.push(currentConfig.url!, "--", "--transport", "http");
   } else {
     // STDIO mode: pass command to spawn
     args.push(
       currentConfig.command!,
       ...currentConfig.args!,
+      "--",
       "--transport",
       "stdio",
     );
@@ -158,6 +161,18 @@ export function runInspector(
 
     return JSON.parse(result);
   } catch (error) {
+    // Inspector v2 prints the full tool result, then exits 5 when the tool
+    // returned isError:true. That is a completed call, not a transport
+    // failure, so return the payload the way v1 (exit 0) did.
+    const stdout = (error as { stdout?: string }).stdout;
+    if (typeof stdout === "string" && stdout.trim() !== "") {
+      try {
+        return JSON.parse(stdout);
+      } catch {
+        // Not a result payload - fall through to the failure path below
+      }
+    }
+
     if (error instanceof Error && "stderr" in error) {
       throw new Error(
         `Inspector failed: ${(error as { stderr: string }).stderr}`,

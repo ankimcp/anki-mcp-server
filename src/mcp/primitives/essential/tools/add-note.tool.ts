@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { NoteOptions } from "@/mcp/types/anki.types";
@@ -8,7 +9,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for adding new notes to Anki
  */
-@Injectable()
+@McpController()
 export class AddNoteTool {
   private readonly logger = new Logger(AddNoteTool.name);
 
@@ -81,27 +82,30 @@ export class AddNoteTool {
       idempotentHint: false,
     },
   })
-  async addNote({
-    deckName,
-    modelName,
-    fields,
-    tags,
-    allowDuplicate,
-    duplicateScope,
-    duplicateScopeOptions,
-  }: {
-    deckName: string;
-    modelName: string;
-    fields: Record<string, string>;
-    tags?: string[];
-    allowDuplicate?: boolean;
-    duplicateScope?: "deck" | "collection";
-    duplicateScopeOptions?: {
-      deckName?: string;
-      checkChildren?: boolean;
-      checkAllModels?: boolean;
-    };
-  }) {
+  async addNote(
+    @Payload()
+    {
+      deckName,
+      modelName,
+      fields,
+      tags,
+      allowDuplicate,
+      duplicateScope,
+      duplicateScopeOptions,
+    }: {
+      deckName: string;
+      modelName: string;
+      fields: Record<string, string>;
+      tags?: string[];
+      allowDuplicate?: boolean;
+      duplicateScope?: "deck" | "collection";
+      duplicateScopeOptions?: {
+        deckName?: string;
+        checkChildren?: boolean;
+        checkAllModels?: boolean;
+      };
+    },
+  ) {
     try {
       this.logger.log(
         `Adding note to deck "${deckName}" with model "${modelName}"`,

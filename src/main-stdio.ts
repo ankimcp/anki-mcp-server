@@ -1,12 +1,15 @@
 import { NestFactory } from "@nestjs/core";
+import type { CustomStrategy } from "@nestjs/microservices";
+import { StdioTransport } from "@rekog/mcp-nest";
 import { AppModule } from "./app.module";
 import {
   createPinoLogger,
   createLoggerService,
+  createMcpStrategy,
   LOG_DESTINATION,
 } from "./bootstrap";
 import { createCli } from "./cli/cli-output";
-import { buildConfigInput } from "./config";
+import { buildConfigInput, configSchema, transformEnvToConfig } from "./config";
 
 /**
  * Parse minimal CLI args for STDIO mode.
@@ -50,11 +53,22 @@ async function bootstrap() {
   );
   const loggerService = createLoggerService(pinoLogger);
 
-  // STDIO mode - create application context (no HTTP server)
-  await NestFactory.createApplicationContext(AppModule.forStdio(configInput), {
-    logger: loggerService,
-    bufferLogs: true,
-  });
+  // STDIO mode - the MCP strategy IS the microservice transport; there is no
+  // HTTP server. `listen()` starts the stdio transport, which owns stdin/stdout.
+  const validatedConfig = configSchema.parse(transformEnvToConfig(configInput));
+  const mcp = createMcpStrategy(
+    [new StdioTransport()],
+    validatedConfig.mcpServer,
+  );
+  const app = await NestFactory.createMicroservice<CustomStrategy>(
+    AppModule.forStdio(mcp, configInput),
+    {
+      strategy: mcp,
+      logger: loggerService,
+      bufferLogs: true,
+    },
+  );
+  await app.listen();
 
   if (cliOptions.readOnly) {
     pinoLogger.info("MCP STDIO server started in READ-ONLY mode");

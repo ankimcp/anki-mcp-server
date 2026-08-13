@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for renaming a field in an existing note type
  */
-@Injectable()
+@McpController()
 export class RenameModelFieldTool {
   private readonly logger = new Logger(RenameModelFieldTool.name);
 
@@ -51,15 +52,18 @@ export class RenameModelFieldTool {
       idempotentHint: false,
     },
   })
-  async renameModelField({
-    modelName,
-    oldFieldName,
-    newFieldName,
-  }: {
-    modelName: string;
-    oldFieldName: string;
-    newFieldName: string;
-  }) {
+  async renameModelField(
+    @Payload()
+    {
+      modelName,
+      oldFieldName,
+      newFieldName,
+    }: {
+      modelName: string;
+      oldFieldName: string;
+      newFieldName: string;
+    },
+  ) {
     try {
       this.logger.log(
         `Renaming field "${oldFieldName}" → "${newFieldName}" in model "${modelName}"`,

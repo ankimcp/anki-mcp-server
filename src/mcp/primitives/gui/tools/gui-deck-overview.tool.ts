@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for opening the Deck Overview dialog for a specific deck
  */
-@Injectable()
+@McpController()
 export class GuiDeckOverviewTool {
   private readonly logger = new Logger(GuiDeckOverviewTool.name);
 
@@ -38,7 +39,7 @@ export class GuiDeckOverviewTool {
       idempotentHint: true,
     },
   })
-  async guiDeckOverview({ name }: { name: string }) {
+  async guiDeckOverview(@Payload() { name }: { name: string }) {
     try {
       this.logger.log(`Opening Deck Overview for deck "${name}"`);
 

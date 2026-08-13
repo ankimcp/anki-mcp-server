@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for searching notes using Anki's query syntax
  */
-@Injectable()
+@McpController()
 export class FindNotesTool {
   private readonly logger = new Logger(FindNotesTool.name);
 
@@ -44,7 +45,7 @@ export class FindNotesTool {
       idempotentHint: true,
     },
   })
-  async findNotes({ query }: { query: string }) {
+  async findNotes(@Payload() { query }: { query: string }) {
     try {
       this.logger.log(`Searching for notes with query: "${query}"`);
 

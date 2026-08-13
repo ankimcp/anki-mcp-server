@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import {
   AnkiConnectClient,
@@ -23,7 +24,7 @@ interface NoteResult {
  * Tool for adding multiple notes to Anki in a single batch.
  * Uses sequential addNote calls internally to support partial success.
  */
-@Injectable()
+@McpController()
 export class AddNotesTool {
   private readonly logger = new Logger(AddNotesTool.name);
 
@@ -97,24 +98,27 @@ export class AddNotesTool {
       idempotentHint: false,
     },
   })
-  async addNotes({
-    deckName,
-    modelName,
-    tags: sharedTags,
-    allowDuplicate,
-    duplicateScope,
-    notes,
-  }: {
-    deckName: string;
-    modelName: string;
-    tags?: string[];
-    allowDuplicate?: boolean;
-    duplicateScope?: "deck" | "collection";
-    notes: Array<{
-      fields: Record<string, string>;
+  async addNotes(
+    @Payload()
+    {
+      deckName,
+      modelName,
+      tags: sharedTags,
+      allowDuplicate,
+      duplicateScope,
+      notes,
+    }: {
+      deckName: string;
+      modelName: string;
       tags?: string[];
-    }>;
-  }) {
+      allowDuplicate?: boolean;
+      duplicateScope?: "deck" | "collection";
+      notes: Array<{
+        fields: Record<string, string>;
+        tags?: string[];
+      }>;
+    },
+  ) {
     try {
       this.logger.log(
         `Adding ${notes.length} notes to deck "${deckName}" with model "${modelName}"`,

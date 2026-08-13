@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -8,7 +9,7 @@ import { NoteInfo } from "@/mcp/types/anki.types";
 /**
  * Tool for retrieving detailed information about notes
  */
-@Injectable()
+@McpController()
 export class NotesInfoTool {
   private readonly logger = new Logger(NotesInfoTool.name);
 
@@ -59,7 +60,7 @@ export class NotesInfoTool {
       idempotentHint: true,
     },
   })
-  async notesInfo({ notes }: { notes: number[] }) {
+  async notesInfo(@Payload() { notes }: { notes: number[] }) {
     try {
       this.logger.log(`Getting information for ${notes.length} note(s)`);
 

@@ -1,11 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { changeDeck } from "./deckActions/actions/changeDeck.action";
 
-@Injectable()
+@McpController()
 export class ChangeDeckTool {
   private readonly logger = new Logger(ChangeDeckTool.name);
 
@@ -32,7 +33,7 @@ export class ChangeDeckTool {
       idempotentHint: true,
     },
   })
-  async execute(params: { cards: number[]; deck: string }) {
+  async execute(@Payload() params: { cards: number[]; deck: string }) {
     try {
       this.logger.log(
         `Executing changeDeck: ${params.cards?.length ?? 0} card(s) -> ${params.deck}`,

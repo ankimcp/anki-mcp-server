@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, CardPresentation } from "@/mcp/types/anki.types";
@@ -12,7 +13,7 @@ import {
 /**
  * Tool for retrieving and formatting a single card's data
  */
-@Injectable()
+@McpController()
 export class PresentCardTool {
   private readonly logger = new Logger(PresentCardTool.name);
 
@@ -54,13 +55,10 @@ export class PresentCardTool {
       idempotentHint: true,
     },
   })
-  async presentCard({
-    card_id,
-    show_answer,
-  }: {
-    card_id: number;
-    show_answer?: boolean;
-  }) {
+  async presentCard(
+    @Payload()
+    { card_id, show_answer }: { card_id: number; show_answer?: boolean },
+  ) {
     try {
       const showAnswer = show_answer || false;
 

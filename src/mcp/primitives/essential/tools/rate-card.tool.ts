@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import {
@@ -10,7 +11,7 @@ import {
 /**
  * Tool for rating a card and updating Anki's scheduling
  */
-@Injectable()
+@McpController()
 export class RateCardTool {
   private readonly logger = new Logger(RateCardTool.name);
 
@@ -51,7 +52,9 @@ export class RateCardTool {
       idempotentHint: false,
     },
   })
-  async rateCard({ card_id, rating }: { card_id: number; rating: number }) {
+  async rateCard(
+    @Payload() { card_id, rating }: { card_id: number; rating: number },
+  ) {
     try {
       // Validate rating
       if (!Number.isInteger(rating) || rating < 1 || rating > 4) {

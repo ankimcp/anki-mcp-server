@@ -1,11 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { addTags } from "./tagActions/actions/addTags.action";
 
-@Injectable()
+@McpController()
 export class AddTagsTool {
   private readonly logger = new Logger(AddTagsTool.name);
 
@@ -38,7 +39,7 @@ export class AddTagsTool {
       idempotentHint: true,
     },
   })
-  async execute(params: { notes: number[]; tags: string }) {
+  async execute(@Payload() params: { notes: number[]; tags: string }) {
     try {
       this.logger.log(
         `Executing addTags on ${params.notes?.length ?? 0} note(s)`,

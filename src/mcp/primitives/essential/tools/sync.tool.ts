@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for synchronizing Anki collections with AnkiWeb
  */
-@Injectable()
+@McpController()
 export class SyncTool {
   private readonly logger = new Logger(SyncTool.name);
 
@@ -31,7 +32,7 @@ export class SyncTool {
       openWorldHint: true,
     },
   })
-  async sync(_args: Record<string, never>) {
+  async sync(@Payload() _args: Record<string, never>) {
     try {
       this.logger.log("Synchronizing Anki collection with AnkiWeb");
 

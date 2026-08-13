@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, SimplifiedCard } from "@/mcp/types/anki.types";
@@ -12,7 +13,7 @@ import {
 /**
  * Tool for retrieving cards that are due for review
  */
-@Injectable()
+@McpController()
 export class GetDueCardsTool {
   private readonly logger = new Logger(GetDueCardsTool.name);
 
@@ -71,17 +72,20 @@ export class GetDueCardsTool {
       idempotentHint: true,
     },
   })
-  async getDueCards({
-    deck_name,
-    limit,
-    include_learning = true,
-    include_new = false,
-  }: {
-    deck_name?: string;
-    limit?: number;
-    include_learning?: boolean;
-    include_new?: boolean;
-  }) {
+  async getDueCards(
+    @Payload()
+    {
+      deck_name,
+      limit,
+      include_learning = true,
+      include_new = false,
+    }: {
+      deck_name?: string;
+      limit?: number;
+      include_learning?: boolean;
+      include_new?: boolean;
+    },
+  ) {
     try {
       const cardLimit = Math.min(limit || 10, 50);
 

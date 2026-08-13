@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -8,7 +9,7 @@ import type { CardTemplate } from "@/mcp/types/anki.types";
 /**
  * Tool for creating a new Anki model/note type
  */
-@Injectable()
+@McpController()
 export class CreateModelTool {
   private readonly logger = new Logger(CreateModelTool.name);
 
@@ -85,19 +86,22 @@ export class CreateModelTool {
       idempotentHint: false,
     },
   })
-  async createModel({
-    modelName,
-    inOrderFields,
-    cardTemplates,
-    css,
-    isCloze,
-  }: {
-    modelName: string;
-    inOrderFields: string[];
-    cardTemplates: CardTemplate[];
-    css?: string;
-    isCloze?: boolean;
-  }) {
+  async createModel(
+    @Payload()
+    {
+      modelName,
+      inOrderFields,
+      cardTemplates,
+      css,
+      isCloze,
+    }: {
+      modelName: string;
+      inOrderFields: string[];
+      cardTemplates: CardTemplate[];
+      css?: string;
+      isCloze?: boolean;
+    },
+  ) {
     try {
       this.logger.log(
         `Creating model: ${modelName} with ${inOrderFields.length} fields`,

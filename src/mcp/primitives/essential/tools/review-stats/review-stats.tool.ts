@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -16,7 +17,7 @@ const MS_PER_DAY = 86400000;
 /**
  * Tool for getting review history analysis with retention and streak metrics
  */
-@Injectable()
+@McpController()
 export class ReviewStatsTool {
   private readonly logger = new Logger(ReviewStatsTool.name);
 
@@ -114,11 +115,9 @@ export class ReviewStatsTool {
       idempotentHint: true,
     },
   })
-  async execute(params: {
-    deck?: string;
-    start_date: string;
-    end_date?: string;
-  }) {
+  async execute(
+    @Payload() params: { deck?: string; start_date: string; end_date?: string },
+  ) {
     try {
       const { start_date } = params;
       const deck =

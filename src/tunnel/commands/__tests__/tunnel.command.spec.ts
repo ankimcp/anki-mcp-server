@@ -92,7 +92,7 @@ jest.mock("@nestjs/core", () => ({
     // throw — letting Jest observe both that performLogin ran and that we
     // didn't proceed further. The auto-relogin describe block below overrides
     // this per-test to let app creation succeed and reach the connect loop.
-    createApplicationContext: jest.fn().mockImplementation(() => {
+    createMicroservice: jest.fn().mockImplementation(() => {
       throw new Error("stop-here");
     }),
   },
@@ -111,6 +111,7 @@ jest.mock("@nestjs/common", () => ({
 jest.mock("@/bootstrap", () => ({
   createPinoLogger: jest.fn(() => ({})),
   createLoggerService: jest.fn(() => ({})),
+  createMcpStrategy: jest.fn(() => ({})),
   LOG_DESTINATION: { STDERR: "stderr", STDOUT: "stdout" },
 }));
 
@@ -118,8 +119,18 @@ jest.mock("@/app.module", () => ({
   AppModule: { forTunnel: jest.fn(() => ({})) },
 }));
 
-jest.mock("@/tunnel/tunnel-mcp.service", () => ({
-  TunnelMcpService: class {},
+// `@nestjs/common` and `@nestjs/core` are stubbed above, so the real strategy
+// (which depends on both) can't be loaded here. `createMcpStrategy` is stubbed
+// with the rest of `@/bootstrap`; this covers transitive imports of the package.
+jest.mock("@rekog/mcp-nest", () => ({
+  McpStrategy: jest.fn().mockImplementation(() => ({})),
+}));
+
+jest.mock("@/tunnel/tunnel.transport", () => ({
+  TunnelTransport: jest.fn().mockImplementation(() => ({
+    kind: "streamable-http",
+    handleRequest: jest.fn(),
+  })),
 }));
 
 // Mock the spinner so the connect loop doesn't spin up real `setInterval`
@@ -401,14 +412,12 @@ describe("handleTunnel - auto-relogin on session_expired (first connect)", () =>
 
     // Let app creation succeed so we reach Step 4 (connect). The module-level
     // NestFactory mock throws by default for the earlier describe blocks; here
-    // we override it to hand back a minimal fake context.
+    // we override it to hand back a minimal fake microservice.
     const fakeApp = {
-      get: jest.fn(() => ({ handleRequest: jest.fn() })),
+      listen: jest.fn().mockResolvedValue(undefined),
       close: jest.fn().mockResolvedValue(undefined),
     };
-    (NestFactory.createApplicationContext as jest.Mock).mockResolvedValue(
-      fakeApp,
-    );
+    (NestFactory.createMicroservice as jest.Mock).mockResolvedValue(fakeApp);
 
     tunnelClientStub = makeTunnelClientStub();
     (TunnelClient as unknown as jest.Mock).mockImplementation(

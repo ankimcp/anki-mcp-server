@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for retrieving all available model/note type names from Anki
  */
-@Injectable()
+@McpController()
 export class ModelNamesTool {
   private readonly logger = new Logger(ModelNamesTool.name);
 
@@ -36,7 +37,7 @@ export class ModelNamesTool {
       idempotentHint: true,
     },
   })
-  async modelNames(_args: Record<string, never>) {
+  async modelNames(@Payload() _args: Record<string, never>) {
     try {
       this.logger.log("Retrieving model names from Anki");
 

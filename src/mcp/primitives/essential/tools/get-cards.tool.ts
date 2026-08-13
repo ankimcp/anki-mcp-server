@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, SimplifiedCard } from "@/mcp/types/anki.types";
@@ -29,7 +30,7 @@ const CARD_STATE_QUERY_MAP: Record<CardState, string> = {
 /**
  * Tool for retrieving cards from Anki with flexible filtering
  */
-@Injectable()
+@McpController()
 export class GetCardsTool {
   private readonly logger = new Logger(GetCardsTool.name);
 
@@ -81,15 +82,18 @@ export class GetCardsTool {
       idempotentHint: true,
     },
   })
-  async getCards({
-    deck_name,
-    card_state = "due",
-    limit,
-  }: {
-    deck_name?: string;
-    card_state?: CardState;
-    limit?: number;
-  }) {
+  async getCards(
+    @Payload()
+    {
+      deck_name,
+      card_state = "due",
+      limit,
+    }: {
+      deck_name?: string;
+      card_state?: CardState;
+      limit?: number;
+    },
+  ) {
     try {
       const cardLimit = Math.min(limit || 10, 50);
 

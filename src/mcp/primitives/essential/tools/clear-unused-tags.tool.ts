@@ -1,11 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { clearUnusedTags } from "./tagActions/actions/clearUnusedTags.action";
 
-@Injectable()
+@McpController()
 export class ClearUnusedTagsTool {
   private readonly logger = new Logger(ClearUnusedTagsTool.name);
 
@@ -27,7 +28,7 @@ export class ClearUnusedTagsTool {
       idempotentHint: true,
     },
   })
-  async execute(_params: Record<string, never>) {
+  async execute(@Payload() _params: Record<string, never>) {
     try {
       this.logger.log("Executing clearUnusedTags");
 

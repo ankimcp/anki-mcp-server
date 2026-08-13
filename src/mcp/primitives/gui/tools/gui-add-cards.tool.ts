@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for opening the Add Cards dialog with preset note details
  */
-@Injectable()
+@McpController()
 export class GuiAddCardsTool {
   private readonly logger = new Logger(GuiAddCardsTool.name);
 
@@ -49,16 +50,19 @@ export class GuiAddCardsTool {
       idempotentHint: true,
     },
   })
-  async guiAddCards({
-    note,
-  }: {
-    note: {
-      deckName: string;
-      modelName: string;
-      fields: Record<string, string>;
-      tags?: string[];
-    };
-  }) {
+  async guiAddCards(
+    @Payload()
+    {
+      note,
+    }: {
+      note: {
+        deckName: string;
+        modelName: string;
+        fields: Record<string, string>;
+        tags?: string[];
+      };
+    },
+  ) {
     try {
       this.logger.log(`Opening Add Cards dialog for deck "${note.deckName}"`);
 

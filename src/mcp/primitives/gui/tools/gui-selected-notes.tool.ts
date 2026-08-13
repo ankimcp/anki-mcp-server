@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for getting selected note IDs from the Card Browser
  */
-@Injectable()
+@McpController()
 export class GuiSelectedNotesTool {
   private readonly logger = new Logger(GuiSelectedNotesTool.name);
 
@@ -35,7 +36,7 @@ export class GuiSelectedNotesTool {
       idempotentHint: true,
     },
   })
-  async guiSelectedNotes(_args: Record<string, never>) {
+  async guiSelectedNotes(@Payload() _args: Record<string, never>) {
     try {
       this.logger.log("Getting selected notes from Card Browser");
 

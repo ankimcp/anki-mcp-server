@@ -1,9 +1,15 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication } from "@nestjs/common";
+import type { CustomStrategy } from "@nestjs/microservices";
 import { AppModule } from "../app.module";
 import { OriginValidationGuard } from "../http/guards/origin-validation.guard";
+import { createMcpHttpServer } from "../http/mcp-http.factory";
+import { createMcpStrategy } from "../bootstrap";
 import request from "supertest";
-import { buildConfigInput } from "../config";
+import { buildConfigInput, loadValidatedConfig } from "../config";
+
+/** Server identity from the same config path main-http.ts uses. */
+const serverIdentity = () => loadValidatedConfig().mcpServer;
 
 /**
  * Integration tests for HTTP mode server
@@ -18,14 +24,35 @@ import { buildConfigInput } from "../config";
 describe("HTTP Server (main-http integration)", () => {
   let app: INestApplication;
 
+  /**
+   * Mirrors main-http.ts: build the strategy + MCP controller, then connect the
+   * strategy as a microservice so the MCP endpoint is actually served.
+   */
+  async function createHttpApp(): Promise<INestApplication> {
+    const mcpHttp = createMcpHttpServer(serverIdentity());
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule.forHttp(mcpHttp, buildConfigInput())],
+    }).compile();
+
+    const created = moduleFixture.createNestApplication();
+    mcpHttp.strategy.setHttpAdapter(created.getHttpAdapter());
+    created.connectMicroservice<CustomStrategy>({
+      strategy: mcpHttp.strategy,
+    });
+    return created;
+  }
+
+  /** Init order from main-http.ts: microservices start before the server listens. */
+  async function startHttpApp(): Promise<INestApplication> {
+    const created = await createHttpApp();
+    await created.init();
+    await created.startAllMicroservices();
+    return created;
+  }
+
   describe("server configuration", () => {
     beforeEach(async () => {
-      // Create test module with HTTP mode
-      const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp(buildConfigInput())],
-      }).compile();
-
-      app = moduleFixture.createNestApplication();
+      app = await createHttpApp();
     });
 
     afterEach(async () => {
@@ -51,12 +78,7 @@ describe("HTTP Server (main-http integration)", () => {
 
   describe("server startup", () => {
     it("should start on default port 3000", async () => {
-      const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp(buildConfigInput())],
-      }).compile();
-
-      app = moduleFixture.createNestApplication();
-      await app.init();
+      app = await startHttpApp();
       await app.listen(3000, "127.0.0.1");
 
       // Server should be listening
@@ -67,12 +89,7 @@ describe("HTTP Server (main-http integration)", () => {
     });
 
     it("should start on custom port", async () => {
-      const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp(buildConfigInput())],
-      }).compile();
-
-      app = moduleFixture.createNestApplication();
-      await app.init();
+      app = await startHttpApp();
       await app.listen(8080, "127.0.0.1");
 
       const server = app.getHttpServer();
@@ -82,12 +99,7 @@ describe("HTTP Server (main-http integration)", () => {
     });
 
     it("should bind to specified host", async () => {
-      const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp(buildConfigInput())],
-      }).compile();
-
-      app = moduleFixture.createNestApplication();
-      await app.init();
+      app = await startHttpApp();
       await app.listen(3001, "0.0.0.0");
 
       const server = app.getHttpServer();
@@ -129,12 +141,7 @@ describe("HTTP Server (main-http integration)", () => {
 
   describe("HTTP endpoints", () => {
     beforeEach(async () => {
-      const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp(buildConfigInput())],
-      }).compile();
-
-      app = moduleFixture.createNestApplication();
-      await app.init();
+      app = await startHttpApp();
     });
 
     afterEach(async () => {
@@ -158,6 +165,7 @@ describe("HTTP Server (main-http integration)", () => {
       const response = await request(app.getHttpServer())
         .post("/")
         .set("Content-Type", "application/json")
+        .set("Accept", "application/json, text/event-stream")
         .send({
           jsonrpc: "2.0",
           id: 1,
@@ -172,19 +180,13 @@ describe("HTTP Server (main-http integration)", () => {
           },
         });
 
-      // Should get a response (success or error, doesn't matter for this test)
-      expect(response.status).toBeDefined();
+      expect(response.status).toBe(200);
     });
   });
 
   describe("error handling", () => {
     beforeEach(async () => {
-      const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp(buildConfigInput())],
-      }).compile();
-
-      app = moduleFixture.createNestApplication();
-      await app.init();
+      app = await startHttpApp();
     });
 
     afterEach(async () => {
@@ -220,11 +222,7 @@ describe("HTTP Server (main-http integration)", () => {
       // This test verifies that the application is configured correctly
       // HTTP mode uses stdout (fd 1) for logging
 
-      const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp(buildConfigInput())],
-      }).compile();
-
-      app = moduleFixture.createNestApplication();
+      app = await createHttpApp();
 
       // Application should be created with logger configuration
       expect(app).toBeDefined();
@@ -235,24 +233,14 @@ describe("HTTP Server (main-http integration)", () => {
 
   describe("graceful shutdown", () => {
     it("should close cleanly", async () => {
-      const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp(buildConfigInput())],
-      }).compile();
-
-      app = moduleFixture.createNestApplication();
-      await app.init();
+      app = await startHttpApp();
 
       // Should close without errors
       await expect(app.close()).resolves.not.toThrow();
     });
 
     it("should close after listening", async () => {
-      const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forHttp(buildConfigInput())],
-      }).compile();
-
-      app = moduleFixture.createNestApplication();
-      await app.init();
+      app = await startHttpApp();
       await app.listen(3002, "127.0.0.1");
 
       // Should close cleanly even after listening
@@ -264,7 +252,12 @@ describe("HTTP Server (main-http integration)", () => {
     it("should not break STDIO mode", async () => {
       // Ensure HTTP mode additions don't break STDIO mode
       const moduleFixture: TestingModule = await Test.createTestingModule({
-        imports: [AppModule.forStdio(buildConfigInput())],
+        imports: [
+          AppModule.forStdio(
+            createMcpStrategy([], serverIdentity()),
+            buildConfigInput(),
+          ),
+        ],
       }).compile();
 
       const stdioApp = moduleFixture.createNestApplication();

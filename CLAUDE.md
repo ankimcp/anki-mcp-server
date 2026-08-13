@@ -54,11 +54,11 @@ Three entry points compiled in a single build:
 
 ```
 src/
-├── main-stdio.ts            # STDIO bootstrap: NestFactory.createApplicationContext()
-├── main-http.ts             # HTTP bootstrap: NestFactory.create() + guards
+├── main-stdio.ts            # STDIO bootstrap: NestFactory.createMicroservice() with the MCP strategy
+├── main-http.ts             # HTTP bootstrap: NestFactory.create() + guards + connectMicroservice()
 ├── main-tunnel.ts           # Tunnel bootstrap: auth commands + WebSocket tunnel
 ├── app.module.ts            # Root module with forStdio()/forHttp()/forTunnel() factories
-├── bootstrap.ts             # Shared logger setup (pino → NestJS LoggerService)
+├── bootstrap.ts             # Shared logger setup (pino → NestJS LoggerService) + createMcpStrategy()
 ├── version.ts               # Package version constant (read from package.json at build)
 ├── cli/                     # CLI layer (Commander parsing + user-facing output)
 │   ├── args.ts              # Commander entrypoint: option parsing, subcommand dispatch
@@ -68,11 +68,12 @@ src/
 ├── app-config.service.ts    # IAnkiConfig implementation (reads from validated AppConfig)
 ├── config/                  # Zod-validated config system (schema, factory, APP_CONFIG token)
 ├── services/ngrok.service.ts # Optional ngrok subprocess for HTTP-mode public tunneling
-├── http/guards/             # HTTP-only guards (Origin allowlist)
+├── http/guards/             # HTTP-only guards: origin-validation + host-validation (DNS-rebinding protection)
+├── http/mcp-http.factory.ts # StreamableHttpTransport + the Nest controller that owns the MCP route
 ├── tunnel/                  # Tunnel mode: WebSocket client, OAuth device flow, credentials
 │   ├── tunnel.client.ts     # WebSocket client for tunnel server
-│   ├── tunnel-mcp.service.ts # Bridges MCP ↔ tunnel via InMemoryTransport
-│   ├── in-memory.transport.ts # MCP transport that connects to TunnelClient in-process
+│   ├── tunnel.transport.ts  # McpTransport for tunnel mode: owns the bound MCP server + handleRequest()
+│   ├── in-memory.transport.ts # SDK Transport that pairs a relayed request with the server's response
 │   ├── tunnel.protocol.ts   # WS message type definitions (request/response/ping/error)
 │   ├── device-flow.service.ts # OAuth device flow authentication
 │   ├── credentials.service.ts # Persistent credential storage
@@ -81,7 +82,7 @@ src/
     ├── clients/anki-connect.client.ts  # HTTP client using ky (retries, error handling, read-only guard)
     ├── config/anki-config.interface.ts # ANKI_CONFIG injection token + IAnkiConfig interface
     ├── types/anki.types.ts             # Shared Anki types (cards, notes, ratings)
-    ├── utils/                          # Shared utilities (anki.utils, markdown.utils, stats.utils)
+    ├── utils/                          # Shared utilities (anki.utils, markdown.utils, stats.utils, media-validation.utils, card-states.utils, deck-hierarchy.utils)
     ├── primitives/essential/           # Core tools, prompts, resources
     └── primitives/gui/                 # GUI-specific tools (require user approval)
 ```
@@ -90,20 +91,24 @@ src/
 
 ```
 AppModule.forStdio()/forHttp()/forTunnel()
-  → McpModule.forRoot()           # STDIO, STREAMABLE_HTTP, or empty transport (tunnel)
+  → MCP_STRATEGY provider           # the McpStrategy the entry point built
   → McpPrimitivesAnkiEssentialModule.forRoot()
   → McpPrimitivesAnkiGuiModule.forRoot()
 ```
 
-All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`. MCP-Nest 1.9.0+ requires tools to also be listed in `AppModule.providers` (see `ESSENTIAL_MCP_TOOLS` and `GUI_MCP_TOOLS` arrays).
+Each entry point builds exactly one `McpStrategy` (`new McpStrategy({ name, version, icons, transports })` — see `createMcpStrategy()` in `bootstrap.ts`) and hands the same instance to both `AppModule.forX()` (as `MCP_STRATEGY`) and the NestJS microservice connection: `createMicroservice()` for STDIO/tunnel, `connectMicroservice()` + `startAllMicroservices()` for HTTP. Transports are instances, not enum values — `new StdioTransport()`, `new StreamableHttpTransport()`, `new TunnelTransport()`.
 
-**Tunnel mode** uses `McpModule.forRoot({ transport: [] })` -- no built-in transport. Instead, `TunnelMcpService` connects an `InMemoryTransport` to the MCP server, and `TunnelClient` bridges it to the remote tunnel server over WebSocket.
+All tools/prompts/resources are `@McpController()` classes listed in each primitive module's `controllers` array (see `ESSENTIAL_MCP_TOOLS` and `GUI_MCP_TOOLS`). NestJS scans every module's controllers for the `@MessagePattern` handlers that `@Tool`/`@Prompt`/`@Resource` compile to, so `AppModule` does not re-list them.
+
+**HTTP mode** does not let the transport self-mount its route. `createMcpHttpServer()` (`src/http/mcp-http.factory.ts`) builds the MCP endpoint as a controller via the `McpHttpControllerFor(transport)` mixin, so requests run through the Nest pipeline and the Origin/Host `APP_GUARD`s apply. A self-mounted route would register straight on the HTTP adapter and bypass them.
+
+**Tunnel mode** uses `TunnelTransport` (`src/tunnel/tunnel.transport.ts`): it gets a fully-wired server from `ctx.createBoundServer(session)`, connects it to an `InMemoryTransport` channel, and exposes `handleRequest(body)`. `TunnelClient` relays request bodies from the tunnel server over WebSocket into that method. Bootstrap lives in `src/tunnel/commands/tunnel.command.ts`. The bound server is created with `era: "legacy"`, so tunnel mode serves only the 2025 protocol revision — STDIO and HTTP also negotiate the 2026-07-28 revision.
 
 ### Key Patterns
 
 **Tool response format**: Success paths return raw objects matching the tool's `outputSchema`. The mcp-nest handler validates and wraps them automatically. Error paths use `createErrorResponse(error, context)` from `anki.utils.ts` which returns `CallToolResult` with `isError: true` and bypasses outputSchema validation.
 
-**Action tool pattern**: Complex tools like `deckActions`, `tagActions`, `mediaActions` use a dispatch pattern — a single `@Tool` with an `action` discriminant that switches to handler functions in an `actions/` subdirectory. Each action is a pure function taking `(params, ankiClient)`.
+**Action helper pattern**: The former aggregate tools (`deckActions`, `tagActions`, `mediaActions`) were split into single-purpose tools (`list-decks.tool.ts`, `deck-stats.tool.ts`, `create-deck.tool.ts`, `change-deck.tool.ts`, `store-media-file.tool.ts`, `replace-tags.tool.ts`, …). Their directories now hold only `actions/*.action.ts` — pure functions taking `(params, ankiClient)` that the split tools import. The tool class stays thin: log, call the helper, wrap failures in `createErrorResponse`.
 
 **Read-only mode**: `AnkiConnectClient` enforces read-only mode by checking actions against a `WRITE_ACTIONS` set before sending requests. Throws `ReadOnlyModeError`. Review/scheduling operations are always allowed.
 
@@ -111,7 +116,7 @@ All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`. 
 - `APP_CONFIG` — validated `AppConfig` object (Zod schema in `src/config/config.schema.ts`). Provided as `useValue` after parsing env + CLI overrides.
 - `ANKI_CONFIG` — AnkiConnect-specific config interface. Provided via `useClass: AppConfigService` in each module's `forRoot()`. Modules can swap the config provider for testing.
 
-**Environment Configuration**: All `process.env.*` reads go through `buildConfigInput()` in `src/config/config.factory.ts`. CLI args override env vars in memory (no `process.env` mutation). Services inject `AppConfigService` for type-safe access.
+**Environment Configuration**: Config `process.env.*` reads go through `buildConfigInput()` in `src/config/config.factory.ts`. CLI args override env vars in memory (no `process.env` mutation). Services inject `AppConfigService` for type-safe access. Two deliberate exceptions sit outside the config system: `media-validation.utils.ts` (`MEDIA_*`) and `system-info.resource.ts` read `process.env` directly.
 
 ### Upstream AnkiConnect Quirks
 
@@ -128,7 +133,7 @@ These are upstream behaviors that shape tool design — surface them in tool des
 - **`prebuild` hook** runs `scripts/generate-icon.mjs` before every `npm run build` (via npm's `pre*` lifecycle) — that's why an icon-generation step fires on build. It's expected, not a stray command.
 - **ESLint flat config** (`eslint.config.mjs`) — not legacy `.eslintrc`. Uses `typescript-eslint` + Prettier integration.
 - **TypeScript**: `strict: true`, target ES2023, `nodenext` module resolution. Path aliases are resolved by both `tsconfig.json` and Jest's `moduleNameMapper`.
-- **Zod 4** (`^4.3.6`) — not Zod 3. Some patterns like `z.preprocess` in `config.schema.ts` are Zod 3 holdovers that still work but may need migration.
+- **Zod 4** (`^4.4.3`) — not Zod 3. Some patterns like `z.preprocess` in `config.schema.ts` are Zod 3 holdovers that still work but may need migration.
 
 ### Path Aliases
 
@@ -138,7 +143,9 @@ These are upstream behaviors that shape tool design — surface them in tool des
 ### Key Dependencies
 
 - **Zod v4** (`zod@^4.x`) — NOT v3. Zod 4 has different APIs (e.g., `z.interface()`, changed error handling). Don't use v3 patterns.
-- **`@modelcontextprotocol/sdk`** — Pinned to exact version (`1.30.0`). Don't bump without testing MCP protocol compatibility.
+- **`@rekog/mcp-nest` v2** (`^2.0.0`) — NOT v1. No `McpModule.forRoot()`: the server is a NestJS microservice `CustomTransportStrategy` (`McpStrategy`), capability classes are `@McpController()`s, and handler methods take `@Payload()`.
+- **`@modelcontextprotocol/{core,node,server}` v2** — the MCP SDK. The old single `@modelcontextprotocol/sdk` package is gone. Don't bump without testing MCP protocol compatibility.
+- **`@nestjs/microservices`** — required by mcp-nest v2 (`CustomStrategy`, `@Payload()`), not optional.
 - **TypeScript** — `strict: true`, `module: "nodenext"`, target `ES2023`. Path aliases (`@/`, `@test/`) handle most imports.
 - **ESLint** — Flat config (`eslint.config.mjs`), not legacy `.eslintrc`.
 
@@ -186,9 +193,9 @@ These are upstream behaviors that shape tool design — surface them in tool des
 4. **Update `manifest.json`** tools array
 5. Create test: `src/mcp/primitives/essential/tools/__tests__/your-tool.tool.spec.ts`
 
-**Note**: `ESSENTIAL_MCP_TOOLS` contains tools, prompts, and resources that MCP-Nest discovers. The separate `ESSENTIAL_MCP_PRIMITIVES` array adds infrastructure like `AnkiConnectClient`.
+**Note**: `ESSENTIAL_MCP_TOOLS` is the module's `controllers` array — tools, prompts, and resources that MCP-Nest discovers. Infrastructure (`AnkiConnectClient`, the config providers) is listed inline in the module's `providers`.
 
-For multi-action tools, use the action tool pattern: create a directory with `index.ts`, `yourTool.tool.ts`, and `actions/*.action.ts` files. See `deckActions/` for reference.
+If the AnkiConnect logic is bulky or shared with another tool, put it in a pure `actions/*.action.ts` helper and keep the tool class thin — see `list-decks.tool.ts` → `deckActions/actions/listDecks.action.ts`.
 
 For tools with complex output schemas, extract Zod types into a `*.types.ts` file alongside the tool (see `collection-stats/collection-stats.types.ts` and `review-stats/review-stats.types.ts`).
 
@@ -202,9 +209,9 @@ Same as above but in `src/mcp/primitives/gui/`. Must include dual warnings:
 
 ```typescript
 // 1. Zod schema for input validation
-// 2. @Injectable() class with AnkiConnectClient injected
+// 2. @McpController() class with AnkiConnectClient injected (registered as a module controller)
 // 3. @Tool({ name, description, parameters, outputSchema, annotations }) decorator
-// 4. execute() method calling AnkiConnectClient.invoke()
+// 4. Handler method taking @Payload() params, calling AnkiConnectClient.invoke()
 // 5. Success: return raw object matching outputSchema (handler wraps it automatically)
 // 6. Error: return createErrorResponse() (bypasses outputSchema validation)
 ```
@@ -273,7 +280,7 @@ npm run e2e:full:local      # All-in-one: up → test → down
 Bundle uses STDIO entry point. Key gotchas:
 
 - User config keys in `manifest.json` must be **snake_case** (e.g., `anki_connect_url`)
-- Peer dependencies of `@rekog/mcp-nest` must stay as direct deps (JWT, passport modules)
+- Peer dependencies of `@rekog/mcp-nest` must stay as direct deps (`@modelcontextprotocol/{core,node,server}`, `@nestjs/microservices`)
 - `mcpb clean` removes devDeps to optimize size (47MB → ~10MB)
 - Use **npm** (not pnpm) - `mcpb clean` doesn't work with pnpm's node_modules
 
@@ -291,7 +298,7 @@ Key environment variables (all have defaults, see `src/config/config.schema.ts`)
 
 ### Media Security
 
-`mediaActions` and `updateNoteFields` audio/picture/video fields validate inputs against prompt-injection and SSRF attacks:
+The media tools (`storeMediaFile`, `retrieveMediaFile`, `deleteMediaFile`) and `updateNoteFields` audio/picture/video fields validate inputs against prompt-injection and SSRF attacks:
 
 - **File paths** — MIME-type allowlist (media only). Non-media files (SSH keys, creds, shell configs) are rejected.
   - `MEDIA_ALLOWED_TYPES` — extra MIME types (comma-separated)
@@ -300,4 +307,4 @@ Key environment variables (all have defaults, see `src/config/config.schema.ts`)
   - `MEDIA_ALLOWED_HOSTS` — allowlist specific private hosts (e.g., `192.168.1.50,my-nas`)
 - **Filenames** — path-traversal sanitization (`../`, absolute paths stripped).
 
-Guards live in `src/mcp/primitives/essential/tools/mediaActions/`. E2E coverage in `test/e2e/media-security.stdio.e2e-spec.ts`. When touching these, always add a test — the recent path-traversal fix (commit f94cfb8) was reported externally.
+Validation lives in `src/mcp/utils/media-validation.utils.ts`; callers are `mediaActions/actions/{store,retrieve,delete}MediaFile.action.ts` and `update-note-fields.tool.ts`. Unit coverage in `src/mcp/utils/__tests__/media-validation.utils.spec.ts`, E2E in `test/e2e/media-security.stdio.e2e-spec.ts`. When touching these, always add a test — the recent path-traversal fix (commit f94cfb8) was reported externally.

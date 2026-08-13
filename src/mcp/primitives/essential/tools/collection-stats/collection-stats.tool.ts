@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import type { AnkiDeckStatsResponse } from "@/mcp/types/anki.types";
@@ -26,7 +27,7 @@ import type {
 /**
  * Tool for getting comprehensive collection-wide statistics including distributions
  */
-@Injectable()
+@McpController()
 export class CollectionStatsTool {
   private readonly logger = new Logger(CollectionStatsTool.name);
 
@@ -135,7 +136,7 @@ export class CollectionStatsTool {
       idempotentHint: true,
     },
   })
-  async execute(params: CollectionStatsParams) {
+  async execute(@Payload() params: CollectionStatsParams) {
     try {
       const { ease_buckets = [2.0, 2.5, 3.0], interval_buckets = [7, 21, 90] } =
         params;

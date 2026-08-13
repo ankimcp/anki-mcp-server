@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for showing the question side of the current card
  */
-@Injectable()
+@McpController()
 export class GuiShowQuestionTool {
   private readonly logger = new Logger(GuiShowQuestionTool.name);
 
@@ -34,7 +35,7 @@ export class GuiShowQuestionTool {
       idempotentHint: true,
     },
   })
-  async guiShowQuestion(_args: Record<string, never>) {
+  async guiShowQuestion(@Payload() _args: Record<string, never>) {
     try {
       this.logger.log("Showing question side of current card");
 

@@ -1,11 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import { replaceTags } from "./tagActions/actions/replaceTags.action";
 
-@Injectable()
+@McpController()
 export class ReplaceTagsTool {
   private readonly logger = new Logger(ReplaceTagsTool.name);
 
@@ -38,11 +39,14 @@ export class ReplaceTagsTool {
       idempotentHint: true,
     },
   })
-  async execute(params: {
-    notes: number[];
-    tagToReplace: string;
-    replaceWithTag: string;
-  }) {
+  async execute(
+    @Payload()
+    params: {
+      notes: number[];
+      tagToReplace: string;
+      replaceWithTag: string;
+    },
+  ) {
     try {
       this.logger.log(
         `Executing replaceTags on ${params.notes?.length ?? 0} note(s)`,

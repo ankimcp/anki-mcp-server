@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for retrieving field names for a specific model/note type
  */
-@Injectable()
+@McpController()
 export class ModelFieldNamesTool {
   private readonly logger = new Logger(ModelFieldNamesTool.name);
 
@@ -39,7 +40,7 @@ export class ModelFieldNamesTool {
       idempotentHint: true,
     },
   })
-  async modelFieldNames({ modelName }: { modelName: string }) {
+  async modelFieldNames(@Payload() { modelName }: { modelName: string }) {
     try {
       this.logger.log(`Retrieving field names for model: ${modelName}`);
 

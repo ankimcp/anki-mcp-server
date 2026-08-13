@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for updating CSS styling of an existing model
  */
-@Injectable()
+@McpController()
 export class UpdateModelStylingTool {
   private readonly logger = new Logger(UpdateModelStylingTool.name);
 
@@ -55,13 +56,9 @@ export class UpdateModelStylingTool {
       idempotentHint: true,
     },
   })
-  async updateModelStyling({
-    modelName,
-    css,
-  }: {
-    modelName: string;
-    css: string;
-  }) {
+  async updateModelStyling(
+    @Payload() { modelName, css }: { modelName: string; css: string },
+  ) {
     try {
       this.logger.log(`Updating styling for model: ${modelName}`);
 

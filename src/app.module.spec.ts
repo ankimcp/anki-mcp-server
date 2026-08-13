@@ -1,7 +1,16 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { MCP_STRATEGY } from "@rekog/mcp-nest";
 import { AppModule } from "./app.module";
 import { AppConfigService } from "./app-config.service";
-import { buildConfigInput } from "./config";
+import { createMcpStrategy } from "./bootstrap";
+import { createMcpHttpServer } from "./http/mcp-http.factory";
+import { buildConfigInput, loadValidatedConfig } from "./config";
+import { getVersion } from "./version";
+
+/** Server identity from the same config path the entry points use. */
+const serverIdentity = () => loadValidatedConfig().mcpServer;
+const stdioStrategy = () => createMcpStrategy([], serverIdentity());
+const httpServer = () => createMcpHttpServer(serverIdentity());
 
 describe("AppModule", () => {
   describe("forStdio", () => {
@@ -10,7 +19,7 @@ describe("AppModule", () => {
     beforeEach(async () => {
       const configInput = buildConfigInput();
       module = await Test.createTestingModule({
-        imports: [AppModule.forStdio(configInput)],
+        imports: [AppModule.forStdio(stdioStrategy(), configInput)],
       }).compile();
     });
 
@@ -30,9 +39,9 @@ describe("AppModule", () => {
       expect(appConfigService).toBeInstanceOf(AppConfigService);
     });
 
-    it("should have STDIO transport configuration", () => {
+    it("should return a DynamicModule with an imports array", () => {
       const configInput = buildConfigInput();
-      const dynamicModule = AppModule.forStdio(configInput);
+      const dynamicModule = AppModule.forStdio(stdioStrategy(), configInput);
 
       expect(dynamicModule.module).toBe(AppModule);
       expect(dynamicModule.imports).toBeDefined();
@@ -45,17 +54,33 @@ describe("AppModule", () => {
     });
 
     it("should include MCP primitives modules", () => {
-      const dynamicModule = AppModule.forStdio(buildConfigInput());
+      const dynamicModule = AppModule.forStdio(
+        stdioStrategy(),
+        buildConfigInput(),
+      );
 
-      // Should have 4 imports: ConfigModule, McpModule, Essential, GUI
-      expect(dynamicModule.imports?.length).toBe(4);
+      // Should have 3 imports: ConfigModule, Essential, GUI
+      expect(dynamicModule.imports?.length).toBe(3);
     });
 
     it("should register providers", () => {
-      const dynamicModule = AppModule.forStdio(buildConfigInput());
+      const dynamicModule = AppModule.forStdio(
+        stdioStrategy(),
+        buildConfigInput(),
+      );
 
       expect(dynamicModule.providers).toBeDefined();
       expect(dynamicModule.providers).toContain(AppConfigService);
+    });
+
+    it("should provide the strategy it was given under MCP_STRATEGY", () => {
+      const mcp = stdioStrategy();
+      const dynamicModule = AppModule.forStdio(mcp, buildConfigInput());
+
+      expect(dynamicModule.providers).toContainEqual({
+        provide: MCP_STRATEGY,
+        useValue: mcp,
+      });
     });
   });
 
@@ -64,7 +89,7 @@ describe("AppModule", () => {
 
     beforeEach(async () => {
       module = await Test.createTestingModule({
-        imports: [AppModule.forHttp(buildConfigInput())],
+        imports: [AppModule.forHttp(httpServer(), buildConfigInput())],
       }).compile();
     });
 
@@ -84,8 +109,8 @@ describe("AppModule", () => {
       expect(appConfigService).toBeInstanceOf(AppConfigService);
     });
 
-    it("should have STREAMABLE_HTTP transport configuration", () => {
-      const dynamicModule = AppModule.forHttp(buildConfigInput());
+    it("should return a DynamicModule with an imports array", () => {
+      const dynamicModule = AppModule.forHttp(httpServer(), buildConfigInput());
 
       expect(dynamicModule.module).toBe(AppModule);
       expect(dynamicModule.imports).toBeDefined();
@@ -98,32 +123,59 @@ describe("AppModule", () => {
     });
 
     it("should include MCP primitives modules", () => {
-      const dynamicModule = AppModule.forHttp(buildConfigInput());
+      const dynamicModule = AppModule.forHttp(httpServer(), buildConfigInput());
 
-      // Should have 4 imports: ConfigModule, McpModule, Essential, GUI
-      expect(dynamicModule.imports?.length).toBe(4);
+      // Should have 3 imports: ConfigModule, Essential, GUI
+      expect(dynamicModule.imports?.length).toBe(3);
     });
 
     it("should register providers", () => {
-      const dynamicModule = AppModule.forHttp(buildConfigInput());
+      const dynamicModule = AppModule.forHttp(httpServer(), buildConfigInput());
 
       expect(dynamicModule.providers).toBeDefined();
       expect(dynamicModule.providers).toContain(AppConfigService);
     });
 
-    it("should configure mcpEndpoint as root path", () => {
-      const dynamicModule = AppModule.forHttp(buildConfigInput());
+    it("should register the MCP endpoint as a controller it owns", () => {
+      // Owning the route (instead of letting the transport self-mount) is what
+      // puts the DNS-rebinding guards in front of every MCP request.
+      const mcpHttp = httpServer();
+      const dynamicModule = AppModule.forHttp(mcpHttp, buildConfigInput());
 
-      // We can't directly inspect the McpModule config, but we can verify
-      // the module structure is correct
-      expect(dynamicModule.imports?.length).toBeGreaterThan(0);
+      expect(dynamicModule.controllers).toEqual([mcpHttp.controller]);
+    });
+
+    it("should provide the strategy it was given under MCP_STRATEGY", () => {
+      const mcpHttp = httpServer();
+      const dynamicModule = AppModule.forHttp(mcpHttp, buildConfigInput());
+
+      expect(dynamicModule.providers).toContainEqual({
+        provide: MCP_STRATEGY,
+        useValue: mcpHttp.strategy,
+      });
+    });
+  });
+
+  describe("forTunnel", () => {
+    it("should provide the strategy it was given under MCP_STRATEGY", () => {
+      const mcp = stdioStrategy();
+      const dynamicModule = AppModule.forTunnel(mcp, {});
+
+      expect(dynamicModule.module).toBe(AppModule);
+      expect(dynamicModule.providers).toContainEqual({
+        provide: MCP_STRATEGY,
+        useValue: mcp,
+      });
     });
   });
 
   describe("forStdio vs forHttp", () => {
     it("should create different configurations for STDIO and HTTP", () => {
-      const stdioModule = AppModule.forStdio(buildConfigInput());
-      const httpModule = AppModule.forHttp(buildConfigInput());
+      const stdioModule = AppModule.forStdio(
+        stdioStrategy(),
+        buildConfigInput(),
+      );
+      const httpModule = AppModule.forHttp(httpServer(), buildConfigInput());
 
       expect(stdioModule).toBeDefined();
       expect(httpModule).toBeDefined();
@@ -140,25 +192,31 @@ describe("AppModule", () => {
     });
 
     it("should both include essential primitives", () => {
-      const stdioModule = AppModule.forStdio(buildConfigInput());
-      const httpModule = AppModule.forHttp(buildConfigInput());
+      const stdioModule = AppModule.forStdio(
+        stdioStrategy(),
+        buildConfigInput(),
+      );
+      const httpModule = AppModule.forHttp(httpServer(), buildConfigInput());
 
       // Both configurations should import the same primitives
-      expect(stdioModule.imports?.length).toBe(4);
-      expect(httpModule.imports?.length).toBe(4);
+      expect(stdioModule.imports?.length).toBe(3);
+      expect(httpModule.imports?.length).toBe(3);
     });
 
     it("should both include GUI primitives", () => {
-      const stdioModule = AppModule.forStdio(buildConfigInput());
-      const httpModule = AppModule.forHttp(buildConfigInput());
+      const stdioModule = AppModule.forStdio(
+        stdioStrategy(),
+        buildConfigInput(),
+      );
+      const httpModule = AppModule.forHttp(httpServer(), buildConfigInput());
 
-      // Both should have 4 imports (Config, MCP, Essential, GUI)
-      expect(stdioModule.imports?.length).toBe(4);
-      expect(httpModule.imports?.length).toBe(4);
+      // Both should have 3 imports (Config, Essential, GUI)
+      expect(stdioModule.imports?.length).toBe(3);
+      expect(httpModule.imports?.length).toBe(3);
     });
   });
 
-  describe("environment configuration", () => {
+  describe("MCP server identity", () => {
     const originalEnv = process.env;
 
     beforeEach(() => {
@@ -169,58 +227,37 @@ describe("AppModule", () => {
       process.env = originalEnv;
     });
 
-    it("should use MCP_SERVER_NAME from environment for STDIO", () => {
-      process.env.MCP_SERVER_NAME = "test-server-stdio";
+    it("should use MCP_SERVER_NAME from config", () => {
+      process.env.MCP_SERVER_NAME = "test-server";
 
-      const dynamicModule = AppModule.forStdio(buildConfigInput());
-
-      expect(dynamicModule).toBeDefined();
-      // The actual value is used internally by McpModule
+      expect(stdioStrategy().options.name).toBe("test-server");
     });
 
-    it("should use MCP_SERVER_NAME from environment for HTTP", () => {
-      process.env.MCP_SERVER_NAME = "test-server-http";
-
-      const dynamicModule = AppModule.forHttp(buildConfigInput());
-
-      expect(dynamicModule).toBeDefined();
-      // The actual value is used internally by McpModule
-    });
-
-    it("should use MCP_SERVER_VERSION from environment for STDIO", () => {
+    it("should use MCP_SERVER_VERSION from config", () => {
       process.env.MCP_SERVER_VERSION = "2.0.0";
 
-      const dynamicModule = AppModule.forStdio(buildConfigInput());
-
-      expect(dynamicModule).toBeDefined();
-      // The actual value is used internally by McpModule
-    });
-
-    it("should use MCP_SERVER_VERSION from environment for HTTP", () => {
-      process.env.MCP_SERVER_VERSION = "2.0.0";
-
-      const dynamicModule = AppModule.forHttp(buildConfigInput());
-
-      expect(dynamicModule).toBeDefined();
-      // The actual value is used internally by McpModule
+      expect(stdioStrategy().options.version).toBe("2.0.0");
     });
 
     it("should fall back to default server name when not in environment", () => {
       delete process.env.MCP_SERVER_NAME;
 
-      const dynamicModule = AppModule.forStdio(buildConfigInput());
-
-      expect(dynamicModule).toBeDefined();
-      // Default 'anki-mcp-desktop' is used internally
+      expect(stdioStrategy().options.name).toBe("anki-mcp-server");
     });
 
-    it("should fall back to default version when not in environment", () => {
+    it("should fall back to the package version when not in environment", () => {
       delete process.env.MCP_SERVER_VERSION;
 
-      const dynamicModule = AppModule.forHttp(buildConfigInput());
+      expect(stdioStrategy().options.version).toBe(getVersion());
+    });
 
-      expect(dynamicModule).toBeDefined();
-      // Default '1.0.0' is used internally
+    it("should advertise the same identity in HTTP mode", () => {
+      // Every mode builds its strategy through createMcpStrategy, so serverInfo
+      // cannot drift between transports.
+      const mcpHttp = httpServer();
+
+      expect(mcpHttp.strategy.options.name).toBe("anki-mcp-server");
+      expect(mcpHttp.strategy.options.version).toBe(getVersion());
     });
   });
 
@@ -228,7 +265,7 @@ describe("AppModule", () => {
     it("should maintain backward compatibility for STDIO mode", async () => {
       // This ensures existing STDIO functionality still works
       const module = await Test.createTestingModule({
-        imports: [AppModule.forStdio(buildConfigInput())],
+        imports: [AppModule.forStdio(stdioStrategy(), buildConfigInput())],
       }).compile();
 
       expect(module).toBeDefined();
@@ -240,8 +277,11 @@ describe("AppModule", () => {
     });
 
     it("should not break existing module structure", () => {
-      const stdioModule = AppModule.forStdio(buildConfigInput());
-      const httpModule = AppModule.forHttp(buildConfigInput());
+      const stdioModule = AppModule.forStdio(
+        stdioStrategy(),
+        buildConfigInput(),
+      );
+      const httpModule = AppModule.forHttp(httpServer(), buildConfigInput());
 
       // Ensure both configurations have the expected structure
       expect(stdioModule.module).toBeDefined();

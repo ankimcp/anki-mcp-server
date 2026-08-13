@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for repositioning (reordering) a field in an existing note type
  */
-@Injectable()
+@McpController()
 export class RepositionModelFieldTool {
   private readonly logger = new Logger(RepositionModelFieldTool.name);
 
@@ -51,15 +52,18 @@ export class RepositionModelFieldTool {
       idempotentHint: true,
     },
   })
-  async repositionModelField({
-    modelName,
-    fieldName,
-    index,
-  }: {
-    modelName: string;
-    fieldName: string;
-    index: number;
-  }) {
+  async repositionModelField(
+    @Payload()
+    {
+      modelName,
+      fieldName,
+      index,
+    }: {
+      modelName: string;
+      fieldName: string;
+      index: number;
+    },
+  ) {
     try {
       this.logger.log(
         `Repositioning field "${fieldName}" to index ${index} in model "${modelName}"`,

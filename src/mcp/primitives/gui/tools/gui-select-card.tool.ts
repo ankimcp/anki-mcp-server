@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for selecting a specific card in the Card Browser
  */
-@Injectable()
+@McpController()
 export class GuiSelectCardTool {
   private readonly logger = new Logger(GuiSelectCardTool.name);
 
@@ -42,7 +43,7 @@ export class GuiSelectCardTool {
       idempotentHint: true,
     },
   })
-  async guiSelectCard({ card }: { card: number }) {
+  async guiSelectCard(@Payload() { card }: { card: number }) {
     try {
       this.logger.log(`Selecting card ${card} in Card Browser`);
 

@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for opening the Deck Browser dialog
  */
-@Injectable()
+@McpController()
 export class GuiDeckBrowserTool {
   private readonly logger = new Logger(GuiDeckBrowserTool.name);
 
@@ -33,7 +34,7 @@ export class GuiDeckBrowserTool {
       idempotentHint: true,
     },
   })
-  async guiDeckBrowser(_args: Record<string, never>) {
+  async guiDeckBrowser(@Payload() _args: Record<string, never>) {
     try {
       this.logger.log("Opening Deck Browser");
 

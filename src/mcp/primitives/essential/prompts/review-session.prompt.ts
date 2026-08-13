@@ -1,8 +1,8 @@
-import { Injectable, Scope } from "@nestjs/common";
-import { Prompt } from "@rekog/mcp-nest";
+import { Scope } from "@nestjs/common";
+import { McpController, Prompt } from "@rekog/mcp-nest";
 import { z } from "zod";
 
-@Injectable({ scope: Scope.REQUEST })
+@McpController({ scope: Scope.REQUEST })
 export class ReviewSessionPrompt {
   @Prompt({
     name: "anki_review",

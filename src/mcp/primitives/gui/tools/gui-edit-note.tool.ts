@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Tool } from "@rekog/mcp-nest";
+import { Logger } from "@nestjs/common";
+import { Payload } from "@nestjs/microservices";
+import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
@@ -7,7 +8,7 @@ import { createErrorResponse } from "@/mcp/utils/anki.utils";
 /**
  * Tool for opening the note editor for a specific note
  */
-@Injectable()
+@McpController()
 export class GuiEditNoteTool {
   private readonly logger = new Logger(GuiEditNoteTool.name);
 
@@ -39,7 +40,7 @@ export class GuiEditNoteTool {
       idempotentHint: true,
     },
   })
-  async guiEditNote({ note }: { note: number }) {
+  async guiEditNote(@Payload() { note }: { note: number }) {
     try {
       this.logger.log(`Opening note editor for note ${note}`);
 
