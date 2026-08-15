@@ -101,6 +101,8 @@ export const TunnelCloseCodes = {
   SERVICE_UNAVAILABLE: 4008,
   /** Server shutting down gracefully */
   SHUTDOWN: 4009,
+  /** Free-tier tunnel idle for too long (no forwarded MCP requests) */
+  IDLE_TIMEOUT: 4010,
 } as const;
 
 export type TunnelCloseCode =

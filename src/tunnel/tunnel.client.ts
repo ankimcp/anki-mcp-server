@@ -636,7 +636,8 @@ export class TunnelClient extends EventEmitter {
       code === TunnelCloseCodes.NORMAL ||
       code === TunnelCloseCodes.ACCOUNT_DELETED ||
       code === TunnelCloseCodes.SESSION_REPLACED ||
-      code === TunnelCloseCodes.TOKEN_REVOKED
+      code === TunnelCloseCodes.TOKEN_REVOKED ||
+      code === TunnelCloseCodes.IDLE_TIMEOUT
     );
   }
 
@@ -659,6 +660,11 @@ export class TunnelClient extends EventEmitter {
         case TunnelCloseCodes.SESSION_REPLACED:
           this.logger.warn(
             "Disconnected: another device connected. Run `ankimcp --tunnel` to reconnect.",
+          );
+          break;
+        case TunnelCloseCodes.IDLE_TIMEOUT:
+          this.logger.warn(
+            "Disconnected after inactivity (free tier). Run `ankimcp --tunnel` to reconnect.",
           );
           break;
         case TunnelCloseCodes.TOKEN_REVOKED:
