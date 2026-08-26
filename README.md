@@ -352,9 +352,9 @@ Options:
   --tunnel [url]                 Connect via the managed tunnel (authenticated)
   --login                        Authenticate for tunnel mode (OAuth device flow)
   --logout                       Clear saved tunnel credentials
-  -p, --port <port>              Port to listen on (HTTP mode, default: 3000)
-  -h, --host <host>              Host to bind to (HTTP mode, default: 127.0.0.1)
-  -a, --anki-connect <url>       AnkiConnect URL (default: http://localhost:8765)
+  -p, --port <number>            Port to listen on (HTTP mode; default: 3000, or PORT env var)
+  -h, --host <address>           Host to bind to (HTTP mode; default: 127.0.0.1, or HOST env var)
+  -a, --anki-connect <url>       AnkiConnect URL (default: http://localhost:8765, or ANKI_CONNECT_URL env var)
   --ngrok                        Start ngrok tunnel (requires global ngrok installation)
   --read-only                    Run in read-only mode (blocks all write operations)
   --help                         Show help message
@@ -459,6 +459,8 @@ For more details, see the [official MCP documentation](https://modelcontextproto
 | `ANKI_CONNECT_API_KEY` | API key if configured in AnkiConnect | - |
 | `ANKI_CONNECT_TIMEOUT` | Request timeout in ms | `5000` |
 | `READ_ONLY` | Enable read-only mode (`true` or `1`) | `false` |
+| `PORT` | HTTP mode: port to listen on (`--port` flag takes precedence) | `3000` |
+| `HOST` | HTTP mode: address to bind to (`--host` flag takes precedence) | `127.0.0.1` |
 | `ALLOWED_HOSTS` | HTTP mode: extra `Host` header values to accept beyond loopback (comma-separated hostnames). Required when binding to a LAN/public address or running behind a reverse proxy. See [HTTP Mode Configuration](#http-mode-configuration). | loopback only |
 | `ALLOWED_ORIGINS` | HTTP mode: comma-separated allowlist of browser `Origin`/`Referer` patterns (wildcards supported, e.g. `https://*.ngrok.io`). | `http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*` |
 | `TUNNEL_SERVER_URL` | Tunnel server WebSocket URL (tunnel mode only) | `wss://tunnel.ankimcp.ai` |

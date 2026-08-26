@@ -224,6 +224,122 @@ describe("Config Factory", () => {
     });
   });
 
+  /**
+   * Regression coverage for the PORT/HOST env var bug: Commander previously
+   * gave --port/--host hardcoded defaults ("3000" / "127.0.0.1"), so
+   * cliOverrides.port/host were *never* undefined and buildConfigInput()
+   * always overrode PORT/HOST, silently ignoring the env vars. Precedence
+   * must be CLI flag > env var > schema default.
+   */
+  describe("PORT/HOST precedence (CLI flag > env var > schema default)", () => {
+    it("uses PORT/HOST env vars when no CLI flag is given", () => {
+      process.env.PORT = "39218";
+      process.env.HOST = "0.0.0.0";
+
+      const config = loadValidatedConfig({});
+
+      expect(config.port).toBe(39218);
+      expect(config.host).toBe("0.0.0.0");
+    });
+
+    it("CLI flag overrides PORT/HOST env vars when both are set", () => {
+      process.env.PORT = "39218";
+      process.env.HOST = "0.0.0.0";
+
+      const config = loadValidatedConfig({ port: 9999, host: "192.168.1.1" });
+
+      expect(config.port).toBe(9999);
+      expect(config.host).toBe("192.168.1.1");
+    });
+
+    it("falls back to the schema default (3000 / 127.0.0.1) when neither CLI flag nor env var is set", () => {
+      delete process.env.PORT;
+      delete process.env.HOST;
+
+      const config = loadValidatedConfig({});
+
+      expect(config.port).toBe(3000);
+      expect(config.host).toBe("127.0.0.1");
+    });
+
+    it("buildConfigInput leaves PORT/HOST untouched when cliOverrides.port/host are undefined", () => {
+      process.env.PORT = "39218";
+      process.env.HOST = "0.0.0.0";
+
+      const result = buildConfigInput({ port: undefined, host: undefined });
+
+      expect(result.PORT).toBe("39218");
+      expect(result.HOST).toBe("0.0.0.0");
+    });
+  });
+
+  /**
+   * Regression coverage for the same env-var-clobber bug affecting
+   * ANKI_CONNECT_URL: Commander's `-a, --anki-connect` used to carry a
+   * hardcoded default ("http://localhost:8765"), so cliOverrides.ankiConnect
+   * was *never* undefined and buildConfigInput() always overrode
+   * ANKI_CONNECT_URL, silently ignoring the env var. Precedence must be CLI
+   * flag > env var > schema default.
+   */
+  describe("ANKI_CONNECT_URL precedence (CLI flag > env var > schema default)", () => {
+    it("uses ANKI_CONNECT_URL env var when no CLI flag is given", () => {
+      process.env.ANKI_CONNECT_URL = "http://anki.env:8765";
+
+      const config = loadValidatedConfig({});
+
+      expect(config.ankiConnect.url).toBe("http://anki.env:8765");
+    });
+
+    it("CLI flag overrides ANKI_CONNECT_URL env var when both are set", () => {
+      process.env.ANKI_CONNECT_URL = "http://anki.env:8765";
+
+      const config = loadValidatedConfig({
+        ankiConnect: "http://anki.cli:8765",
+      });
+
+      expect(config.ankiConnect.url).toBe("http://anki.cli:8765");
+    });
+
+    it("falls back to the schema default (http://localhost:8765) when neither CLI flag nor env var is set", () => {
+      delete process.env.ANKI_CONNECT_URL;
+
+      const config = loadValidatedConfig({});
+
+      expect(config.ankiConnect.url).toBe("http://localhost:8765");
+    });
+
+    it("buildConfigInput leaves ANKI_CONNECT_URL untouched when cliOverrides.ankiConnect is undefined", () => {
+      process.env.ANKI_CONNECT_URL = "http://anki.env:8765";
+
+      const result = buildConfigInput({ ankiConnect: undefined });
+
+      expect(result.ANKI_CONNECT_URL).toBe("http://anki.env:8765");
+    });
+  });
+
+  /**
+   * Blank PORT/HOST env vars (e.g. `PORT=""` from an unset shell variable
+   * interpolated into a `.env` file) must fall through to the schema default
+   * rather than crashing coercion (PORT) or binding all interfaces (HOST).
+   */
+  describe("blank PORT/HOST env vars fall back to schema defaults", () => {
+    it("falls back to the default port when PORT is a blank string", () => {
+      process.env.PORT = "";
+
+      const config = loadValidatedConfig({});
+
+      expect(config.port).toBe(3000);
+    });
+
+    it("falls back to the default host when HOST is a blank string", () => {
+      process.env.HOST = "";
+
+      const config = loadValidatedConfig({});
+
+      expect(config.host).toBe("127.0.0.1");
+    });
+  });
+
   describe("loadValidatedConfig", () => {
     it("should build and validate config in one step", () => {
       process.env.PORT = "3000";
