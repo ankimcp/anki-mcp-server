@@ -1,7 +1,7 @@
 import {
   parseCliArgs,
   parseOptionalUrl,
-  CliOptions,
+  BannerOptions,
   displayStartupBanner,
 } from "../cli";
 import { createCli, type Cli } from "../cli/cli-output";
@@ -29,9 +29,9 @@ describe("CLI Module", () => {
       const options = parseCliArgs();
 
       expect(options).toEqual({
-        port: 3000,
-        host: "127.0.0.1",
-        ankiConnect: "http://localhost:8765",
+        port: undefined,
+        host: undefined,
+        ankiConnect: undefined,
         ngrok: false,
         readOnly: false,
         login: false,
@@ -47,8 +47,8 @@ describe("CLI Module", () => {
       const options = parseCliArgs();
 
       expect(options.port).toBe(8080);
-      expect(options.host).toBe("127.0.0.1"); // defaults
-      expect(options.ankiConnect).toBe("http://localhost:8765"); // defaults
+      expect(options.host).toBeUndefined(); // no CLI default; Zod schema owns it
+      expect(options.ankiConnect).toBeUndefined(); // no CLI default; Zod schema owns it
     });
 
     it("should parse short form port option", () => {
@@ -65,8 +65,8 @@ describe("CLI Module", () => {
       const options = parseCliArgs();
 
       expect(options.host).toBe("0.0.0.0");
-      expect(options.port).toBe(3000); // defaults
-      expect(options.ankiConnect).toBe("http://localhost:8765"); // defaults
+      expect(options.port).toBeUndefined(); // no CLI default; Zod schema owns it
+      expect(options.ankiConnect).toBeUndefined(); // no CLI default; Zod schema owns it
     });
 
     it("should parse short form host option", () => {
@@ -88,8 +88,8 @@ describe("CLI Module", () => {
       const options = parseCliArgs();
 
       expect(options.ankiConnect).toBe("http://192.168.1.50:8765");
-      expect(options.port).toBe(3000); // defaults
-      expect(options.host).toBe("127.0.0.1"); // defaults
+      expect(options.port).toBeUndefined(); // no CLI default; Zod schema owns it
+      expect(options.host).toBeUndefined(); // no CLI default; Zod schema owns it
     });
 
     it("should parse short form anki-connect option", () => {
@@ -150,8 +150,8 @@ describe("CLI Module", () => {
       const options = parseCliArgs();
 
       expect(options.readOnly).toBe(true);
-      expect(options.port).toBe(3000); // defaults
-      expect(options.host).toBe("127.0.0.1"); // defaults
+      expect(options.port).toBeUndefined(); // no CLI default; Zod schema owns it
+      expect(options.host).toBeUndefined(); // no CLI default; Zod schema owns it
     });
 
     it("should parse --tunnel flag alone as true", () => {
@@ -160,8 +160,8 @@ describe("CLI Module", () => {
       const options = parseCliArgs();
 
       expect(options.tunnel).toBe(true);
-      expect(options.port).toBe(3000); // defaults
-      expect(options.host).toBe("127.0.0.1"); // defaults
+      expect(options.port).toBeUndefined(); // no CLI default; Zod schema owns it
+      expect(options.host).toBeUndefined(); // no CLI default; Zod schema owns it
     });
 
     it("should parse --read-only with other options", () => {
@@ -347,16 +347,11 @@ describe("CLI Module", () => {
     it("should display startup banner with correct information", () => {
       const consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
 
-      const options: CliOptions = {
+      const options: BannerOptions = {
         port: 3000,
         host: "127.0.0.1",
         ankiConnect: "http://localhost:8765",
-        ngrok: false,
         readOnly: false,
-        login: false,
-        logout: false,
-        tunnel: false,
-        debug: false,
       };
 
       displayStartupBanner(createCli(false), options);
@@ -377,16 +372,11 @@ describe("CLI Module", () => {
     it("should display custom options in banner", () => {
       const consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
 
-      const options: CliOptions = {
+      const options: BannerOptions = {
         port: 8080,
         host: "0.0.0.0",
         ankiConnect: "http://192.168.1.100:8765",
-        ngrok: false,
         readOnly: false,
-        login: false,
-        logout: false,
-        tunnel: false,
-        debug: false,
       };
 
       displayStartupBanner(createCli(false), options);
@@ -404,16 +394,11 @@ describe("CLI Module", () => {
     it("should include remote-access hint (tunnel recommended, ngrok mentioned)", () => {
       const consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
 
-      const options: CliOptions = {
+      const options: BannerOptions = {
         port: 3000,
         host: "127.0.0.1",
         ankiConnect: "http://localhost:8765",
-        ngrok: false,
         readOnly: false,
-        login: false,
-        logout: false,
-        tunnel: false,
-        debug: false,
       };
 
       displayStartupBanner(createCli(false), options);
@@ -429,16 +414,11 @@ describe("CLI Module", () => {
     it("should not show verbose ngrok setup steps", () => {
       const consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
 
-      const options: CliOptions = {
+      const options: BannerOptions = {
         port: 8080,
         host: "127.0.0.1",
         ankiConnect: "http://localhost:8765",
-        ngrok: false,
         readOnly: false,
-        login: false,
-        logout: false,
-        tunnel: false,
-        debug: false,
       };
 
       displayStartupBanner(createCli(false), options);
@@ -454,16 +434,11 @@ describe("CLI Module", () => {
     it("should include help command reference", () => {
       const consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
 
-      const options: CliOptions = {
+      const options: BannerOptions = {
         port: 3000,
         host: "127.0.0.1",
         ankiConnect: "http://localhost:8765",
-        ngrok: false,
         readOnly: false,
-        login: false,
-        logout: false,
-        tunnel: false,
-        debug: false,
       };
 
       displayStartupBanner(createCli(false), options);
@@ -478,16 +453,11 @@ describe("CLI Module", () => {
     it("should show read-only warning when enabled", () => {
       const consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
 
-      const options: CliOptions = {
+      const options: BannerOptions = {
         port: 3000,
         host: "127.0.0.1",
         ankiConnect: "http://localhost:8765",
-        ngrok: false,
         readOnly: true,
-        login: false,
-        logout: false,
-        tunnel: false,
-        debug: false,
       };
 
       displayStartupBanner(createCli(false), options);
@@ -503,16 +473,11 @@ describe("CLI Module", () => {
     it("should not show read-only warning when disabled", () => {
       const consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
 
-      const options: CliOptions = {
+      const options: BannerOptions = {
         port: 3000,
         host: "127.0.0.1",
         ankiConnect: "http://localhost:8765",
-        ngrok: false,
         readOnly: false,
-        login: false,
-        logout: false,
-        tunnel: false,
-        debug: false,
       };
 
       displayStartupBanner(createCli(false), options);

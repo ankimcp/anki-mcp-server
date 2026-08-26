@@ -72,7 +72,11 @@ async function bootstrap() {
   // arriving via the machine's LAN/public hostname will be rejected. The
   // emptiness check is sourced from the validated config (not raw process.env)
   // so CLI overrides and Zod parsing are honored.
-  const boundHost = options.host;
+  // Use the validated config's host/port (not the raw CLI options) so a
+  // value supplied via PORT/HOST env vars — rather than --port/--host — is
+  // reflected in the loopback warning, the actual listen() call, and the
+  // startup banner below.
+  const boundHost = validatedConfig.host;
   if (shouldWarnLoopbackOnly(boundHost, validatedConfig.allowedHosts)) {
     new Logger("HttpBootstrap").warn(
       `Server is bound to ${boundHost} but ALLOWED_HOSTS is not set. ` +
@@ -90,14 +94,14 @@ async function bootstrap() {
   app.connectMicroservice<CustomStrategy>({ strategy: mcpHttp.strategy });
   await app.startAllMicroservices();
 
-  await app.listen(options.port, options.host);
+  await app.listen(validatedConfig.port, validatedConfig.host);
 
   // Start ngrok if requested
   let ngrokUrl: string | undefined;
   if (options.ngrok) {
     try {
       const ngrokService = new NgrokService();
-      const tunnelInfo = await ngrokService.start(options.port);
+      const tunnelInfo = await ngrokService.start(validatedConfig.port);
       ngrokUrl = tunnelInfo.publicUrl;
     } catch (err) {
       cli.blank();
@@ -111,8 +115,21 @@ async function bootstrap() {
     }
   }
 
-  // Show startup information
-  displayStartupBanner(cli, options, ngrokUrl);
+  // Show startup information. The banner needs *resolved* values — env vars
+  // or schema defaults may have supplied port/host/ankiConnect, not just the
+  // CLI flags in `options` — so build a dedicated BannerOptions from
+  // validatedConfig rather than passing the (partially unresolved) CLI
+  // options through.
+  displayStartupBanner(
+    cli,
+    {
+      port: validatedConfig.port,
+      host: validatedConfig.host,
+      ankiConnect: validatedConfig.ankiConnect.url,
+      readOnly: validatedConfig.readOnly,
+    },
+    ngrokUrl,
+  );
 }
 
 // Bootstrap-level error handler: we don't yet have a `cli` (options weren't
