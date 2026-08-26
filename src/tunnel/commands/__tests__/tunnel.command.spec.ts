@@ -82,7 +82,10 @@ jest.mock("@/app-config.service", () => ({
 }));
 
 jest.mock("@/config", () => ({
-  loadValidatedConfig: jest.fn(() => ({ tunnel: { serverUrl: "wss://x" } })),
+  loadValidatedConfig: jest.fn(() => ({
+    tunnel: { serverUrl: "wss://x" },
+    ankiConnect: { url: "http://localhost:8765" },
+  })),
 }));
 
 jest.mock("@nestjs/core", () => ({
@@ -142,6 +145,7 @@ jest.mock("@/cli/spinner", () => ({
 }));
 
 import { NestFactory } from "@nestjs/core";
+import { AppModule } from "@/app.module";
 import { handleTunnel } from "../tunnel.command";
 import {
   performLogin,
@@ -238,7 +242,28 @@ describe("handleTunnel - credential gate", () => {
       debug: false,
       readOnly: false,
       tunnel: "wss://custom.example.com",
+      ankiConnect: undefined,
     });
+  });
+
+  it("passes ankiConnect through to loadValidatedConfig and AppModule.forTunnel (so -a/--anki-connect is honoured in tunnel mode)", async () => {
+    mockLoadCredentials.mockResolvedValueOnce({ access_token: "t" });
+    await expect(
+      handleTunnel(cli, undefined, false, false, "http://192.168.1.50:8765"),
+    ).rejects.toThrow("exit");
+
+    expect(mockedLoadConfig).toHaveBeenCalledWith({
+      debug: false,
+      readOnly: false,
+      tunnel: undefined,
+      ankiConnect: "http://192.168.1.50:8765",
+    });
+    // AppModule.forTunnel throws via the mocked NestFactory, so it's called
+    // before the exit — assert it received the same override.
+    expect(AppModule.forTunnel).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ ankiConnect: "http://192.168.1.50:8765" }),
+    );
   });
 
   it("does NOT call performLogin when credentials already exist", async () => {
@@ -458,6 +483,11 @@ describe("handleTunnel - auto-relogin on session_expired (first connect)", () =>
     // The retry must use exactly the credentials performLogin returned.
     expect(tunnelClientStub.connect.mock.calls[1][0]).toBe(freshCreds);
     expect(cli.success).toHaveBeenCalledWith("Tunnel established");
+    // AnkiConnect URL banner line matches the HTTP mode banner's style (emoji
+    // prefix + column alignment) in cli/args.ts's displayStartupBanner().
+    expect(cli.info).toHaveBeenCalledWith(
+      "🔌 AnkiConnect URL:   http://localhost:8765",
+    );
     expect(exitSpy).not.toHaveBeenCalled();
   });
 

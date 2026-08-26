@@ -19,8 +19,10 @@ export const DEFAULT_ALLOWED_ORIGINS = [
 
 /**
  * Treats a blank/whitespace-only string as "not set" so it falls through to
- * the schema default instead of failing coercion (PORT="") or binding an
- * unintended value (HOST=""). Non-string values pass through unchanged.
+ * the schema default instead of failing coercion (PORT="", ANKI_CONNECT_TIMEOUT="",
+ * ANKI_CONNECT_API_VERSION="") or failing `.url()` validation
+ * (ANKI_CONNECT_URL="", TUNNEL_SERVER_URL="") or binding an unintended value
+ * (HOST=""). Non-string values pass through unchanged.
  */
 function emptyStringToUndefined(val: unknown): unknown {
   if (typeof val === "string" && val.trim() === "") return undefined;
@@ -77,10 +79,19 @@ export const configSchema = z.object({
 
   // AnkiConnect
   ankiConnect: z.object({
-    url: z.string().url().default("http://localhost:8765"),
+    url: z.preprocess(
+      emptyStringToUndefined,
+      z.string().url().default("http://localhost:8765"),
+    ),
     apiKey: z.string().optional(),
-    apiVersion: z.coerce.number().int().positive().default(6),
-    timeout: z.coerce.number().int().positive().default(5000),
+    apiVersion: z.preprocess(
+      emptyStringToUndefined,
+      z.coerce.number().int().positive().default(6),
+    ),
+    timeout: z.preprocess(
+      emptyStringToUndefined,
+      z.coerce.number().int().positive().default(5000),
+    ),
   }),
 
   // Auth (generic, not Keycloak-specific)
@@ -90,7 +101,10 @@ export const configSchema = z.object({
 
   // Tunnel
   tunnel: z.object({
-    serverUrl: z.string().url().default("wss://tunnel.ankimcp.ai"),
+    serverUrl: z.preprocess(
+      emptyStringToUndefined,
+      z.string().url().default("wss://tunnel.ankimcp.ai"),
+    ),
   }),
 
   // Read-only mode

@@ -26,6 +26,13 @@ function parseStdioArgs(): { readOnly: boolean; ankiConnect?: string } {
     } else if (args[i] === "--anki-connect" || args[i] === "-a") {
       ankiConnect = args[i + 1];
       i++; // Skip the next arg since we consumed it
+
+      // `-a ""` would otherwise resolve silently to the default (see parseAnkiConnectArg in cli/args.ts)
+      if (ankiConnect === "") {
+        throw new Error(
+          "AnkiConnect URL cannot be empty. Omit --anki-connect/-a to use the default (http://localhost:8765) or the ANKI_CONNECT_URL env var.",
+        );
+      }
     }
   }
 

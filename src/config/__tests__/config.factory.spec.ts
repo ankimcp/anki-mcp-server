@@ -338,6 +338,38 @@ describe("Config Factory", () => {
 
       expect(config.host).toBe("127.0.0.1");
     });
+
+    it("falls back to the default AnkiConnect URL when ANKI_CONNECT_URL is a blank string", () => {
+      process.env.ANKI_CONNECT_URL = "";
+
+      const config = loadValidatedConfig({});
+
+      expect(config.ankiConnect.url).toBe("http://localhost:8765");
+    });
+
+    it("falls back to the default tunnel server URL when TUNNEL_SERVER_URL is a blank string", () => {
+      process.env.TUNNEL_SERVER_URL = "";
+
+      const config = loadValidatedConfig({});
+
+      expect(config.tunnel.serverUrl).toBe("wss://tunnel.ankimcp.ai");
+    });
+
+    it("falls back to the default AnkiConnect API version when ANKI_CONNECT_API_VERSION is a blank string", () => {
+      process.env.ANKI_CONNECT_API_VERSION = "";
+
+      const config = loadValidatedConfig({});
+
+      expect(config.ankiConnect.apiVersion).toBe(6);
+    });
+
+    it("falls back to the default AnkiConnect timeout when ANKI_CONNECT_TIMEOUT is a blank string", () => {
+      process.env.ANKI_CONNECT_TIMEOUT = "";
+
+      const config = loadValidatedConfig({});
+
+      expect(config.ankiConnect.timeout).toBe(5000);
+    });
   });
 
   describe("loadValidatedConfig", () => {

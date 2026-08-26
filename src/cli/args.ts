@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, InvalidArgumentError } from "commander";
 import { readFileSync } from "fs";
 import { join } from "path";
 import updateNotifier from "update-notifier";
@@ -62,6 +62,24 @@ function getPackageJson() {
 
 export function checkForUpdates(): void {
   updateNotifier({ pkg: getPackageJson() }).notify();
+}
+
+/**
+ * Parser for the `-a, --anki-connect <url>` option. Commander already
+ * requires a value for `<url>` (rejects a bare `-a`), but an explicit empty
+ * string (e.g. `-a ""` from a shell expansion of an unset env var) is a
+ * user-supplied override intent that would otherwise flow through
+ * `buildConfigInput` as `ANKI_CONNECT_URL=""` and silently resolve to the
+ * schema default. Throwing here surfaces a proper Commander usage error
+ * instead (mirrors the `--tunnel`/`--login` handling below).
+ */
+function parseAnkiConnectArg(value: string): string {
+  if (value.trim() === "") {
+    throw new InvalidArgumentError(
+      "AnkiConnect URL cannot be empty. Omit --anki-connect/-a to use the default (http://localhost:8765) or the ANKI_CONNECT_URL env var.",
+    );
+  }
+  return value;
 }
 
 /**
@@ -136,6 +154,7 @@ export function parseCliArgs(): CliOptions {
     .option(
       "-a, --anki-connect <url>",
       "AnkiConnect URL (default: http://localhost:8765, or ANKI_CONNECT_URL env var)",
+      parseAnkiConnectArg,
     )
     .option(
       "--ngrok",
