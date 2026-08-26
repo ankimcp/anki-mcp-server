@@ -8,6 +8,25 @@ on:
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
+  pack-smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Smoke-test packed tarball (no lockfile, mirrors a real consumer install)
+      run: npm run smoke:pack
+
   e2e-npm-package:
     runs-on: ubuntu-latest
 

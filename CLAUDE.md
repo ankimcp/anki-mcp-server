@@ -28,6 +28,7 @@ npm run test:tools               # Tool unit tests only
 npm run test:workflows           # Multi-tool workflow scenarios (mocked)
 npm run test:cov                 # With coverage (70% threshold)
 npm run e2e:full:local           # One-shot E2E: up → test → down
+npm run smoke:pack               # Pack + install from tarball (no lockfile), verify initialize/tools-list
 
 # Quality
 npm run lint && npm run type-check   # Pre-push checks (also runs via Husky)
