@@ -191,6 +191,9 @@ async function ensureCredentials(
  * @param debug - Optional debug mode flag (controls NestJS log levels — the
  *   `cli` parameter already has the debug flag bound for stack-trace output).
  * @param readOnly - Optional read-only mode flag
+ * @param ankiConnect - Optional AnkiConnect URL override (CLI flag > env var >
+ *   schema default). Tunnel mode still talks to AnkiConnect directly — only
+ *   the control channel to the relay goes over the tunnel.
  * @throws {Error} If connection fails
  */
 export async function handleTunnel(
@@ -198,14 +201,17 @@ export async function handleTunnel(
   tunnelUrl?: string,
   debug?: boolean,
   readOnly?: boolean,
+  ankiConnect?: string,
 ): Promise<void> {
   const credentialsService = new CredentialsService();
   // Pass tunnelUrl through to config so the device flow targets the same host
-  // as the tunnel itself (the auth endpoints are derived from this URL).
+  // as the tunnel itself (the auth endpoints are derived from this URL), and
+  // ankiConnect so `-a/--anki-connect` is honoured in tunnel mode too.
   const validatedConfig = loadValidatedConfig({
     debug,
     readOnly,
     tunnel: tunnelUrl,
+    ankiConnect,
   });
   const appConfigService = new AppConfigService(validatedConfig);
   const deviceFlowService = new DeviceFlowService(appConfigService);
@@ -292,7 +298,7 @@ export async function handleTunnel(
 
     try {
       app = await NestFactory.createMicroservice(
-        AppModule.forTunnel(mcp, { debug, readOnly }),
+        AppModule.forTunnel(mcp, { debug, readOnly, ankiConnect }),
         {
           strategy: mcp,
           logger: loggerService,
@@ -303,6 +309,7 @@ export async function handleTunnel(
       await app.listen();
       stopSpinner();
       cli.success("MCP service ready");
+      cli.info(`🔌 AnkiConnect URL:   ${validatedConfig.ankiConnect.url}`);
     } catch (error) {
       stopSpinner();
       cli.error(

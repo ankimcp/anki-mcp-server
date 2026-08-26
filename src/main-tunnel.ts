@@ -31,7 +31,13 @@ async function bootstrap() {
   // Main tunnel mode - always runs (this is the tunnel entry point).
   // `--tunnel` is optional; only used to override the URL.
   const tunnelUrl = parseOptionalUrl(options.tunnel, "--tunnel", cli);
-  await handleTunnel(cli, tunnelUrl, options.debug, options.readOnly);
+  await handleTunnel(
+    cli,
+    tunnelUrl,
+    options.debug,
+    options.readOnly,
+    options.ankiConnect,
+  );
 }
 
 // Bootstrap-level error handler: we don't yet have a `cli` (options weren't

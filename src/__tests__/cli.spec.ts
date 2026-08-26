@@ -300,6 +300,45 @@ describe("CLI Module", () => {
 
       expect(options.logout).toBe(true);
     });
+
+    it("rejects an empty --anki-connect value with a Commander usage error instead of silently falling back to the default", () => {
+      process.argv = ["node", "ankimcp", "--anki-connect", ""];
+
+      const writeSpy = jest.spyOn(process.stderr, "write").mockImplementation();
+      const exitSpy = jest.spyOn(process, "exit").mockImplementation((() => {
+        throw new Error("process.exit called");
+      }) as never);
+
+      try {
+        expect(() => parseCliArgs()).toThrow("process.exit called");
+
+        const output = writeSpy.mock.calls.map((call) => call[0]).join("");
+        expect(output).toMatch(/AnkiConnect URL cannot be empty/);
+        expect(exitSpy).toHaveBeenCalledWith(1);
+      } finally {
+        writeSpy.mockRestore();
+        exitSpy.mockRestore();
+      }
+    });
+
+    it("rejects an empty -a value with a Commander usage error", () => {
+      process.argv = ["node", "ankimcp", "-a", ""];
+
+      const writeSpy = jest.spyOn(process.stderr, "write").mockImplementation();
+      const exitSpy = jest.spyOn(process, "exit").mockImplementation((() => {
+        throw new Error("process.exit called");
+      }) as never);
+
+      try {
+        expect(() => parseCliArgs()).toThrow("process.exit called");
+
+        const output = writeSpy.mock.calls.map((call) => call[0]).join("");
+        expect(output).toMatch(/AnkiConnect URL cannot be empty/);
+      } finally {
+        writeSpy.mockRestore();
+        exitSpy.mockRestore();
+      }
+    });
   });
 
   describe("getVersion", () => {
