@@ -21,6 +21,8 @@ export { GetDueCardsTool } from "./tools/get-due-cards.tool";
 export { GetCardsTool } from "./tools/get-cards.tool";
 export { PresentCardTool } from "./tools/present-card.tool";
 export { RateCardTool } from "./tools/rate-card.tool";
+export { ForgetCardsTool } from "./tools/forget-cards.tool";
+export { SetDueDateTool } from "./tools/set-due-date.tool";
 export { ModelNamesTool } from "./tools/model-names.tool";
 export { ModelFieldNamesTool } from "./tools/model-field-names.tool";
 export { ModelStylingTool } from "./tools/model-styling.tool";
@@ -72,6 +74,8 @@ import { GetDueCardsTool } from "./tools/get-due-cards.tool";
 import { GetCardsTool } from "./tools/get-cards.tool";
 import { PresentCardTool } from "./tools/present-card.tool";
 import { RateCardTool } from "./tools/rate-card.tool";
+import { ForgetCardsTool } from "./tools/forget-cards.tool";
+import { SetDueDateTool } from "./tools/set-due-date.tool";
 import { ModelNamesTool } from "./tools/model-names.tool";
 import { ModelFieldNamesTool } from "./tools/model-field-names.tool";
 import { ModelStylingTool } from "./tools/model-styling.tool";
@@ -116,6 +120,8 @@ export const ESSENTIAL_MCP_TOOLS = [
   GetCardsTool,
   PresentCardTool,
   RateCardTool,
+  ForgetCardsTool,
+  SetDueDateTool,
   ModelNamesTool,
   ModelFieldNamesTool,
   ModelStylingTool,
