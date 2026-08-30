@@ -38,8 +38,8 @@ export class SetDueDateTool {
         .array(z.number())
         .min(1)
         .describe(
-          "Array of card IDs to reschedule. Card IDs (not note IDs) — use findCards, " +
-            "get_cards, or notesInfo to obtain them.",
+          "Array of card IDs to reschedule. Card IDs (not note IDs) — use get_cards, " +
+            "get_due_cards, or notesInfo to obtain them.",
         ),
       days: z
         .string()
@@ -76,16 +76,22 @@ export class SetDueDateTool {
               ),
           }),
         )
-        .describe("Per-card scheduling state read back after the change"),
+        .describe(
+          "Per-card scheduling state read back after the change. Empty when the " +
+            "read-back failed — the reschedule itself still succeeded, so check " +
+            "`message` rather than treating an empty array as a no-op.",
+        ),
     }),
     annotations: {
       title: "Set Card Due Date",
       readOnlyHint: false,
       // Review history is preserved; only the next due date moves.
       destructiveHint: false,
-      // Re-applying the same absolute spec lands on the same day, except for
-      // ranges, which re-roll.
-      idempotentHint: true,
+      // A range spec like "3-7" re-rolls on every call, so repeating the same
+      // arguments can land the same cards on different days. The hint describes
+      // the tool rather than one set of arguments, and a client that auto-retries
+      // on it would silently reshuffle scheduling.
+      idempotentHint: false,
     },
   })
   async execute(@Payload() params: { cards: number[]; days: string }) {
@@ -132,27 +138,48 @@ export class SetDueDateTool {
 
       await this.ankiClient.invoke<boolean>("setDueDate", { cards, days });
 
-      // Read the scheduling back so the caller reports what Anki actually did
-      // rather than what was requested — ranges in particular resolve to a
-      // different day per card.
-      const updated = await this.ankiClient.invoke<AnkiCardInfo[]>(
-        "cardsInfo",
-        {
-          cards,
-        },
-      );
+      // The reschedule is committed from here on. Everything below is reporting,
+      // so it gets its own error handling: surfacing a read-back failure as a
+      // failed call would invite a retry, and retrying a range spec re-rolls the
+      // dates — turning a cosmetic problem into a scheduling one.
+      let scheduled: Array<{
+        cardId: number;
+        intervalDays: number;
+        due: number;
+      }> = [];
+      let readBackFailed = false;
 
-      const scheduled = cards.map((cardId, index) => ({
-        cardId,
-        intervalDays: updated?.[index]?.interval ?? 0,
-        due: updated?.[index]?.due ?? 0,
-      }));
+      try {
+        // Read the scheduling back so the caller reports what Anki actually did
+        // rather than what was requested — ranges in particular resolve to a
+        // different day per card.
+        const updated = await this.ankiClient.invoke<AnkiCardInfo[]>(
+          "cardsInfo",
+          { cards },
+        );
+
+        scheduled = cards.map((cardId, index) => ({
+          cardId,
+          intervalDays: updated?.[index]?.interval ?? 0,
+          due: updated?.[index]?.due ?? 0,
+        }));
+      } catch (readBackError) {
+        readBackFailed = true;
+        this.logger.warn(
+          `Rescheduled ${cards.length} card(s) to "${days}" but could not read ` +
+            `the new scheduling back`,
+          readBackError,
+        );
+      }
 
       this.logger.log(`Rescheduled ${cards.length} card(s) to "${days}"`);
 
       return {
         success: true,
-        message: `Successfully rescheduled ${cards.length} card(s) to "${days}"`,
+        message: readBackFailed
+          ? `Successfully rescheduled ${cards.length} card(s) to "${days}", but reading ` +
+            `the new scheduling back failed. The reschedule was applied — do not retry.`
+          : `Successfully rescheduled ${cards.length} card(s) to "${days}"`,
         cardsAffected: cards.length,
         days,
         intervalOverwritten: days.endsWith("!"),

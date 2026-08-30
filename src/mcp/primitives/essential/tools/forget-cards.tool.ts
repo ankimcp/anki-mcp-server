@@ -30,8 +30,8 @@ export class ForgetCardsTool {
         .array(z.number())
         .min(1)
         .describe(
-          "Array of card IDs to reset to new. Card IDs (not note IDs) — use findCards, " +
-            "get_cards, or notesInfo to obtain them.",
+          "Array of card IDs to reset to new. Card IDs (not note IDs) — use get_cards, " +
+            "get_due_cards, or notesInfo to obtain them.",
         ),
     }),
     outputSchema: z.object({

@@ -144,4 +144,21 @@ describe("SetDueDateTool", () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain("Network error");
   });
+
+  it("should still report success when the read-back fails after the reschedule", async () => {
+    ankiClient.invoke
+      .mockResolvedValueOnce(mockCardsInfo([111])) // cardsInfo validation
+      .mockResolvedValueOnce(true) // setDueDate — committed
+      .mockRejectedValueOnce(new Error("Anki closed")); // cardsInfo read-back
+
+    const rawResult = await tool.execute({ cards: [111], days: "3-7" });
+    const result = parseToolResult(rawResult);
+
+    // The mutation landed, so reporting it as a failure would invite a retry —
+    // and retrying a range spec re-rolls the dates.
+    expect(result.success).toBe(true);
+    expect(result.cardsAffected).toBe(1);
+    expect(result.scheduled).toEqual([]);
+    expect(result.message).toContain("do not retry");
+  });
 });
