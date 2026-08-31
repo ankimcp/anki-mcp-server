@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+- **New `forgetCards` tool** — resets cards to the new queue, discarding interval, due date and ease factor. Previously the only way to push a card back into rotation was `rate_card` with a rating of 1, which records a real review, counts as a lapse and drops the card's ease factor — corrupting both future scheduling and review statistics. The response reports each card's prior state (`previousState`, `previousIntervalDays`, `reps`, `lapses`) so callers can show what was given up. The review log is preserved; note content, tags and deck placement are untouched.
+- **New `setDueDate` tool** — reschedules cards to become due in N days without recording a review. Accepts Anki's spec format: `"0"` (today), `"5"`, `"3-7"` (a random day in range, to spread a batch out) and a trailing `!` (`"1!"`) to also overwrite the interval. Scheduling is read back after the change, so ranges report the day each card actually landed on.
+- Both tools validate every card ID via `cardsInfo` before mutating: AnkiConnect's `forgetCards` returns `null` and `setDueDate` returns `true` even for IDs that don't exist, so a typo would otherwise look like a successful reset. Shared validation lives in `src/mcp/utils/card-validation.utils.ts`.
+
 ## [0.24.0] - 2026-08
 
 - **Claude Desktop's Code tab works again** (fixes #53). Every tool call failed with `JSON Schema declares an unsupported dialect ("$schema": "http://json-schema.org/draft-07/schema#")`. [SEP-1613](https://modelcontextprotocol.io/seps/1613-establish-json-schema-2020-12-as-default-dialect-f) made 2020-12 the default dialect, but `@modelcontextprotocol/sdk` 1.x hardcodes draft-07 with no opt-out, and the upstream fixes for the 1.x line have not landed — so no configuration change here could resolve it. The server now uses the v2 SDK (`@modelcontextprotocol/{core,node,server}`), and all 96 tool schemas (48 input + 48 output) emit `https://json-schema.org/draft/2020-12/schema`. Regular Desktop chat was unaffected because it does not validate the dialect; only the Code tab does.
