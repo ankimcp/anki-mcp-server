@@ -35,7 +35,7 @@ Three representative prompts showing the tool flows this server enables:
 
 ## Available Tools
 
-The server exposes **42 MCP tools** — 31 essential tools for everyday Anki operations and 11 GUI tools that drive the Anki desktop interface for note editing/creation workflows.
+The server exposes **50 MCP tools** — 39 essential tools for everyday Anki operations and 11 GUI tools that drive the Anki desktop interface for note editing/creation workflows.
 
 ### Essential Tools
 

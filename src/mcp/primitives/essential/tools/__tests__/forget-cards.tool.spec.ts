@@ -1,5 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { ForgetCardsTool } from "../forget-cards.tool";
+import { ForgetCardsTool, forgetCardsInputSchema } from "../forget-cards.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { parseToolResult } from "@/test-fixtures/test-helpers";
 
@@ -94,6 +94,25 @@ describe("ForgetCardsTool", () => {
     ]);
   });
 
+  it("should dedupe duplicate card IDs before validating and resetting", async () => {
+    const cards = [111, 111, 222];
+    ankiClient.invoke
+      .mockResolvedValueOnce(mockCardsInfo([{ cardId: 111 }, { cardId: 222 }]))
+      .mockResolvedValueOnce(null);
+
+    const rawResult = await tool.execute({ cards });
+    const result = parseToolResult(rawResult);
+
+    expect(ankiClient.invoke).toHaveBeenNthCalledWith(1, "cardsInfo", {
+      cards: [111, 222],
+    });
+    expect(ankiClient.invoke).toHaveBeenNthCalledWith(2, "forgetCards", {
+      cards: [111, 222],
+    });
+    expect(result.cardsAffected).toBe(2);
+    expect(result.reset).toHaveLength(2);
+  });
+
   it("should fail when cards array is empty", async () => {
     const rawResult = await tool.execute({ cards: [] });
     const result = parseToolResult(rawResult);
@@ -150,5 +169,34 @@ describe("ForgetCardsTool", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("collection is not open");
+  });
+
+  describe("forgetCardsInputSchema", () => {
+    it("should accept a valid array of positive integer card IDs", () => {
+      const result = forgetCardsInputSchema.safeParse({ cards: [111, 222] });
+      expect(result.success).toBe(true);
+    });
+
+    it.each([0, -1, 1.5])("should reject a card ID of %p", (badId) => {
+      const result = forgetCardsInputSchema.safeParse({ cards: [badId] });
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject an empty cards array", () => {
+      const result = forgetCardsInputSchema.safeParse({ cards: [] });
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject more than 100 card IDs", () => {
+      const cards = Array.from({ length: 101 }, (_, i) => i + 1);
+      const result = forgetCardsInputSchema.safeParse({ cards });
+      expect(result.success).toBe(false);
+    });
+
+    it("should accept exactly 100 card IDs", () => {
+      const cards = Array.from({ length: 100 }, (_, i) => i + 1);
+      const result = forgetCardsInputSchema.safeParse({ cards });
+      expect(result.success).toBe(true);
+    });
   });
 });

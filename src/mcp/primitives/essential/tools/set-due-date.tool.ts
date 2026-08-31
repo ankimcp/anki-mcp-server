@@ -6,7 +6,8 @@ import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import {
   AnkiCardInfo,
-  fetchExistingCards,
+  assertCardIdsExist,
+  findMissingIds,
 } from "@/mcp/utils/card-validation.utils";
 
 /**
@@ -14,6 +15,30 @@ import {
  * trailing `!` meaning "also set the interval to this value".
  */
 const DAYS_SPEC = /^(\d+)(?:-(\d+))?(!?)$/;
+
+/**
+ * Input schema, exported so tests can assert cap/type constraints via
+ * `safeParse` without going through the mcp-nest handler.
+ */
+export const setDueDateInputSchema = z.object({
+  cards: z
+    .array(z.number().int().positive())
+    .min(1)
+    .max(100)
+    .describe(
+      "Array of card IDs to reschedule (max 100). Card IDs (not note IDs) — use get_cards, " +
+        "get_due_cards, or notesInfo to obtain them.",
+    ),
+  days: z
+    .string()
+    .describe(
+      "How many days from now the cards become due. " +
+        '"0" = today, "1" = tomorrow, "3-7" = a random day in that inclusive range ' +
+        "(spreads a batch out instead of stacking it on one day). " +
+        'Append "!" — e.g. "1!" — to also overwrite the card\'s interval with that value, ' +
+        "rather than leaving the existing interval in place.",
+    ),
+});
 
 /**
  * Tool for rescheduling cards to a specific due date without recording a review.
@@ -33,24 +58,7 @@ export class SetDueDateTool {
       "Unlike forgetCards this keeps the card's existing interval and ease unless you ask otherwise, so it is " +
       "the gentler option when the card's history is still worth keeping. " +
       "Note that applying this to a new card turns it into a review card.",
-    parameters: z.object({
-      cards: z
-        .array(z.number())
-        .min(1)
-        .describe(
-          "Array of card IDs to reschedule. Card IDs (not note IDs) — use get_cards, " +
-            "get_due_cards, or notesInfo to obtain them.",
-        ),
-      days: z
-        .string()
-        .describe(
-          "How many days from now the cards become due. " +
-            '"0" = today, "1" = tomorrow, "3-7" = a random day in that inclusive range ' +
-            "(spreads a batch out instead of stacking it on one day). " +
-            'Append "!" — e.g. "1!" — to also overwrite the card\'s interval with that value, ' +
-            "rather than leaving the existing interval in place.",
-        ),
-    }),
+    parameters: setDueDateInputSchema,
     outputSchema: z.object({
       success: z.boolean(),
       message: z.string(),
@@ -95,7 +103,9 @@ export class SetDueDateTool {
     },
   })
   async execute(@Payload() params: { cards: number[]; days: string }) {
-    const cards = params?.cards ?? [];
+    const cards = Array.isArray(params?.cards)
+      ? [...new Set(params.cards)]
+      : [];
     const rawDays = params?.days;
 
     try {
@@ -130,7 +140,11 @@ export class SetDueDateTool {
 
       // Validate the IDs first — setDueDate returns true even for a list of
       // card IDs that don't exist, so a typo would otherwise look like success.
-      await fetchExistingCards(
+      // cardsModTime is used instead of cardsInfo for this pre-mutation existence
+      // check: it's a pure existence check, so there's no reason to pay for
+      // cardsInfo rendering question/answer/css. The post-mutation read-back
+      // below still uses cardsInfo, since it needs the actual scheduling state.
+      await assertCardIdsExist(
         cards,
         this.ankiClient,
         "No cards were rescheduled.",
@@ -158,10 +172,29 @@ export class SetDueDateTool {
           { cards },
         );
 
+        if (!Array.isArray(updated) || updated.length !== cards.length) {
+          throw new Error(
+            `cardsInfo read-back returned ${
+              Array.isArray(updated) ? updated.length : typeof updated
+            } entries for ${cards.length} card(s)`,
+          );
+        }
+
+        // A card deleted between setDueDate and this read-back comes back as
+        // `{}` rather than being omitted, so the length check above wouldn't
+        // catch it — findMissingIds does.
+        const missingIds = findMissingIds(cards, updated);
+        if (missingIds.length > 0) {
+          throw new Error(
+            `cardsInfo read-back is missing ${missingIds.length} of ` +
+              `${cards.length} card(s): [${missingIds.join(", ")}]`,
+          );
+        }
+
         scheduled = cards.map((cardId, index) => ({
           cardId,
-          intervalDays: updated?.[index]?.interval ?? 0,
-          due: updated?.[index]?.due ?? 0,
+          intervalDays: updated[index]?.interval ?? 0,
+          due: updated[index]?.due ?? 0,
         }));
       } catch (readBackError) {
         readBackFailed = true;
@@ -172,7 +205,9 @@ export class SetDueDateTool {
         );
       }
 
-      this.logger.log(`Rescheduled ${cards.length} card(s) to "${days}"`);
+      if (!readBackFailed) {
+        this.logger.log(`Rescheduled ${cards.length} card(s) to "${days}"`);
+      }
 
       return {
         success: true,

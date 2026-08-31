@@ -25,6 +25,18 @@ export interface AnkiCardInfo {
 export type ExistingAnkiCardInfo = AnkiCardInfo & { cardId: number };
 
 /**
+ * AnkiConnect's `cardsModTime` payload — a lighter existence check than
+ * `cardsInfo`, since it skips rendering question/answer/css per card.
+ * Missing cards come back as `{}`, same as `cardsInfo`.
+ *
+ * @see https://git.sr.ht/~foosoft/anki-connect#cardsmodtime
+ */
+export interface AnkiCardModTime {
+  cardId?: number;
+  mod?: number;
+}
+
+/**
  * Error thrown when one or more requested card IDs don't exist in the
  * collection. Tool wrappers convert this into an MCP error response.
  */
@@ -60,6 +72,25 @@ export class MissingCardIdsError extends Error {
 }
 
 /**
+ * Collect the requested card IDs whose positionally-aligned response entry
+ * doesn't carry a numeric `cardId` — AnkiConnect's way of marking a missing
+ * card in both `cardsInfo` and `cardsModTime`.
+ */
+export function findMissingIds(
+  cards: number[],
+  responses: ReadonlyArray<{ cardId?: number }> | undefined,
+): number[] {
+  const missingIds: number[] = [];
+  cards.forEach((id, index) => {
+    const entry = responses?.[index];
+    if (!entry || typeof entry.cardId !== "number") {
+      missingIds.push(id);
+    }
+  });
+  return missingIds;
+}
+
+/**
  * Look up every card ID and fail unless all of them exist.
  *
  * The scheduling actions (`forgetCards`, `setDueDate`) report success whether
@@ -80,17 +111,37 @@ export async function fetchExistingCards(
 ): Promise<ExistingAnkiCardInfo[]> {
   const cardsInfo = await client.invoke<AnkiCardInfo[]>("cardsInfo", { cards });
 
-  const missingIds: number[] = [];
-  cards.forEach((id, index) => {
-    const info = cardsInfo?.[index];
-    if (!info || typeof info.cardId !== "number") {
-      missingIds.push(id);
-    }
-  });
-
+  const missingIds = findMissingIds(cards, cardsInfo);
   if (missingIds.length > 0) {
     throw new MissingCardIdsError(missingIds, cards.length, noOpNotice);
   }
 
   return cardsInfo as ExistingAnkiCardInfo[];
+}
+
+/**
+ * Confirm every card ID exists without paying for `cardsInfo`'s rendered
+ * question/answer/css — `cardsModTime` has the same missing-card contract
+ * (`{}` per absent ID, positionally aligned) but only returns `cardId`/`mod`.
+ *
+ * Use this instead of {@link fetchExistingCards} when the caller doesn't need
+ * the card's scheduling state, just proof the IDs are real.
+ *
+ * @param noOpNotice Clause appended to the error explaining that nothing was
+ *   changed, phrased for the calling tool (e.g. "No cards were rescheduled.").
+ * @throws {MissingCardIdsError} When any provided card ID doesn't exist.
+ */
+export async function assertCardIdsExist(
+  cards: number[],
+  client: AnkiConnectClient,
+  noOpNotice: string,
+): Promise<void> {
+  const modTimes = await client.invoke<AnkiCardModTime[]>("cardsModTime", {
+    cards,
+  });
+
+  const missingIds = findMissingIds(cards, modTimes);
+  if (missingIds.length > 0) {
+    throw new MissingCardIdsError(missingIds, cards.length, noOpNotice);
+  }
 }
