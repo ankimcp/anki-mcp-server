@@ -7,6 +7,21 @@ import { createErrorResponse, getCardType } from "@/mcp/utils/anki.utils";
 import { fetchExistingCards } from "@/mcp/utils/card-validation.utils";
 
 /**
+ * Input schema, exported so tests can assert cap/type constraints via
+ * `safeParse` without going through the mcp-nest handler.
+ */
+export const forgetCardsInputSchema = z.object({
+  cards: z
+    .array(z.number().int().positive())
+    .min(1)
+    .max(100)
+    .describe(
+      "Array of card IDs to reset to new (max 100). Card IDs (not note IDs) — use get_cards, " +
+        "get_due_cards, or notesInfo to obtain them.",
+    ),
+});
+
+/**
  * Tool for resetting cards back to the new queue.
  */
 @McpController()
@@ -25,15 +40,7 @@ export class ForgetCardsTool {
       "The review log is preserved, so past reviews still show in card info and statistics. " +
       "This changes scheduling only — note content, tags, and deck placement are untouched. " +
       "Cards that are already new are unaffected, so re-running is safe.",
-    parameters: z.object({
-      cards: z
-        .array(z.number())
-        .min(1)
-        .describe(
-          "Array of card IDs to reset to new. Card IDs (not note IDs) — use get_cards, " +
-            "get_due_cards, or notesInfo to obtain them.",
-        ),
-    }),
+    parameters: forgetCardsInputSchema,
     outputSchema: z.object({
       success: z.boolean(),
       message: z.string(),
@@ -79,7 +86,9 @@ export class ForgetCardsTool {
     },
   })
   async execute(@Payload() params: { cards: number[] }) {
-    const cards = params?.cards ?? [];
+    const cards = Array.isArray(params?.cards)
+      ? [...new Set(params.cards)]
+      : [];
 
     try {
       this.logger.log(`Executing forgetCards: ${cards.length} card(s)`);
