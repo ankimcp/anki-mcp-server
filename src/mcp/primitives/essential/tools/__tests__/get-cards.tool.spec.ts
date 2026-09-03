@@ -311,7 +311,7 @@ describe("GetCardsTool", () => {
       expect(result.error).toContain("collection is not available");
     });
 
-    it("should transform cards to simplified structure", async () => {
+    it("should transform cards to simplified structure without the answer by default", async () => {
       // Arrange
       ankiClient.invoke
         .mockResolvedValueOnce([mockCardIds[0]])
@@ -319,6 +319,46 @@ describe("GetCardsTool", () => {
 
       // Act
       const rawResult = await tool.getCards({});
+      const result = parseToolResult(rawResult);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(result.cards[0]).toMatchObject({
+        cardId: 1502298033754,
+        front: "¿Cómo estás?",
+        deckName: "Spanish",
+        modelName: "Basic",
+        due: 1,
+        interval: 1,
+        factor: 2500,
+      });
+      // Answers must never enter context unless explicitly requested.
+      expect(result.cards[0]).not.toHaveProperty("back");
+    });
+
+    it("should omit the answer when include_answer is explicitly false", async () => {
+      // Arrange
+      ankiClient.invoke
+        .mockResolvedValueOnce([mockCardIds[0]])
+        .mockResolvedValueOnce([mockCardsInfo[0]]);
+
+      // Act
+      const rawResult = await tool.getCards({ include_answer: false });
+      const result = parseToolResult(rawResult);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(result.cards[0]).not.toHaveProperty("back");
+    });
+
+    it("should include the answer when include_answer is true", async () => {
+      // Arrange
+      ankiClient.invoke
+        .mockResolvedValueOnce([mockCardIds[0]])
+        .mockResolvedValueOnce([mockCardsInfo[0]]);
+
+      // Act
+      const rawResult = await tool.getCards({ include_answer: true });
       const result = parseToolResult(rawResult);
 
       // Assert
@@ -335,7 +375,7 @@ describe("GetCardsTool", () => {
       });
     });
 
-    it("renders each card of a multi-card note per its template ordinal", async () => {
+    it("renders each card of a multi-card note per its template ordinal when include_answer is true", async () => {
       // A "Basic (and reversed card)" note yields two cards. The forward card
       // (ord 0) renders Front->Back; the reversed card (ord 1) renders
       // Back->Front. Field-based extraction returned identical content for both;
@@ -353,7 +393,9 @@ describe("GetCardsTool", () => {
         .mockResolvedValueOnce(reversedPair.map((c) => c.cardId))
         .mockResolvedValueOnce(reversedPair);
 
-      const result = parseToolResult(await tool.getCards({}));
+      const result = parseToolResult(
+        await tool.getCards({ include_answer: true }),
+      );
 
       expect(result.success).toBe(true);
       expect(result.cards[0]).toMatchObject({

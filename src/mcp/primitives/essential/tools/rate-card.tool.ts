@@ -20,7 +20,7 @@ export class RateCardTool {
   @Tool({
     name: "rate_card",
     description:
-      "Submit a rating for a card to update Anki's spaced repetition scheduling. Use this ONLY after the user confirms or modifies your suggested rating. Do not rate automatically without user input.",
+      "Submit a rating for a card to update Anki's spaced repetition scheduling. Before calling this, the card's answer must already have been revealed to the user via present_card with show_answer: true, and the user must have self-assessed their recall. Use this ONLY after the user confirms or modifies your suggested rating. Do not rate automatically without user input.",
     parameters: z.object({
       card_id: z.number().describe("The ID of the card to rate"),
       rating: z
