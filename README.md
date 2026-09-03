@@ -41,8 +41,8 @@ The server exposes **50 MCP tools** — 39 essential tools for everyday Anki ope
 
 #### Review & Study
 - `sync` - Sync with AnkiWeb to pull latest data and push changes
-- `get_due_cards` - Get cards that are due for review, optionally filtered by deck
-- `get_cards` - Get cards with flexible filtering by state (due, new, learning, suspended, buried) and deck
+- `get_due_cards` - Get cards that are due for review, optionally filtered by deck (answers omitted unless `include_answer: true`, default `false`)
+- `get_cards` - Get cards with flexible filtering by state (due, new, learning, suspended, buried) and deck (answers omitted unless `include_answer: true`, default `false`)
 - `present_card` - Show a card for review with its question/front side
 - `rate_card` - Rate card performance (Again, Hard, Good, Easy) and schedule the next review
 - `forgetCards` - Reset cards to new, discarding their scheduling without recording a review

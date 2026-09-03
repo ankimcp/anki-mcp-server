@@ -35,7 +35,7 @@ export class ReviewSessionPrompt {
    - If user specifies a deck, use get_due_cards with the deck_name parameter
 3. **Present the Question**: Show the front of the card clearly
 4. **Wait for User's Answer**: Let them attempt to answer
-5. **Show the Answer**: Reveal the back of the card
+5. **Show the Answer**: Reveal the back of the card by calling present_card with show_answer=true only once the user is ready — never fetch it earlier
 6. **Evaluate Performance**: Assess how well they answered
 7. **Suggest a Rating**: Based on their response, suggest one of:
    - 1 (Again) - They got it wrong or struggled significantly
@@ -74,6 +74,7 @@ Assistant: [Uses rate_card with rating: 2]
 
 ## Key Principles
 - Never auto-rate without user input
+- Never fetch answers in bulk — call get_due_cards without include_answer
 - Default to suggesting Good (3) when performance is solid
 - Be encouraging but honest in assessments
 - Accept user's self-assessment over your suggestion

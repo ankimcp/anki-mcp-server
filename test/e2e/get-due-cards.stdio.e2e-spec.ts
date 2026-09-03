@@ -152,7 +152,7 @@ describe("E2E: get_due_cards Tool", () => {
   });
 
   describe("Response structure", () => {
-    it("should return proper card structure", () => {
+    it("should return proper card structure with the answer when include_answer is true", () => {
       const uid = uniqueId();
       const deckName = `DueStruct::${uid}`;
 
@@ -167,11 +167,12 @@ describe("E2E: get_due_cards Tool", () => {
         },
       });
 
-      // Get cards including new
+      // Get cards including new, requesting the full shape (front + back)
       const result = callTool("get_due_cards", {
         deck_name: deckName,
         limit: 1,
         include_new: true,
+        include_answer: true,
       });
 
       expect(result.success).toBe(true);
@@ -186,6 +187,38 @@ describe("E2E: get_due_cards Tool", () => {
         expect(card).toHaveProperty("back");
         expect(card).toHaveProperty("deckName");
         expect(card).toHaveProperty("modelName");
+      }
+    });
+
+    it("should omit the answer by default (include_answer not set)", () => {
+      const uid = uniqueId();
+      const deckName = `DueStructDefault::${uid}`;
+
+      // Create deck and note
+      callTool("createDeck", { deckName: deckName });
+      callTool("addNote", {
+        deckName: deckName,
+        modelName: "Basic",
+        fields: {
+          Front: `Structure Test ${uid}`,
+          Back: `Structure Answer ${uid}`,
+        },
+      });
+
+      // Get cards including new, without include_answer
+      const result = callTool("get_due_cards", {
+        deck_name: deckName,
+        limit: 1,
+        include_new: true,
+      });
+
+      expect(result.success).toBe(true);
+
+      if ((result.cards as unknown[]).length > 0) {
+        const card = (result.cards as Record<string, unknown>[])[0];
+        expect(card).toHaveProperty("cardId");
+        expect(card).toHaveProperty("front");
+        expect(card).not.toHaveProperty("back");
       }
     });
 

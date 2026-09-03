@@ -39,7 +39,7 @@ export class GetCardsTool {
   @Tool({
     name: "get_cards",
     description:
-      "Retrieve cards from Anki with flexible filtering by deck and card state. IMPORTANT: Use sync tool FIRST before getting cards to ensure latest data. After getting cards, use present_card to show them one by one to the user",
+      "Retrieve cards from Anki with flexible filtering by deck and card state. IMPORTANT: Use sync tool FIRST before getting cards to ensure latest data. By default answers are NOT included (include_answer defaults to false) so they never enter context before the user has a chance to self-test — after getting cards, use present_card to show them one by one and reveal the answer only when the user is ready. Set include_answer=true only for content analysis/editing workflows that are not live review sessions.",
     parameters: z.object({
       deck_name: z
         .string()
@@ -56,6 +56,12 @@ export class GetCardsTool {
         .max(50)
         .default(10)
         .describe("Maximum number of cards to return"),
+      include_answer: z
+        .boolean()
+        .default(false)
+        .describe(
+          "Whether to include each card's answer (back). Keep this false during review sessions so answers never enter context before the user reveals them via present_card. Set true only for content analysis/editing workflows, not live review.",
+        ),
     }),
     outputSchema: z.object({
       success: z.boolean(),
@@ -63,7 +69,10 @@ export class GetCardsTool {
         z.object({
           cardId: z.number(),
           front: z.string(),
-          back: z.string(),
+          back: z
+            .string()
+            .optional()
+            .describe("Present only when include_answer=true"),
           deckName: z.string(),
           modelName: z.string(),
           due: z.number(),
@@ -88,10 +97,12 @@ export class GetCardsTool {
       deck_name,
       card_state = "due",
       limit,
+      include_answer = false,
     }: {
       deck_name?: string;
       card_state?: CardState;
       limit?: number;
+      include_answer?: boolean;
     },
   ) {
     try {
@@ -145,7 +156,7 @@ export class GetCardsTool {
         return {
           cardId: card.cardId,
           front,
-          back,
+          ...(include_answer ? { back } : {}),
           deckName: card.deckName,
           modelName: card.modelName,
           due: card.due || 0,

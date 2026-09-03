@@ -45,7 +45,8 @@ export interface AnkiCard {
 export interface SimplifiedCard {
   cardId: number;
   front: string;
-  back: string;
+  /** Only present when the caller opted in via `include_answer: true`. */
+  back?: string;
   deckName: string;
   modelName: string;
   due: number;
