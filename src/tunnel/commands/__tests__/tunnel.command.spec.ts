@@ -8,6 +8,17 @@
 // After the cli-output refactor, debug behaviour is an explicit dependency:
 // each test constructs its own stub `Cli` and passes it in. There is no
 // module-level state to leak between tests or across spec files.
+//
+// NOTE on `@nestjs/core`/`@nestjs/common`: these used to be `jest.mock`-ed
+// wholesale. Under Nest 12's ESM-only packages, `require(esm)` bypasses
+// Jest's CJS module registry hook, so a `jest.mock("@nestjs/core", ...)`
+// factory silently stops intercepting calls. `NestFactory.createMicroservice`
+// is now an injectable parameter on `handleTunnel` (see `CreateMicroserviceFn`
+// in `tunnel.command.ts`) so tests substitute a stub function directly instead
+// of mocking the module. `@nestjs/common`'s real `Logger` is a plain,
+// side-effect-free class here (only `Logger.overrideLogger` and
+// `new Logger(...).log`, neither of which any test asserts on), so it no
+// longer needs a stub either.
 
 const mockLoadCredentials = jest.fn();
 const mockCredentialsServiceInstance = {
@@ -88,29 +99,6 @@ jest.mock("@/config", () => ({
   })),
 }));
 
-jest.mock("@nestjs/core", () => ({
-  NestFactory: {
-    // Force step 2 to fail so we abort right after the credential gate.
-    // `handleTunnel` then calls process.exit(1), which our spy converts to a
-    // throw — letting Jest observe both that performLogin ran and that we
-    // didn't proceed further. The auto-relogin describe block below overrides
-    // this per-test to let app creation succeed and reach the connect loop.
-    createMicroservice: jest.fn().mockImplementation(() => {
-      throw new Error("stop-here");
-    }),
-  },
-}));
-
-jest.mock("@nestjs/common", () => ({
-  Logger: class {
-    static overrideLogger = jest.fn();
-    log = jest.fn();
-    error = jest.fn();
-    warn = jest.fn();
-    debug = jest.fn();
-  },
-}));
-
 jest.mock("@/bootstrap", () => ({
   createPinoLogger: jest.fn(() => ({})),
   createLoggerService: jest.fn(() => ({})),
@@ -122,9 +110,9 @@ jest.mock("@/app.module", () => ({
   AppModule: { forTunnel: jest.fn(() => ({})) },
 }));
 
-// `@nestjs/common` and `@nestjs/core` are stubbed above, so the real strategy
-// (which depends on both) can't be loaded here. `createMcpStrategy` is stubbed
-// with the rest of `@/bootstrap`; this covers transitive imports of the package.
+// `createMcpStrategy` is stubbed with the rest of `@/bootstrap`; this covers
+// transitive imports of the real `@rekog/mcp-nest` package (which pulls in
+// `@nestjs/common`/`@nestjs/core` machinery we don't want to boot here).
 jest.mock("@rekog/mcp-nest", () => ({
   McpStrategy: jest.fn().mockImplementation(() => ({})),
 }));
@@ -144,9 +132,9 @@ jest.mock("@/cli/spinner", () => ({
   startSpinner: jest.fn(() => jest.fn()),
 }));
 
-import { NestFactory } from "@nestjs/core";
 import { AppModule } from "@/app.module";
 import { handleTunnel } from "../tunnel.command";
+import type { CreateMicroserviceFn } from "../tunnel.command";
 import {
   performLogin,
   reportLoginError,
@@ -211,6 +199,13 @@ describe("handleTunnel - credential gate", () => {
   let exitSpy: jest.SpyInstance;
   let cli: jest.Mocked<Cli>;
   let restoreTty: () => void;
+  // Force step 2 to fail so we abort right after the credential gate.
+  // `handleTunnel` then calls process.exit(1), which our spy converts to a
+  // throw — letting Jest observe both that performLogin ran and that we
+  // didn't proceed further. The auto-relogin describe block below uses its
+  // own stub that resolves instead, to let app creation succeed and reach
+  // the connect loop.
+  let createMicroservice: jest.MockedFunction<CreateMicroserviceFn>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -224,6 +219,10 @@ describe("handleTunnel - credential gate", () => {
     ) => {
       throw new Error("exit");
     }) as never);
+
+    createMicroservice = jest.fn().mockImplementation(() => {
+      throw new Error("stop-here");
+    });
   });
 
   afterEach(() => {
@@ -233,9 +232,16 @@ describe("handleTunnel - credential gate", () => {
 
   it("passes tunnelUrl through to loadValidatedConfig (so device flow targets the right host)", async () => {
     mockLoadCredentials.mockResolvedValueOnce({ access_token: "t" });
-    // Step 2 throws via mocked NestFactory, which exits.
+    // Step 2 throws via the stub factory, which exits.
     await expect(
-      handleTunnel(cli, "wss://custom.example.com", false, false),
+      handleTunnel(
+        cli,
+        "wss://custom.example.com",
+        false,
+        false,
+        undefined,
+        createMicroservice,
+      ),
     ).rejects.toThrow("exit");
 
     expect(mockedLoadConfig).toHaveBeenCalledWith({
@@ -249,7 +255,14 @@ describe("handleTunnel - credential gate", () => {
   it("passes ankiConnect through to loadValidatedConfig and AppModule.forTunnel (so -a/--anki-connect is honoured in tunnel mode)", async () => {
     mockLoadCredentials.mockResolvedValueOnce({ access_token: "t" });
     await expect(
-      handleTunnel(cli, undefined, false, false, "http://192.168.1.50:8765"),
+      handleTunnel(
+        cli,
+        undefined,
+        false,
+        false,
+        "http://192.168.1.50:8765",
+        createMicroservice,
+      ),
     ).rejects.toThrow("exit");
 
     expect(mockedLoadConfig).toHaveBeenCalledWith({
@@ -258,8 +271,8 @@ describe("handleTunnel - credential gate", () => {
       tunnel: undefined,
       ankiConnect: "http://192.168.1.50:8765",
     });
-    // AppModule.forTunnel throws via the mocked NestFactory, so it's called
-    // before the exit — assert it received the same override.
+    // AppModule.forTunnel throws via the stub factory, so it's called before
+    // the exit — assert it received the same override.
     expect(AppModule.forTunnel).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ ankiConnect: "http://192.168.1.50:8765" }),
@@ -268,9 +281,9 @@ describe("handleTunnel - credential gate", () => {
 
   it("does NOT call performLogin when credentials already exist", async () => {
     mockLoadCredentials.mockResolvedValueOnce({ access_token: "t" });
-    await expect(handleTunnel(cli, undefined, false, false)).rejects.toThrow(
-      "exit",
-    );
+    await expect(
+      handleTunnel(cli, undefined, false, false, undefined, createMicroservice),
+    ).rejects.toThrow("exit");
 
     expect(mockedPerformLogin).not.toHaveBeenCalled();
   });
@@ -281,9 +294,9 @@ describe("handleTunnel - credential gate", () => {
       access_token: "new-t",
     } as never);
 
-    await expect(handleTunnel(cli, undefined, false, false)).rejects.toThrow(
-      "exit",
-    );
+    await expect(
+      handleTunnel(cli, undefined, false, false, undefined, createMicroservice),
+    ).rejects.toThrow("exit");
 
     expect(mockedPerformLogin).toHaveBeenCalledTimes(1);
     // Verify the same service instances are passed (loose coupling: caller
@@ -300,9 +313,9 @@ describe("handleTunnel - credential gate", () => {
     const err = new DeviceFlowError("denied", "access_denied");
     mockedPerformLogin.mockRejectedValueOnce(err);
 
-    await expect(handleTunnel(cli, undefined, false, false)).rejects.toThrow(
-      "exit",
-    );
+    await expect(
+      handleTunnel(cli, undefined, false, false, undefined, createMicroservice),
+    ).rejects.toThrow("exit");
 
     expect(mockedTranslate).toHaveBeenCalledWith(err);
     expect(cli.error).toHaveBeenCalledWith(`translated: denied`);
@@ -313,9 +326,9 @@ describe("handleTunnel - credential gate", () => {
     mockLoadCredentials.mockResolvedValueOnce(null);
     mockedPerformLogin.mockRejectedValueOnce(new Error("disk full"));
 
-    await expect(handleTunnel(cli, undefined, false, false)).rejects.toThrow(
-      "exit",
-    );
+    await expect(
+      handleTunnel(cli, undefined, false, false, undefined, createMicroservice),
+    ).rejects.toThrow("exit");
 
     expect(mockedTranslate).not.toHaveBeenCalled();
     // Generic-error path uses `cli.error(message, errorInstance)` so the stub
@@ -332,6 +345,7 @@ describe("handleTunnel - non-interactive fast-fail (Fix #3)", () => {
   let exitSpy: jest.SpyInstance;
   let cli: jest.Mocked<Cli>;
   let restoreTty: () => void;
+  let createMicroservice: jest.MockedFunction<CreateMicroserviceFn>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -344,6 +358,13 @@ describe("handleTunnel - non-interactive fast-fail (Fix #3)", () => {
     ) => {
       throw new Error("exit");
     }) as never);
+
+    // Never reached in this describe block (the non-interactive credential
+    // gate exits before Step 2), but supplied for parity with production
+    // call sites and to fail loudly if that assumption ever changes.
+    createMicroservice = jest.fn().mockImplementation(() => {
+      throw new Error("stop-here");
+    });
   });
 
   afterEach(() => {
@@ -354,9 +375,9 @@ describe("handleTunnel - non-interactive fast-fail (Fix #3)", () => {
   it("does NOT start device flow when missing credentials in a non-TTY environment", async () => {
     mockLoadCredentials.mockResolvedValueOnce(null);
 
-    await expect(handleTunnel(cli, undefined, false, false)).rejects.toThrow(
-      "exit",
-    );
+    await expect(
+      handleTunnel(cli, undefined, false, false, undefined, createMicroservice),
+    ).rejects.toThrow("exit");
 
     // The fast-fail path must not call performLogin (which would otherwise
     // hang the user's container/service for ~10 minutes polling a token).
@@ -374,8 +395,8 @@ describe("handleTunnel - non-interactive fast-fail (Fix #3)", () => {
 // Unlike the credential-gate block above (which deliberately fails Nest
 // bootstrap to stop right after the gate), these tests must reach Step 4 — the
 // `tunnelClient.connect()` loop. To get there we (a) hand back EXISTING but
-// stale credentials so the credential gate passes, (b) override the mocked
-// NestFactory to RESOLVE a minimal fake app, and (c) give the mocked
+// stale credentials so the credential gate passes, (b) give `createMicroservice`
+// a stub that RESOLVES a minimal fake app, and (c) give the mocked
 // `TunnelClient` constructor a stub with a programmable `connect`.
 //
 // The happy path of `handleTunnel` never settles (`await new Promise(() =>
@@ -387,6 +408,7 @@ describe("handleTunnel - auto-relogin on session_expired (first connect)", () =>
   let exitSpy: jest.SpyInstance;
   let cli: jest.Mocked<Cli>;
   let restoreTty: () => void;
+  let createMicroservice: jest.MockedFunction<CreateMicroserviceFn>;
   let tunnelClientStub: {
     on: jest.Mock;
     disconnect: jest.Mock;
@@ -435,14 +457,12 @@ describe("handleTunnel - auto-relogin on session_expired (first connect)", () =>
     // dead refresh token at connect time, NOT missing creds.
     mockLoadCredentials.mockResolvedValue(EXISTING_CREDS);
 
-    // Let app creation succeed so we reach Step 4 (connect). The module-level
-    // NestFactory mock throws by default for the earlier describe blocks; here
-    // we override it to hand back a minimal fake microservice.
+    // Let app creation succeed so we reach Step 4 (connect).
     const fakeApp = {
       listen: jest.fn().mockResolvedValue(undefined),
       close: jest.fn().mockResolvedValue(undefined),
     };
-    (NestFactory.createMicroservice as jest.Mock).mockResolvedValue(fakeApp);
+    createMicroservice = jest.fn().mockResolvedValue(fakeApp);
 
     tunnelClientStub = makeTunnelClientStub();
     (TunnelClient as unknown as jest.Mock).mockImplementation(
@@ -471,7 +491,14 @@ describe("handleTunnel - auto-relogin on session_expired (first connect)", () =>
     mockedPerformLogin.mockResolvedValueOnce(freshCreds as never);
 
     // Success path never settles — fire and forget, guard against unhandled.
-    const pending = handleTunnel(cli, undefined, false, false);
+    const pending = handleTunnel(
+      cli,
+      undefined,
+      false,
+      false,
+      undefined,
+      createMicroservice,
+    );
     pending.catch(() => {});
 
     await flushUntil(() =>
@@ -512,9 +539,9 @@ describe("handleTunnel - auto-relogin on session_expired (first connect)", () =>
       access_token: "fresh",
     } as never);
 
-    await expect(handleTunnel(cli, undefined, false, false)).rejects.toThrow(
-      "exit",
-    );
+    await expect(
+      handleTunnel(cli, undefined, false, false, undefined, createMicroservice),
+    ).rejects.toThrow("exit");
 
     // Exactly one relogin, exactly two connect attempts, then a clean exit —
     // `reloginAttempted` bounds the loop.
@@ -532,9 +559,9 @@ describe("handleTunnel - auto-relogin on session_expired (first connect)", () =>
     tunnelClientStub.connect.mockRejectedValueOnce(sessionErr);
     mockedPerformLogin.mockRejectedValueOnce(loginErr);
 
-    await expect(handleTunnel(cli, undefined, false, false)).rejects.toThrow(
-      "exit",
-    );
+    await expect(
+      handleTunnel(cli, undefined, false, false, undefined, createMicroservice),
+    ).rejects.toThrow("exit");
 
     expect(mockedPerformLogin).toHaveBeenCalledTimes(1);
     // No retry: the connect was attempted once, relogin failed, we bail.
@@ -556,9 +583,9 @@ describe("handleTunnel - auto-relogin on session_expired (first connect)", () =>
     );
     tunnelClientStub.connect.mockRejectedValueOnce(sessionErr);
 
-    await expect(handleTunnel(cli, undefined, false, false)).rejects.toThrow(
-      "exit",
-    );
+    await expect(
+      handleTunnel(cli, undefined, false, false, undefined, createMicroservice),
+    ).rejects.toThrow("exit");
 
     expect(mockedPerformLogin).not.toHaveBeenCalled();
     expect(tunnelClientStub.connect).toHaveBeenCalledTimes(1);
@@ -570,9 +597,9 @@ describe("handleTunnel - auto-relogin on session_expired (first connect)", () =>
   it("takes the formatConnectionError path (no relogin) for a non-session_expired connect error", async () => {
     tunnelClientStub.connect.mockRejectedValueOnce(new Error("boom"));
 
-    await expect(handleTunnel(cli, undefined, false, false)).rejects.toThrow(
-      "exit",
-    );
+    await expect(
+      handleTunnel(cli, undefined, false, false, undefined, createMicroservice),
+    ).rejects.toThrow("exit");
 
     expect(mockedPerformLogin).not.toHaveBeenCalled();
     // formatConnectionError wraps a generic error as `Failed to connect: …`.
