@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.25.0] - 2026-09
 
 - **NestJS 11 → 12** (`@nestjs/{common,core,microservices,platform-express,config,cli,schematics,testing}`), matching upstream's ESM-only release. No user-facing behavior change and the runtime Node floor is unchanged (`>=22.12.0`) — Node's `require(esm)` interop lets the app boot normally. Development/testing now needs Node `>=24.9`: Jest's own module loader needs that version to `require()` Nest 12's ESM packages. Jest also needs the `--experimental-vm-modules` flag for that loader path, which is now baked into the npm test scripts via `NODE_OPTIONS`, so contributors don't need to set it manually.
 
