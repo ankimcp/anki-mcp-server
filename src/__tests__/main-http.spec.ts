@@ -77,9 +77,9 @@ describe("HTTP Server (main-http integration)", () => {
   });
 
   describe("server startup", () => {
-    it("should start on default port 3000", async () => {
+    it("should start and listen on loopback", async () => {
       app = await startHttpApp();
-      await app.listen(3000, "127.0.0.1");
+      await app.listen(0, "127.0.0.1");
 
       // Server should be listening
       const server = app.getHttpServer();

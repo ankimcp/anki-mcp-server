@@ -163,7 +163,7 @@ That's it! The bundle includes everything needed to run the server locally.
 
 ### Install from Source (for development)
 
-For development or advanced usage:
+For development or advanced usage (running the test suite requires Node.js 24.9+ — the npm test scripts load the ESM-only NestJS 12 packages via `require(esm)`, which Jest only supports there; the runtime requirement for *using* the server stays 22.12.0+):
 
 ```bash
 npm install
