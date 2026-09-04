@@ -90,7 +90,7 @@ describe("HTTP Server (main-http integration)", () => {
 
     it("should start on custom port", async () => {
       app = await startHttpApp();
-      await app.listen(8080, "127.0.0.1");
+      await app.listen(0, "127.0.0.1");
 
       const server = app.getHttpServer();
       expect(server.listening).toBe(true);
@@ -100,7 +100,7 @@ describe("HTTP Server (main-http integration)", () => {
 
     it("should bind to specified host", async () => {
       app = await startHttpApp();
-      await app.listen(3001, "0.0.0.0");
+      await app.listen(0, "0.0.0.0");
 
       const server = app.getHttpServer();
       expect(server.listening).toBe(true);

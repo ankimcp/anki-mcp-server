@@ -245,7 +245,7 @@ Shared test infra:
 npm test -- src/mcp/primitives/essential/tools/__tests__/sync.tool.spec.ts
 ```
 
-**ESM packages gotcha**: `ky`, `unified`, `remark-parse`, and other ESM-only deps require `transformIgnorePatterns` in jest config (see `package.json`). If adding new ESM deps, add them to the pattern.
+**ESM deps load natively**: Jest runs with `--experimental-vm-modules` (wired into the npm test scripts via `NODE_OPTIONS` — see the Environment section), so ESM-only deps like `ky`, `unified`, and `remark-parse` load without transformation. The `transformIgnorePatterns` jest-config workaround was removed; new ESM deps need no special handling.
 
 ### E2E Tests (requires Docker)
 
@@ -289,7 +289,7 @@ Bundle uses STDIO entry point. Key gotchas:
 
 Node.js requirement: `>=22.12.0` (Node 20 reached end-of-life on 2026-04-30; oldest supported LTS is Node 22). That is the runtime floor — the highest `engines.node` among production deps is `commander`'s `>=22.12.0`.
 
-**Development needs a newer Node than `engines` declares**: `@modelcontextprotocol/inspector` (devDependency, drives the E2E suite) requires `>=22.19.0`. `engines.node` deliberately stays at the runtime floor so consumers aren't forced higher for a tool they never install. On an older Node 22, `npm install` warns `EBADENGINE` and E2E fails.
+**Development needs a newer Node than `engines` declares**: `@modelcontextprotocol/inspector` (devDependency, drives the E2E suite) requires `>=22.19.0`. NestJS 12 ships ESM-only packages (`@nestjs/{common,core,microservices,platform-express}`); Node's `require(esm)` interop lets the app itself run fine on Node `>=22.12`, but Jest's own module loader gates `require(esm)` on `vm.SourceTextModule` being available — that needs both Node `>=24.9` and the `--experimental-vm-modules` V8 flag, not the Node version alone. The npm test scripts (`test`, `test:tools`, `test:workflows`, `test:cov`, etc.) already set `NODE_OPTIONS=--experimental-vm-modules`, so contributors running `npm test` don't need to set anything manually. Without that combination, unit tests that import Nest fail with `ERR_REQUIRE_ESM`-style "Must use import to load ES Module" errors. So development/testing now needs Node `>=24.9` as the floor, even though `engines.node` deliberately stays at the runtime floor so consumers aren't forced higher for tooling they never install. On an older Node, `npm install` warns `EBADENGINE` and both E2E and unit tests can fail.
 
 Key environment variables (all have defaults, see `src/config/config.schema.ts`):
 - `ANKI_CONNECT_URL` — AnkiConnect URL (default: `http://localhost:8765`)

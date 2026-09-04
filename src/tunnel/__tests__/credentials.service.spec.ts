@@ -1,24 +1,6 @@
 import * as fs from "fs/promises";
 import { constants } from "fs";
-
-// Mock Logger BEFORE importing CredentialsService
-const mockLoggerWarn = jest.fn();
-const mockLoggerLog = jest.fn();
-const mockLoggerError = jest.fn();
-const mockLoggerDebug = jest.fn();
-
-jest.mock("@nestjs/common", () => {
-  const actual = jest.requireActual("@nestjs/common");
-  return {
-    ...actual,
-    Logger: jest.fn().mockImplementation(() => ({
-      log: mockLoggerLog,
-      warn: mockLoggerWarn,
-      error: mockLoggerError,
-      debug: mockLoggerDebug,
-    })),
-  };
-});
+import { Logger } from "@nestjs/common";
 
 // Mock fs/promises and os modules BEFORE importing CredentialsService
 jest.mock("fs/promises");
@@ -33,6 +15,14 @@ describe("CredentialsService", () => {
   let service: CredentialsService;
   let mockHomedir: string;
   let mockCredentialsPath: string;
+
+  // `jest.mock("@nestjs/common")` (module-factory replacement) silently stops
+  // intercepting calls under Nest 12's ESM-only packages: `require(esm)`
+  // bypasses Jest's CJS module registry hook. Spying on the real `Logger`
+  // prototype works regardless of module format and needs no special-casing.
+  // `CredentialsService` only ever calls `this.logger.warn(...)`, so that's
+  // the only method under test here.
+  let mockLoggerWarn: jest.SpyInstance;
 
   // Helper function to create valid test credentials
   const createTestCredentials = (
@@ -52,11 +42,7 @@ describe("CredentialsService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Clear logger mocks
-    mockLoggerWarn.mockClear();
-    mockLoggerLog.mockClear();
-    mockLoggerError.mockClear();
-    mockLoggerDebug.mockClear();
+    mockLoggerWarn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
 
     // Setup expected paths (homedir is mocked to "/home/testuser")
     mockHomedir = "/home/testuser";

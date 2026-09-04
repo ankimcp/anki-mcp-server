@@ -1,5 +1,11 @@
 import { NestFactory } from "@nestjs/core";
-import { Logger, type INestMicroservice } from "@nestjs/common";
+import {
+  DynamicModule,
+  Logger,
+  LoggerService,
+  type INestMicroservice,
+} from "@nestjs/common";
+import type { McpStrategy } from "@rekog/mcp-nest";
 import { AppModule } from "@/app.module";
 import {
   CredentialsService,
@@ -21,6 +27,19 @@ import {
   LOG_DESTINATION,
 } from "@/bootstrap";
 import { performLogin, reportLoginError } from "./perform-login";
+
+/**
+ * Shape of `NestFactory.createMicroservice` narrowed to exactly how
+ * `handleTunnel` calls it. Exposed as an injectable parameter (defaulting to
+ * the real `NestFactory.createMicroservice`) so tests can substitute a stub
+ * directly instead of `jest.mock`-ing `@nestjs/core` — under Nest 12's
+ * ESM-only packages, `require(esm)` bypasses Jest's CJS module registry hook,
+ * so module-level mocking of `@nestjs/core` silently stops intercepting calls.
+ */
+export type CreateMicroserviceFn = (
+  module: DynamicModule,
+  options: { strategy: McpStrategy; logger: LoggerService },
+) => Promise<INestMicroservice>;
 
 /**
  * Display a URL in a nice box
@@ -194,6 +213,9 @@ async function ensureCredentials(
  * @param ankiConnect - Optional AnkiConnect URL override (CLI flag > env var >
  *   schema default). Tunnel mode still talks to AnkiConnect directly — only
  *   the control channel to the relay goes over the tunnel.
+ * @param createMicroservice - Factory for the Nest microservice, defaulting to
+ *   `NestFactory.createMicroservice`. Overridable in tests (see
+ *   `CreateMicroserviceFn`).
  * @throws {Error} If connection fails
  */
 export async function handleTunnel(
@@ -202,6 +224,8 @@ export async function handleTunnel(
   debug?: boolean,
   readOnly?: boolean,
   ankiConnect?: string,
+  createMicroservice: CreateMicroserviceFn = (module, options) =>
+    NestFactory.createMicroservice(module, options),
 ): Promise<void> {
   const credentialsService = new CredentialsService();
   // Pass tunnelUrl through to config so the device flow targets the same host
@@ -297,7 +321,7 @@ export async function handleTunnel(
     Logger.overrideLogger(loggerService);
 
     try {
-      app = await NestFactory.createMicroservice(
+      app = await createMicroservice(
         AppModule.forTunnel(mcp, { debug, readOnly, ankiConnect }),
         {
           strategy: mcp,

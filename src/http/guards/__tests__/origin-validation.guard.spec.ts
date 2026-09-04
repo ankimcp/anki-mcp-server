@@ -1,31 +1,18 @@
-import { ExecutionContext } from "@nestjs/common";
+import { ExecutionContext, Logger } from "@nestjs/common";
 import {
   configSchema,
   transformEnvToConfig,
   buildConfigInput,
   type AppConfig,
 } from "@/config";
-
-// Mock Logger BEFORE importing OriginValidationGuard
-const mockLoggerWarn = jest.fn();
-const mockLoggerLog = jest.fn();
-const mockLoggerError = jest.fn();
-const mockLoggerDebug = jest.fn();
-
-jest.mock("@nestjs/common", () => {
-  const actual = jest.requireActual("@nestjs/common");
-  return {
-    ...actual,
-    Logger: jest.fn().mockImplementation(() => ({
-      log: mockLoggerLog,
-      warn: mockLoggerWarn,
-      error: mockLoggerError,
-      debug: mockLoggerDebug,
-    })),
-  };
-});
-
 import { OriginValidationGuard } from "../origin-validation.guard";
+
+// `jest.mock("@nestjs/common")` (module-factory replacement) silently stops
+// intercepting calls under Nest 12's ESM-only packages: `require(esm)`
+// bypasses Jest's CJS module registry hook. Spying on the real `Logger`
+// prototype works regardless of module format and needs no special-casing.
+// `OriginValidationGuard` only ever calls `this.logger.warn(...)`.
+let mockLoggerWarn: jest.SpyInstance;
 
 /**
  * Builds a guard from the current process.env, exercising the same Zod config
@@ -43,11 +30,7 @@ describe("OriginValidationGuard", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    // Clear logger mocks
-    mockLoggerWarn.mockClear();
-    mockLoggerLog.mockClear();
-    mockLoggerError.mockClear();
-    mockLoggerDebug.mockClear();
+    mockLoggerWarn = jest.spyOn(Logger.prototype, "warn").mockImplementation();
 
     // Reset environment before each test
     process.env = { ...originalEnv };
@@ -57,6 +40,7 @@ describe("OriginValidationGuard", () => {
   afterEach(() => {
     // Restore original environment
     process.env = originalEnv;
+    jest.restoreAllMocks();
   });
 
   describe("constructor", () => {

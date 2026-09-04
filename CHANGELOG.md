@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **NestJS 11 → 12** (`@nestjs/{common,core,microservices,platform-express,config,cli,schematics,testing}`), matching upstream's ESM-only release. No user-facing behavior change and the runtime Node floor is unchanged (`>=22.12.0`) — Node's `require(esm)` interop lets the app boot normally. Development/testing now needs Node `>=24.9`: Jest's own module loader needs that version to `require()` Nest 12's ESM packages. Jest also needs the `--experimental-vm-modules` flag for that loader path, which is now baked into the npm test scripts via `NODE_OPTIONS`, so contributors don't need to set it manually.
+
 - **BREAKING: `get_due_cards` / `get_cards` no longer return `back` by default** (fixes #62). Answers were included in every response, so they entered the model's context before the user had a chance to self-test during a review session — defeating the point of spaced repetition. Both tools now take an `include_answer` parameter (default `false`); pass `include_answer: true` to get answers back, e.g. for content analysis/editing workflows that are not live review. During review, keep it `false` and reveal answers per-card via `present_card` with `show_answer: true`.
 
 - **New `forgetCards` tool** — resets cards to the new queue, discarding interval, due date and ease factor. Previously the only way to push a card back into rotation was `rate_card` with a rating of 1, which records a real review, counts as a lapse and drops the card's ease factor — corrupting both future scheduling and review statistics. The response reports each card's prior state (`previousState`, `previousIntervalDays`, `reps`, `lapses`) so callers can show what was given up. The review log is preserved; note content, tags and deck placement are untouched.
