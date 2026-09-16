@@ -35,7 +35,7 @@ Three representative prompts showing the tool flows this server enables:
 
 ## Available Tools
 
-The server exposes **50 MCP tools** — 39 essential tools for everyday Anki operations and 11 GUI tools that drive the Anki desktop interface for note editing/creation workflows.
+The server exposes **53 MCP tools** — 42 essential tools for everyday Anki operations and 11 GUI tools that drive the Anki desktop interface for note editing/creation workflows.
 
 ### Essential Tools
 
@@ -47,6 +47,9 @@ The server exposes **50 MCP tools** — 39 essential tools for everyday Anki ope
 - `rate_card` - Rate card performance (Again, Hard, Good, Easy) and schedule the next review
 - `forgetCards` - Reset cards to new, discarding their scheduling without recording a review
 - `setDueDate` - Reschedule cards to become due in N days (`"0"`, `"3-7"`, `"1!"`), without recording a review
+- `areSuspended` - Check suspension state for one or more cards without changing anything
+- `suspend` - Suspend cards so they are skipped during review until unsuspended
+- `unsuspend` - Unsuspend cards so they return to normal review
 
 > **Note:** `forgetCards` and `setDueDate` change scheduling *without* logging a review, which is what separates them from `rate_card`. Reach for them when a card's schedule is wrong rather than the answer: rating a card `Again` to bury it deeper records a real lapse and drops its ease factor, permanently skewing both future scheduling and your statistics. `forgetCards` wipes the interval and starts the card over; `setDueDate` keeps the card's history and just moves the next review.
 
