@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- **New `setDeckLimits` tool** — sets daily limits (new cards per day and/or reviews per day) for an Anki deck via AnkiConnect's `getDeckConfig` and `saveDeckConfig`, and automatically refreshes the deck browser GUI.
 - `review_stats` now documents that reviews of cards deleted afterwards are not counted (AnkiConnect only exposes review logs of existing cards), so totals can be lower than Anki's own statistics.
 
 ## [0.26.0] - 2026-09

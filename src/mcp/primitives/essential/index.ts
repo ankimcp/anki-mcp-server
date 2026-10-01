@@ -48,6 +48,7 @@ export { GetTagsTool } from "./tools/get-tags.tool";
 export { ListDecksTool } from "./tools/list-decks.tool";
 export { DeckStatsTool } from "./tools/deck-stats.tool";
 export { CreateDeckTool } from "./tools/create-deck.tool";
+export { SetDeckLimitsTool } from "./tools/set-deck-limits.tool";
 export { ChangeDeckTool } from "./tools/change-deck.tool";
 // Media tools (split from former mediaActions aggregate)
 export { RetrieveMediaFileTool } from "./tools/retrieve-media-file.tool";
@@ -153,6 +154,7 @@ export const ESSENTIAL_MCP_TOOLS = [
   ListDecksTool,
   DeckStatsTool,
   CreateDeckTool,
+  SetDeckLimitsTool,
   ChangeDeckTool,
   // Media tools
   RetrieveMediaFileTool,
