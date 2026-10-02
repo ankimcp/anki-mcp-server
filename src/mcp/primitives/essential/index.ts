@@ -104,6 +104,7 @@ import { GetTagsTool } from "./tools/get-tags.tool";
 import { ListDecksTool } from "./tools/list-decks.tool";
 import { DeckStatsTool } from "./tools/deck-stats.tool";
 import { CreateDeckTool } from "./tools/create-deck.tool";
+import { SetDeckLimitsTool } from "./tools/set-deck-limits.tool";
 import { ChangeDeckTool } from "./tools/change-deck.tool";
 import { RetrieveMediaFileTool } from "./tools/retrieve-media-file.tool";
 import { GetMediaFilesNamesTool } from "./tools/get-media-files-names.tool";

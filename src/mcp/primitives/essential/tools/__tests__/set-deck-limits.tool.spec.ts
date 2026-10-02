@@ -105,7 +105,7 @@ describe("SetDeckLimitsTool", () => {
     const rawResult = await tool.execute({ deckName, newPerDay: 10 });
     const result = parseToolResult(rawResult);
 
-    expect(result.isError).toBe(true);
+    expect(result.success).toBe(false);
     expect(result.error).toContain("Deck configuration not found");
   });
 
@@ -115,7 +115,7 @@ describe("SetDeckLimitsTool", () => {
     const rawResult = await tool.execute({ deckName });
     const result = parseToolResult(rawResult);
 
-    expect(result.isError).toBe(true);
+    expect(result.success).toBe(false);
     expect(result.error).toContain(
       "At least one of newPerDay or reviewPerDay must be specified",
     );
