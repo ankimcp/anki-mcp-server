@@ -35,7 +35,7 @@ Three representative prompts showing the tool flows this server enables:
 
 ## Available Tools
 
-The server exposes **53 MCP tools** — 42 essential tools for everyday Anki operations and 11 GUI tools that drive the Anki desktop interface for note editing/creation workflows.
+The server exposes **54 MCP tools** — 43 essential tools for everyday Anki operations and 11 GUI tools that drive the Anki desktop interface for note editing/creation workflows.
 
 ### Essential Tools
 
@@ -59,6 +59,7 @@ The server exposes **53 MCP tools** — 42 essential tools for everyday Anki ope
 - `listDecks` - List all decks, optionally with per-deck study-queue statistics
 - `deckStats` - Get comprehensive statistics for a single deck (study queue, true card-state counts, ease/interval distributions)
 - `createDeck` - Create a new empty deck (supports `Parent::Child`, max 2 levels)
+- `setDeckLimits` - Set daily limits (new cards per day and/or reviews per day) for a deck and refresh GUI
 - `changeDeck` - Move cards to a different deck (created if it doesn't exist)
 
 > **Note:** Deck statistics come in two flavours. The `counts` block (and everything `listDecks` reports) mirrors Anki's deck browser: cards **due today**, capped by each deck's **daily new/review limits**, with suspended and buried cards excluded — so `review` is not "mature cards" and the `other` bucket is just the arithmetic remainder (mostly review cards not due today plus new cards over the daily limit). For true per-state totals use the `states` block on `deckStats` / `collection_stats`, which counts `new`, `learning`, `review`, `suspended` and `buried` via Anki searches, ignoring due dates and daily limits.
