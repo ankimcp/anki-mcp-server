@@ -1,0 +1,52 @@
+name: MCP Contract Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  contract-check:
+    name: MCP Contract Check & Schema Fuzzing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Start Anki container
+        run: |
+          cd .docker
+          docker compose up -d
+          cd ..
+
+      - name: Wait for AnkiConnect
+        run: |
+          echo "Waiting for AnkiConnect to be ready..."
+          for i in {1..60}; do
+            if curl -s http://localhost:8765 -X POST -d '{"action":"version","version":6}' | grep -q "result"; then
+              echo "AnkiConnect is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "AnkiConnect failed to start"
+          docker compose -f .docker/docker-compose.yml logs
+          exit 1
+
+      - name: Run MCP Contract & Schema Fuzz Check
+        uses: gendjo-owlhead/mcp-contract-check@v1
+        with:
+          command: "node dist/main-stdio"
+          fuzz: "true"

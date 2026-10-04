@@ -2,6 +2,7 @@
 
 [![Tests](https://github.com/ankimcp/anki-mcp-server/actions/workflows/test.yml/badge.svg)](https://github.com/ankimcp/anki-mcp-server/actions/workflows/test.yml)
 [![npm version](https://badge.fury.io/js/@ankimcp%2Fanki-mcp-server.svg)](https://www.npmjs.com/package/@ankimcp/anki-mcp-server)
+[![MCP Contract Validated](https://img.shields.io/badge/MCP%20Contract-Validated-0080ff?logo=shield)](https://github.com/gendjo-owlhead/mcp-contract-check)
 
 <div align="center">
   <img src="./docs/images/ankimcp.png" alt="Anki + MCP Integration" width="600" />
