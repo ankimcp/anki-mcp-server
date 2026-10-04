@@ -1,4 +1,78 @@
-import { cleanHtml, extractRenderedCardContent } from "../anki.utils";
+import {
+  AnkiConnectError,
+  ReadOnlyModeError,
+} from "@/mcp/clients/anki-connect.client";
+import {
+  READ_ONLY_HINT,
+  cleanHtml,
+  createErrorResponse,
+  extractRenderedCardContent,
+} from "../anki.utils";
+
+function parseErrorResponse(
+  response: ReturnType<typeof createErrorResponse>,
+): Record<string, any> {
+  const [first] = response.content;
+  if (first.type !== "text") {
+    throw new Error("expected a text content block");
+  }
+  return JSON.parse(first.text);
+}
+
+describe("createErrorResponse", () => {
+  it("passes the caller's hint through for ordinary errors", () => {
+    const response = createErrorResponse(new Error("boom"), {
+      hint: "caller hint",
+    });
+
+    expect(response.isError).toBe(true);
+    expect(parseErrorResponse(response)).toEqual({
+      success: false,
+      error: "boom",
+      hint: "caller hint",
+    });
+  });
+
+  it("keeps the action from an AnkiConnectError", () => {
+    const response = createErrorResponse(
+      new AnkiConnectError("bad", "findNotes"),
+      { hint: "caller hint" },
+    );
+
+    expect(parseErrorResponse(response)).toMatchObject({
+      action: "findNotes",
+      hint: "caller hint",
+    });
+  });
+
+  it("replaces the caller's hint with the read-only hint for a ReadOnlyModeError", () => {
+    const response = createErrorResponse(new ReadOnlyModeError("addNote"), {
+      deckName: "Default",
+      hint: "This happens when Anki is not running",
+    });
+    const data = parseErrorResponse(response);
+
+    expect(response.isError).toBe(true);
+    expect(data.success).toBe(false);
+    expect(data.error).toContain("read-only mode");
+    expect(data.deckName).toBe("Default");
+    expect(data.hint).toBe(READ_ONLY_HINT);
+  });
+
+  it("adds the read-only hint when the caller passed no context", () => {
+    const data = parseErrorResponse(
+      createErrorResponse(new ReadOnlyModeError("deleteNotes")),
+    );
+
+    expect(data.hint).toBe(READ_ONLY_HINT);
+  });
+
+  it("states the cause and how read-only mode is set", () => {
+    expect(READ_ONLY_HINT).toContain("read-only mode");
+    expect(READ_ONLY_HINT).toContain("READ_ONLY");
+    expect(READ_ONLY_HINT).toContain("--read-only");
+  });
+});
 
 describe("cleanHtml", () => {
   it("returns an empty string for empty input", () => {

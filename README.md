@@ -27,7 +27,7 @@ See [`docs/`](./docs/README.md) for supplementary documentation, including the [
 
 Three representative prompts showing the tool flows this server enables:
 
-1. **"Help me review my Spanish deck."** — The assistant syncs with AnkiWeb (`sync`), fetches due cards (`get_due_cards` with deck filter), presents each card (`present_card`), and records your rating (`rate_card`). Natural study conversation with explanations tailored to you.
+1. **"Help me review my Spanish deck."** — The assistant offers to sync with AnkiWeb (`sync`), fetches due cards (`get_due_cards` with deck filter), presents each card (`present_card`), and records your rating (`rate_card`). Natural study conversation with explanations tailored to you.
 
 2. **"Create 10 Arabic vocab cards with RTL styling."** — The assistant lists note types (`modelNames`), creates a custom RTL model if needed (`createModel` + `updateModelStyling` for right-to-left CSS), then batch-creates the cards (`addNotes`).
 
@@ -67,7 +67,7 @@ The server exposes **53 MCP tools** — 42 essential tools for everyday Anki ope
 - `addNote` - Create a single note with specified fields and tags
 - `addNotes` - Batch-create up to 100 notes sharing a deck and model (partial success supported)
 - `findNotes` - Search for notes using Anki query syntax (`deck:`, `tag:`, `is:due`, etc.)
-- `notesInfo` - Get detailed information about notes (fields, tags, CSS styling)
+- `notesInfo` - Get detailed information about notes (fields, tags, note type, card IDs; CSS comes from `modelStyling`)
 - `updateNoteFields` - Update existing note fields (CSS-aware, supports HTML content)
 - `deleteNotes` - Delete notes and all associated cards (destructive, requires confirmation)
 
@@ -101,7 +101,7 @@ Just tell Claude where the image is, and it will handle the upload automatically
 - `updateModelTemplates` - Update the card templates (Front and Back HTML) for an existing note type (applies to all its cards)
 - `addModelField` - Add a new field to an existing note type (appended at the end or inserted at a specific position)
 - `removeModelField` - Remove a field from an existing note type (deletes its content from all notes; requires explicit confirmation)
-- `renameModelField` - Rename a field in an existing note type (card templates referencing the old name must be updated separately)
+- `renameModelField` - Rename a field in an existing note type (Anki rewrites references to the old name in the card templates)
 - `repositionModelField` - Change the position of a field within an existing note type
 
 #### Statistics
@@ -119,7 +119,7 @@ Tools that drive the Anki desktop interface. Intended for note editing/creation 
 - `guiEditNote` - Open the note editor for a specific note
 - `guiDeckOverview` - Open the Deck Overview dialog for a specific deck
 - `guiDeckBrowser` - Open the Deck Browser dialog
-- `guiCurrentCard` - Get info about the current card in review mode
+- `guiCurrentCard` - Get info about the current card in review mode (includes the answer; errors outside review mode)
 - `guiShowQuestion` - Show the question side of the current card
 - `guiShowAnswer` - Show the answer side of the current card
 - `guiUndo` - Undo the last action in Anki
@@ -363,7 +363,7 @@ Options:
   -h, --host <address>           Host to bind to (HTTP mode; default: 127.0.0.1, or HOST env var)
   -a, --anki-connect <url>       AnkiConnect URL (default: http://localhost:8765, or ANKI_CONNECT_URL env var)
   --ngrok                        Start ngrok tunnel (requires global ngrok installation)
-  --read-only                    Run in read-only mode (blocks all write operations)
+  --read-only                    Run in read-only mode (blocks content changes and rescheduling; rating, suspend and sync still work)
   --help                         Show help message
 
 Usage with npx (no installation needed):
@@ -386,11 +386,14 @@ Usage with global installation:
 
 ### Read-Only Mode (all modes)
 
-The `--read-only` flag prevents any modifications to your Anki collection. When enabled:
+The `--read-only` flag (or `READ_ONLY=true`) blocks changes to note content, decks, tags, media and note types, and manual rescheduling of cards. When enabled:
 - All read operations work normally (browsing decks, viewing cards, searching notes)
-- Review operations are allowed (sync, answerCards, suspend/unsuspend)
-- Content modifications are blocked (addNote, deleteNotes, createDeck, updateNoteFields, etc.)
-- Useful for safely exploring Anki data without risk of accidental changes
+- These changes are still allowed: rating a card during review (`rate_card`), suspending/unsuspending cards (`suspend`, `unsuspend`), syncing with AnkiWeb (`sync`), and the GUI tools that navigate Anki's windows (`guiBrowse`, `guiDeckOverview`, …)
+- Content modifications are blocked (addNote, deleteNotes, createDeck, updateNoteFields, etc.); `createDeck` for a deck that already exists still succeeds, since nothing is written
+- Manual rescheduling is blocked: `forgetCards` (reset to new) and `setDueDate`
+- `guiUndo` is blocked, since an undo can revert a change to the collection
+- `guiAddCards` and `guiEditNote` are blocked, since a note added or saved in the dialog they open is written to the collection
+- Useful for exploring Anki data without accidental changes to its content
 
 ```bash
 # HTTP mode with read-only
@@ -517,7 +520,7 @@ The `findNotes` tool supports Anki's powerful query syntax:
 ### Important Notes
 
 #### CSS and HTML Handling
-- The `notesInfo` tool returns CSS styling information for proper rendering awareness
+- The `notesInfo` tool returns each note's note type name; the CSS itself comes from `modelStyling`
 - The `updateNoteFields` tool supports HTML content in fields and preserves CSS styling
 - Each note model has its own CSS styling - use `modelStyling` to get model-specific CSS
 

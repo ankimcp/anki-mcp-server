@@ -83,6 +83,7 @@ export class ForgetCardsTool {
       destructiveHint: true,
       // Resetting an already-new card is a no-op.
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() params: { cards: number[] }) {
@@ -129,7 +130,7 @@ export class ForgetCardsTool {
       return createErrorResponse(error, {
         action: "forgetCards",
         cardIds: cards,
-        hint: "Make sure Anki is running and the card IDs are valid card IDs (not note IDs)",
+        hint: "This can happen when Anki is not running or the card IDs are invalid (note IDs are not card IDs)",
       });
     }
   }

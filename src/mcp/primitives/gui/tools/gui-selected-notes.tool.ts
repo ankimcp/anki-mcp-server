@@ -17,10 +17,8 @@ export class GuiSelectedNotesTool {
   @Tool({
     name: "guiSelectedNotes",
     description:
-      "Get the IDs of notes currently selected in the Card Browser. Returns array of note IDs (empty if no selection). " +
-      "IMPORTANT: Only use when user explicitly requests getting selected notes. " +
-      "This tool is for note editing/creation workflows, NOT for review sessions. " +
-      "The Card Browser must be open with cards selected.",
+      "Reads the IDs of the notes the user has selected in the Card Browser window of the Anki desktop app. Changes nothing on screen. " +
+      "Returns an empty list when nothing is selected or the Card Browser is not open. Useful when the user refers to notes they selected in Anki.",
     parameters: z.object({}),
     outputSchema: z.object({
       success: z.boolean(),
@@ -34,6 +32,7 @@ export class GuiSelectedNotesTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async guiSelectedNotes(@Payload() _args: Record<string, never>) {
@@ -54,7 +53,7 @@ export class GuiSelectedNotesTool {
           noteIds: [],
           noteCount: 0,
           message: "No notes are currently selected in the Card Browser",
-          hint: "Open the Card Browser (guiBrowse) and select some cards/notes first.",
+          hint: "Nothing is selected in the Card Browser, or the Card Browser is not open.",
         };
       }
 
@@ -63,7 +62,7 @@ export class GuiSelectedNotesTool {
         noteIds,
         noteCount: noteIds.length,
         message: `Retrieved ${noteIds.length} selected note ID(s) from Card Browser`,
-        hint: "Use notesInfo to get details about these notes, or updateNoteFields/deleteNotes to modify them.",
+        hint: "notesInfo returns details for these note IDs.",
       };
     } catch (error) {
       this.logger.error("Failed to get selected notes", error);
@@ -74,13 +73,13 @@ export class GuiSelectedNotesTool {
           error.message.includes("not open")
         ) {
           return createErrorResponse(error, {
-            hint: "Card Browser is not open. Use guiBrowse to open it first.",
+            hint: "Card Browser is not open.",
           });
         }
       }
 
       return createErrorResponse(error, {
-        hint: "Make sure Anki is running and the Card Browser is open",
+        hint: "This can happen when Anki is not running or the Card Browser is not open",
       });
     }
   }

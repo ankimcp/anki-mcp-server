@@ -17,10 +17,8 @@ export class GuiEditNoteTool {
   @Tool({
     name: "guiEditNote",
     description:
-      "Open Anki note editor dialog for a specific note ID. Allows manual editing of note fields, tags, and cards in the GUI. " +
-      "IMPORTANT: Only use when user explicitly requests editing a note via GUI. " +
-      "This tool is for note editing workflows when user wants to manually edit in Anki interface. " +
-      "For programmatic editing, use updateNoteFields instead.",
+      "Opens the note editor window in the Anki desktop app on the user's screen for one note, where the user can edit its fields and tags by hand. " +
+      "The tool itself changes no note content. For when the user wants to edit a note in Anki; updateNoteFields edits fields directly.",
     parameters: z.object({
       note: z
         .number()
@@ -38,6 +36,7 @@ export class GuiEditNoteTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async guiEditNote(@Payload() { note }: { note: number }) {
@@ -65,14 +64,14 @@ export class GuiEditNoteTool {
         ) {
           return createErrorResponse(error, {
             noteId: note,
-            hint: "Note not found. Use findNotes to search for notes and get valid note IDs.",
+            hint: "Note not found. findNotes searches for notes and returns valid note IDs.",
           });
         }
       }
 
       return createErrorResponse(error, {
         noteId: note,
-        hint: "Make sure Anki is running and the note ID is valid",
+        hint: "This can happen when Anki is not running or the note ID is invalid",
       });
     }
   }

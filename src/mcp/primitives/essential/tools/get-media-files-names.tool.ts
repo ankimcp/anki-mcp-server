@@ -34,6 +34,7 @@ export class GetMediaFilesNamesTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() params: { pattern?: string }) {
@@ -52,7 +53,7 @@ export class GetMediaFilesNamesTool {
       this.logger.error("Failed to execute getMediaFilesNames", error);
       return createErrorResponse(error, {
         action: "getMediaFilesNames",
-        hint: "Make sure Anki is running",
+        hint: "This can happen when Anki is not running",
       });
     }
   }

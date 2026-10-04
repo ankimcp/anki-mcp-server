@@ -36,7 +36,6 @@ export interface AnkiCard {
   left?: number;
   mod?: number;
   flags?: number;
-  tags?: string[];
 }
 
 /**
@@ -63,7 +62,7 @@ export interface CardPresentation {
   back?: string; // Only included when showing answer
   deckName: string;
   modelName: string;
-  tags: string[];
+  tags?: string[]; // Absent when the note lookup failed
   currentInterval: number;
   easeFactor: number;
   reviews: number;

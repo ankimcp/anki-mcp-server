@@ -35,6 +35,7 @@ export class ModelNamesTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async modelNames(@Payload() _args: Record<string, never>) {
@@ -77,7 +78,7 @@ export class ModelNamesTool {
     } catch (error) {
       this.logger.error("Failed to retrieve model names", error);
       return createErrorResponse(error, {
-        hint: "Make sure Anki is running and AnkiConnect is installed",
+        hint: "This can happen when Anki is not running or the AnkiConnect add-on is not installed",
       });
     }
   }

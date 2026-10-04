@@ -20,6 +20,7 @@ export class UpdateModelStylingTool {
       "Update the CSS styling for an existing note type (model). " +
       "This changes how cards of this type are rendered in Anki. " +
       "Useful for adding RTL (Right-to-Left) support, changing fonts, colors, or layout. " +
+      "The given CSS replaces the note type's entire existing CSS (modelStyling returns the current CSS). " +
       "Changes apply to all cards using this model.",
     parameters: z.object({
       modelName: z
@@ -52,8 +53,9 @@ export class UpdateModelStylingTool {
     annotations: {
       title: "Update Note Type CSS",
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async updateModelStyling(
@@ -145,13 +147,13 @@ export class UpdateModelStylingTool {
       ) {
         return createErrorResponse(error, {
           modelName,
-          hint: "Model not found. Use modelNames tool to see available models.",
+          hint: "Model not found. modelNames lists the available models.",
         });
       }
 
       return createErrorResponse(error, {
         modelName,
-        hint: "Make sure Anki is running and the model name is correct.",
+        hint: "This can happen when Anki is not running or the model name is wrong",
       });
     }
   }

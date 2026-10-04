@@ -245,6 +245,37 @@ describe("GetCardsTool", () => {
       expect(result.message).toContain("Found 20 due cards, returning 2");
     });
 
+    it("should skip a card deleted between findCards and cardsInfo", async () => {
+      // AnkiConnect returns `{}` in the slot of a card that no longer exists.
+      ankiClient.invoke
+        .mockResolvedValueOnce(mockCardIds) // findCards
+        .mockResolvedValueOnce([{}, mockCardsInfo[1]]); // cardsInfo
+
+      const rawResult = await tool.getCards({});
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(true);
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0].cardId).toBe(mockCardsInfo[1].cardId);
+      expect(result.total).toBe(1);
+      expect(result.returned).toBe(1);
+      expect(result.message).toBe("Found 1 due cards, returning 1");
+    });
+
+    it("should return no cards when every selected card was deleted", async () => {
+      ankiClient.invoke
+        .mockResolvedValueOnce(mockCardIds)
+        .mockResolvedValueOnce([{}, {}]);
+
+      const rawResult = await tool.getCards({});
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(true);
+      expect(result.cards).toEqual([]);
+      expect(result.total).toBe(0);
+      expect(result.returned).toBe(0);
+    });
+
     it("should enforce maximum limit of 50", async () => {
       // Arrange
       const manyCardIds = Array.from(
@@ -408,18 +439,6 @@ describe("GetCardsTool", () => {
         back: "こんにちは",
       });
       expect(result.cards[1].front).not.toBe(result.cards[0].front);
-    });
-
-    it("should report progress correctly", async () => {
-      // Arrange
-      ankiClient.invoke
-        .mockResolvedValueOnce(mockCardIds)
-        .mockResolvedValueOnce(mockCardsInfo);
-
-      // Act
-      await tool.getCards({});
-
-      // Assert
     });
 
     it("should combine deck filter with new card state", async () => {

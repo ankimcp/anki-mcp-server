@@ -140,7 +140,7 @@ describe("NotesInfoTool", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toContain("fetch failed");
-      expect(result.hint).toContain("Make sure Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
   });
 });

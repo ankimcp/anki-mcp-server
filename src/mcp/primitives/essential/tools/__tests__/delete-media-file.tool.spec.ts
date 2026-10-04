@@ -66,10 +66,4 @@ describe("DeleteMediaFileTool", () => {
       filename: "old_recording.mp3",
     });
   });
-
-  it("should report progress", async () => {
-    ankiClient.invoke.mockResolvedValueOnce(undefined);
-
-    await tool.execute({ filename: "x.mp3" });
-  });
 });

@@ -266,6 +266,37 @@ describe("GetDueCardsTool", () => {
       expect(result.total).toBe(0);
     });
 
+    it("should skip a card deleted between findCards and cardsInfo", async () => {
+      // AnkiConnect returns `{}` in the slot of a card that no longer exists.
+      ankiClient.invoke
+        .mockResolvedValueOnce(mockCardIds) // findCards
+        .mockResolvedValueOnce([mockCardsInfo[0], {}]); // cardsInfo
+
+      const rawResult = await tool.getDueCards({});
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(true);
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0].cardId).toBe(mockCardsInfo[0].cardId);
+      expect(result.total).toBe(1);
+      expect(result.returned).toBe(1);
+      expect(result.message).toBe("Found 1 due cards, returning 1");
+    });
+
+    it("should take a deleted new card out of the new count", async () => {
+      ankiClient.invoke
+        .mockResolvedValueOnce(mockCardIds) // findCards (main)
+        .mockResolvedValueOnce([mockCardIds[1]]) // findCards (new-only count)
+        .mockResolvedValueOnce([mockCardsInfo[0], {}]); // cardsInfo: new card gone
+
+      const rawResult = await tool.getDueCards({ include_new: true });
+      const result = parseToolResult(rawResult);
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(result.message).toBe("Found 1 cards (0 new, 1 due), returning 1");
+    });
+
     it("should handle network errors gracefully", async () => {
       // Arrange
       const networkError = new Error("fetch failed");
@@ -395,18 +426,6 @@ describe("GetDueCardsTool", () => {
         back: "こんにちは",
       });
       expect(result.cards[1].front).not.toBe(result.cards[0].front);
-    });
-
-    it("should report progress correctly", async () => {
-      // Arrange
-      ankiClient.invoke
-        .mockResolvedValueOnce(mockCardIds)
-        .mockResolvedValueOnce(mockCardsInfo);
-
-      // Act
-      await tool.getDueCards({});
-
-      // Assert
     });
 
     it("should combine deck filter with include_new", async () => {

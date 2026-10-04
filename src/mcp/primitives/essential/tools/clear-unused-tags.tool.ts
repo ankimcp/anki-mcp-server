@@ -15,7 +15,7 @@ export class ClearUnusedTagsTool {
   @Tool({
     name: "clearUnusedTags",
     description:
-      "Remove orphaned tags that are not used by any notes in the collection. CRITICAL: This is destructive and permanent - only run when the user explicitly asks to clean up tags.",
+      "Remove orphaned tags that are not used by any notes in the collection, across the whole collection at once. Removed tags disappear from Anki's tag list (including tags the user created but has not applied yet); notes are not changed.",
     parameters: z.object({}),
     outputSchema: z.object({
       success: z.boolean(),
@@ -26,6 +26,7 @@ export class ClearUnusedTagsTool {
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() _params: Record<string, never>) {
@@ -39,7 +40,7 @@ export class ClearUnusedTagsTool {
       this.logger.error("Failed to execute clearUnusedTags", error);
       return createErrorResponse(error, {
         action: "clearUnusedTags",
-        hint: "Make sure Anki is running",
+        hint: "This can happen when Anki is not running",
       });
     }
   }

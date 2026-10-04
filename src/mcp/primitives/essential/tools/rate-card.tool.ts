@@ -7,6 +7,10 @@ import {
   getRatingDescription,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
+import {
+  AnkiCardInfo,
+  isExistingCardEntry,
+} from "@/mcp/utils/card-validation.utils";
 
 /**
  * Tool for rating a card and updating Anki's scheduling
@@ -20,7 +24,7 @@ export class RateCardTool {
   @Tool({
     name: "rate_card",
     description:
-      "Submit a rating for a card to update Anki's spaced repetition scheduling. Before calling this, the card's answer must already have been revealed to the user via present_card with show_answer: true, and the user must have self-assessed their recall. Use this ONLY after the user confirms or modifies your suggested rating. Do not rate automatically without user input.",
+      "Records a real review of a card in Anki's scheduler: it is added to the card's review history and statistics, and the rating sets the card's next due date. The rating is meant to be the user's own assessment of their recall, given after they have seen the answer (present_card with show_answer=true).",
     parameters: z.object({
       card_id: z.number().describe("The ID of the card to rate"),
       rating: z
@@ -28,7 +32,7 @@ export class RateCardTool {
         .min(1)
         .max(4)
         .describe(
-          "The rating for the card (use the user's choice, not your suggestion): 1=Again (failed), 2=Hard, 3=Good, 4=Easy",
+          "The user's rating for the card: 1=Again (failed), 2=Hard, 3=Good, 4=Easy",
         ),
     }),
     outputSchema: z.object({
@@ -43,13 +47,18 @@ export class RateCardTool {
           due: z.number(),
           factor: z.number(),
         })
-        .nullable(),
+        .nullable()
+        .describe(
+          "The card's scheduling after the rating, read back from Anki. null when the read-back " +
+            "failed or found no card, for example because it was deleted after the rating; the rating itself was still recorded.",
+        ),
     }),
     annotations: {
       title: "Rate Card",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
+      openWorldHint: false,
     },
   })
   async rateCard(
@@ -86,7 +95,7 @@ export class RateCardTool {
           {
             cardId: card_id,
             attemptedRating: rating,
-            hint: "Verify the card ID with get_due_cards or findNotes before rating",
+            hint: "The card ID may be invalid; get_due_cards returns valid card IDs",
           },
         );
       }
@@ -113,27 +122,37 @@ export class RateCardTool {
 
       this.logger.log(`Card ${card_id} rated as ${ratingDesc}`);
 
-      // Get updated card info after rating
-      const cardsInfo = await this.ankiClient.invoke<any[]>("cardsInfo", {
-        cards: [card_id],
-      });
-
-      let nextReview = null;
-      if (cardsInfo && cardsInfo.length > 0) {
-        const card = cardsInfo[0];
-        nextReview = {
-          interval: card.interval || 0,
-          due: card.due || 0,
-          factor: card.factor || 2500,
-        };
+      // A failed read-back or a card deleted after the rating (`{}`) leaves the
+      // rating recorded, so the result stays a success without scheduling data.
+      let cardsInfo: AnkiCardInfo[] | undefined;
+      try {
+        cardsInfo = await this.ankiClient.invoke<AnkiCardInfo[]>("cardsInfo", {
+          cards: [card_id],
+        });
+      } catch (readBackError) {
+        this.logger.warn(
+          `Card ${card_id} was rated, but reading back its scheduling failed`,
+          readBackError,
+        );
       }
+
+      const card = cardsInfo?.[0];
+      const nextReview = isExistingCardEntry(card)
+        ? {
+            interval: card.interval || 0,
+            due: card.due || 0,
+            factor: card.factor || 2500,
+          }
+        : null;
 
       return {
         success: true,
         cardId: card_id,
         rating: rating,
         ratingDescription: ratingDesc,
-        message: `Card successfully rated as ${ratingDesc}`,
+        message: nextReview
+          ? `Card successfully rated as ${ratingDesc}`
+          : `Card successfully rated as ${ratingDesc}; its next review could not be read back from Anki`,
         nextReview,
       };
     } catch (error) {
@@ -142,7 +161,7 @@ export class RateCardTool {
       return createErrorResponse(error, {
         cardId: card_id,
         attemptedRating: rating,
-        hint: "Make sure Anki is running and the card exists",
+        hint: "This can happen when Anki is not running or the card does not exist",
       });
     }
   }

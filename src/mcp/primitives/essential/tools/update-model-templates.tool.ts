@@ -19,9 +19,9 @@ export class UpdateModelTemplatesTool {
     description:
       "Update the card templates (Front and Back HTML) for an existing note type (model). " +
       "Each card template defines how the card's front and back sides are rendered. " +
-      "Use modelTemplates first to see current templates, then modify and pass back the templates object. " +
+      "The Front and Back HTML given for each named template replace the existing HTML; modelTemplates returns the current templates. " +
       "Changes apply to all cards using this model. " +
-      "WARNING: Invalid HTML or missing required fields may break card rendering. " +
+      "Anki validates every card template when the note type is saved and rejects the update if a template is invalid, for example if it cannot be parsed, references a field the note type does not have, has no field on the front, or has the same front as another template; nothing is changed in that case. " +
       "Card template names are validated against the model's existing templates (case-sensitive) — unknown or mis-cased names are rejected before any update. " +
       "An empty string cannot be used to blank a side.",
     parameters: z.object({
@@ -48,7 +48,7 @@ export class UpdateModelTemplatesTool {
         })
         .describe(
           'Card templates keyed by card name (e.g., { "Card 1": { Front: "...", Back: "..." } }). ' +
-            "Use modelTemplates first to get the current structure, then modify the Front/Back HTML as needed.",
+            "modelTemplates returns the current structure in this shape.",
         ),
     }),
     outputSchema: z.object({
@@ -61,8 +61,9 @@ export class UpdateModelTemplatesTool {
     annotations: {
       title: "Update Note Type Templates",
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async updateModelTemplates(
@@ -93,7 +94,7 @@ export class UpdateModelTemplatesTool {
           new Error(`Model "${modelName}" has no templates or does not exist`),
           {
             modelName,
-            hint: "Model not found. Use modelNames tool to see available models.",
+            hint: "Model not found. modelNames lists the available models.",
           },
         );
       }
@@ -112,7 +113,7 @@ export class UpdateModelTemplatesTool {
           new Error(
             `Card template(s) not found in model "${modelName}": ${offending}. ` +
               `Valid templates: ${validNames}. ` +
-              "Use modelTemplates to see current names.",
+              "modelTemplates lists the current names.",
           ),
           {
             modelName,
@@ -139,7 +140,7 @@ export class UpdateModelTemplatesTool {
         modelName,
         templateCount,
         message: `Successfully updated ${templateCount} card template(s) for model "${modelName}"`,
-        hint: "Template changes apply to all cards using this model. Use guiBrowse to preview changes.",
+        hint: "Template changes apply to all cards using this model.",
       };
     } catch (error) {
       this.logger.error(
@@ -157,13 +158,13 @@ export class UpdateModelTemplatesTool {
       ) {
         return createErrorResponse(error, {
           modelName,
-          hint: "Model not found. Use modelNames tool to see available models.",
+          hint: "Model not found. modelNames lists the available models.",
         });
       }
 
       return createErrorResponse(error, {
         modelName,
-        hint: "Make sure Anki is running and the model name is correct.",
+        hint: "This can happen when Anki is not running or the model name is wrong",
       });
     }
   }

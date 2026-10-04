@@ -4,7 +4,18 @@
 
 import { CallToolResult } from "@modelcontextprotocol/server";
 import { AnkiCard, CardRating, CardType } from "../types/anki.types";
-import { AnkiConnectError } from "../clients/anki-connect.client";
+import {
+  AnkiConnectError,
+  ReadOnlyModeError,
+} from "../clients/anki-connect.client";
+
+/**
+ * Hint attached to every read-only rejection. It replaces the caller's hint,
+ * which describes the tool's ordinary failure causes rather than this one.
+ */
+export const READ_ONLY_HINT =
+  "The server is running in read-only mode, which blocks this operation. " +
+  "Read-only mode is set by the READ_ONLY environment variable or the --read-only flag.";
 
 /**
  * Matches Anki's answer separator that most back templates emit right after
@@ -178,6 +189,10 @@ export function createErrorResponse(
   // Add any additional context
   if (context) {
     Object.assign(errorData, context);
+  }
+
+  if (error instanceof ReadOnlyModeError) {
+    errorData.hint = READ_ONLY_HINT;
   }
 
   return {

@@ -18,7 +18,7 @@ export class AddNoteTool {
   @Tool({
     name: "addNote",
     description:
-      "Add a SINGLE note to Anki. To create multiple notes, use the addNotes batch tool instead of calling addNote repeatedly — AnkiConnect processes requests one at a time, so repeated (especially parallel) addNote calls are slower and unnecessary. Use modelNames to see available note types and modelFieldNames to see required fields. Returns the note ID on success. IMPORTANT: Only create notes that were explicitly requested by the user.",
+      "Add a SINGLE note to Anki. The addNotes batch tool creates several notes in one call — AnkiConnect processes requests one at a time, so repeated (especially parallel) addNote calls are slower. modelNames lists the available note types and modelFieldNames their fields. Returns the note ID on success. The note and its cards are added to the user's collection and appear in their reviews.",
     parameters: z.object({
       deckName: z.string().min(1).describe("The deck to add the note to"),
       modelName: z
@@ -80,6 +80,7 @@ export class AddNoteTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
+      openWorldHint: false,
     },
   })
   async addNote(
@@ -124,7 +125,7 @@ export class AddNoteTool {
           new Error(`Model "${modelName}" not found or has no fields`),
           {
             modelName,
-            hint: "Use modelNames tool to see available models",
+            hint: "modelNames lists the available models",
           },
         );
       }
@@ -196,8 +197,8 @@ export class AddNoteTool {
             deckName,
             modelName,
             hint: allowDuplicate
-              ? "The note could not be created. Check if the model and deck names are correct."
-              : "This note duplicates an existing one. Retry with `allowDuplicate: true` if intentional.",
+              ? "The note could not be created: AnkiConnect returned no note ID."
+              : "This note may duplicate an existing one; with `allowDuplicate: true` the duplicate is created anyway.",
           },
         );
       }
@@ -235,21 +236,21 @@ export class AddNoteTool {
           return createErrorResponse(error, {
             deckName,
             modelName,
-            hint: "This note duplicates an existing one. Retry with `allowDuplicate: true` if intentional.",
+            hint: "This note duplicates an existing one. With `allowDuplicate: true` the duplicate is created anyway.",
           });
         }
         if (error.message.includes("model")) {
           return createErrorResponse(error, {
             deckName,
             modelName,
-            hint: "Model not found. Use modelNames tool to see available models.",
+            hint: "Model not found. modelNames lists the available models.",
           });
         }
         if (error.message.includes("deck")) {
           return createErrorResponse(error, {
             deckName,
             modelName,
-            hint: "Deck not found. Use listDecks tool to see available decks or createDeck to create a new one.",
+            hint: "Deck not found. listDecks lists the available decks; createDeck creates a new one.",
           });
         }
         if (error.message.includes("field")) {
@@ -257,7 +258,7 @@ export class AddNoteTool {
             deckName,
             modelName,
             providedFields: Object.keys(fields),
-            hint: "Field mismatch. Use modelFieldNames tool to see required fields for this model.",
+            hint: "Field mismatch. modelFieldNames lists the fields this model requires.",
           });
         }
       }
@@ -265,7 +266,7 @@ export class AddNoteTool {
       return createErrorResponse(error, {
         deckName,
         modelName,
-        hint: "Make sure Anki is running and the deck/model names are correct",
+        hint: "This can happen when Anki is not running or the deck/model names are wrong",
       });
     }
   }

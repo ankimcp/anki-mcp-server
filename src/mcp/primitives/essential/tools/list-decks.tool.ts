@@ -16,9 +16,9 @@ export class ListDecksTool {
     name: "listDecks",
     description:
       "List all Anki decks, optionally with per-deck study-queue statistics. " +
-      "IMPORTANT: those statistics are Anki's deck-browser numbers — cards DUE TODAY, capped by each deck's daily new/review limits, excluding suspended and buried cards — NOT totals per card state. " +
-      "Use the `deckStats` tool (its `states` block) or `collection_stats` for true card-state counts. " +
-      "Remember to sync first at the start of a session for latest data.",
+      "Those statistics are Anki's deck-browser numbers — cards DUE TODAY, capped by each deck's daily new/review limits, excluding suspended and buried cards — NOT totals per card state. " +
+      "The `deckStats` tool (its `states` block) and `collection_stats` return true card-state counts. " +
+      "Reads the local collection, which reflects other devices only as of the last AnkiWeb sync.",
     parameters: z.object({
       includeStats: z
         .boolean()
@@ -115,6 +115,7 @@ export class ListDecksTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() params: { includeStats?: boolean }) {
@@ -131,7 +132,7 @@ export class ListDecksTool {
       this.logger.error("Failed to execute listDecks", error);
       return createErrorResponse(error, {
         action: "listDecks",
-        hint: "Make sure Anki is running",
+        hint: "This can happen when Anki is not running",
       });
     }
   }

@@ -15,7 +15,7 @@ export class DeleteMediaFileTool {
   @Tool({
     name: "deleteMediaFile",
     description:
-      "Remove a media file from Anki's collection.media folder. CRITICAL: This is destructive and permanent - only delete media the user explicitly confirmed for deletion.",
+      "Remove a media file from Anki's collection.media folder (Anki moves it to its media trash). Cards that reference the file stop showing or playing it; the deletion also reaches other devices on the next AnkiWeb sync.",
     parameters: z.object({
       filename: z
         .string()
@@ -33,6 +33,7 @@ export class DeleteMediaFileTool {
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() params: { filename: string }) {
@@ -49,7 +50,7 @@ export class DeleteMediaFileTool {
       this.logger.error("Failed to execute deleteMediaFile", error);
       return createErrorResponse(error, {
         action: "deleteMediaFile",
-        hint: "Make sure Anki is running and the filename is valid",
+        hint: "This can happen when Anki is not running or the filename is invalid",
       });
     }
   }

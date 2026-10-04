@@ -39,6 +39,7 @@ export class CreateDeckTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() params: { deckName: string }) {
@@ -55,7 +56,7 @@ export class CreateDeckTool {
       this.logger.error("Failed to execute createDeck", error);
       return createErrorResponse(error, {
         action: "createDeck",
-        hint: "Make sure Anki is running and the deck name is valid",
+        hint: "This can happen when Anki is not running or the deck name is wrong",
       });
     }
   }

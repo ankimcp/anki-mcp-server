@@ -37,7 +37,7 @@ export class CollectionStatsTool {
     name: "collection_stats",
     description:
       "Get aggregated statistics across all decks in the collection including card counts, ease factor distribution, and interval distribution. " +
-      "Returns TWO different views, do not mix them up: " +
+      "Returns TWO different views that answer different questions: " +
       "`counts` and `per_deck` are today's study queue as shown in Anki's deck browser (cards DUE TODAY, capped by each deck's daily new/review limits, suspended/buried excluded); " +
       "`states` is the true number of cards in each state (new / learning / review / suspended / buried) across the whole collection, ignoring due dates and daily limits. " +
       'To answer "how many cards do I have" use `states`; to answer "what will I study today" use `counts`. ' +
@@ -134,6 +134,7 @@ export class CollectionStatsTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() params: CollectionStatsParams) {
@@ -390,7 +391,7 @@ export class CollectionStatsTool {
     } catch (error) {
       this.logger.error("Failed to get collection statistics", error);
       return createErrorResponse(error, {
-        hint: "Make sure Anki is running and AnkiConnect is accessible.",
+        hint: "This can happen when Anki is not running or AnkiConnect is not reachable",
       });
     }
   }

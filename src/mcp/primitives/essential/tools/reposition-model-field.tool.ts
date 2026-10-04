@@ -20,7 +20,7 @@ export class RepositionModelFieldTool {
       "Change the position of a field within an Anki note type (model). " +
       "Fields are ordered 0-based: index 0 is the first field. " +
       "(Which field is the sort field is a separate model setting and is not changed by repositioning.) " +
-      "Use modelFieldNames to see the current field order before repositioning.",
+      "modelFieldNames lists the current field order.",
     parameters: z.object({
       modelName: z
         .string()
@@ -50,6 +50,7 @@ export class RepositionModelFieldTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async repositionModelField(
@@ -83,7 +84,7 @@ export class RepositionModelFieldTool {
             modelName,
             fieldName,
             index,
-            hint: "Model not found. Use modelNames tool to see available models.",
+            hint: "Model not found. modelNames lists the available models.",
           },
         );
       }
@@ -97,7 +98,7 @@ export class RepositionModelFieldTool {
             modelName,
             fieldName,
             index,
-            hint: "Field names are case-sensitive. Use modelFieldNames to see the current field names.",
+            hint: "Field names are case-sensitive. modelFieldNames lists the current field names.",
           },
         );
       }
@@ -113,7 +114,7 @@ export class RepositionModelFieldTool {
             modelName,
             fieldName,
             index,
-            hint: "Index out of range. Use modelFieldNames to see how many fields exist.",
+            hint: "Index out of range. modelFieldNames lists the fields, which shows how many exist.",
           },
         );
       }
@@ -152,7 +153,7 @@ export class RepositionModelFieldTool {
           modelName,
           fieldName,
           index,
-          hint: "Model or field not found. Use modelNames and modelFieldNames tools to verify names.",
+          hint: "Model or field not found. modelNames and modelFieldNames list the valid names.",
         });
       }
 
@@ -160,7 +161,7 @@ export class RepositionModelFieldTool {
         modelName,
         fieldName,
         index,
-        hint: "Make sure Anki is running and the model and field names are correct.",
+        hint: "This can happen when Anki is not running or the model or field name is wrong",
       });
     }
   }

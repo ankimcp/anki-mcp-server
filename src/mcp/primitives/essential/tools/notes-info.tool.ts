@@ -18,8 +18,8 @@ export class NotesInfoTool {
   @Tool({
     name: "notesInfo",
     description:
-      "Get detailed information about specific notes including all fields, tags, model info, and CSS styling. " +
-      "Use this after findNotes to get complete note data. Includes CSS for proper rendering awareness.",
+      "Get fields, tags, note type (model) name, card IDs and modification time for each note, by note ID (from findNotes). " +
+      "CSS is stored per note type and is not included; modelStyling returns it.",
     parameters: z.object({
       notes: z
         .array(z.number())
@@ -58,6 +58,7 @@ export class NotesInfoTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async notesInfo(@Payload() { notes }: { notes: number[] }) {
@@ -110,11 +111,10 @@ export class NotesInfoTool {
         requestedIds: notes,
         message: message,
         models: uniqueModels,
-        cssNote:
-          "Each note model has its own CSS styling. Use modelStyling tool to get CSS for specific models.",
+        cssNote: "CSS is stored per note type; modelStyling returns it.",
         hint:
           validNotes.length > 0
-            ? "Fields may contain HTML. Use updateNoteFields to modify content. Do not view notes in Anki browser while updating."
+            ? "Fields may contain HTML. updateNoteFields modifies content; its changes do not persist for a note that is open in Anki's browser."
             : "No valid notes found. They may have been deleted.",
       };
     } catch (error) {
@@ -124,14 +124,14 @@ export class NotesInfoTool {
         if (error.message.includes("not found")) {
           return createErrorResponse(error, {
             requestedNotes: notes,
-            hint: "One or more note IDs are invalid. Use findNotes to get valid note IDs.",
+            hint: "One or more note IDs are invalid. findNotes returns valid note IDs.",
           });
         }
       }
 
       return createErrorResponse(error, {
         requestedNotes: notes,
-        hint: "Make sure Anki is running and the note IDs are valid",
+        hint: "This can happen when Anki is not running or the note IDs are invalid",
       });
     }
   }

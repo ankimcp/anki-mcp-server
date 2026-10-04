@@ -22,9 +22,9 @@ export class UpdateNoteFieldsTool {
   @Tool({
     name: "updateNoteFields",
     description:
-      "Update the fields of an existing note. Supports HTML content in fields and preserves CSS styling. " +
-      "WARNING: Do not view the note in Anki browser while updating, or the fields will not update properly. " +
-      "Close the browser or switch to a different note before updating. IMPORTANT: Only update notes that the user explicitly asked to modify.",
+      "Update the fields of an existing note. The given fields' current content is overwritten (HTML supported; the note type's CSS is not touched) and the change is not recorded in Anki's undo history. " +
+      "Optional audio/picture items are downloaded from their URLs and appended to the listed fields as [sound:...] / <img> tags, so repeating a call with media appends them again unless those fields are also overwritten. " +
+      "Known AnkiConnect issue: if the note is open in Anki's Browse window, the call reports success but the fields are not saved.",
     parameters: z.object({
       note: z.object({
         id: z
@@ -74,8 +74,9 @@ export class UpdateNoteFieldsTool {
     annotations: {
       title: "Update Note Fields",
       readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: true,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
     },
   })
   async updateNoteFields(
@@ -109,7 +110,7 @@ export class UpdateNoteFieldsTool {
       if (fieldCount === 0) {
         return createErrorResponse(new Error("No fields provided for update"), {
           noteId: note.id,
-          hint: "Provide at least one field to update",
+          hint: "No fields were given; an update needs at least one field",
         });
       }
 
@@ -151,7 +152,7 @@ export class UpdateNoteFieldsTool {
       if (!notesInfo || notesInfo.length === 0 || !notesInfo[0]) {
         return createErrorResponse(new Error("Note not found"), {
           noteId: note.id,
-          hint: "The note ID is invalid or the note has been deleted. Use findNotes to get valid note IDs.",
+          hint: "The note ID is invalid or the note has been deleted. findNotes returns valid note IDs.",
         });
       }
 
@@ -172,7 +173,7 @@ export class UpdateNoteFieldsTool {
             modelName,
             invalidFields,
             validFields: existingFields,
-            hint: `These fields don't exist in the "${modelName}" model. Use modelFieldNames to see valid fields.`,
+            hint: `These fields don't exist in the "${modelName}" model. modelFieldNames lists the valid fields.`,
           },
         );
       }
@@ -211,8 +212,8 @@ export class UpdateNoteFieldsTool {
         cssNote:
           "HTML content is preserved. Model CSS styling remains unchanged.",
         warning:
-          "If changes don't appear, ensure the note wasn't open in Anki browser during update.",
-        hint: "Use notesInfo to verify the changes or findNotes to locate other notes to update.",
+          "Changes do not persist if the note was open in Anki's browser during the update.",
+        hint: "notesInfo returns the note's current field values.",
       };
     } catch (error) {
       this.logger.error("Failed to update note fields", error);
@@ -228,14 +229,14 @@ export class UpdateNoteFieldsTool {
           return createErrorResponse(error, {
             noteId: note.id,
             providedFields: Object.keys(note.fields),
-            hint: "Check field names match exactly (case-sensitive). Use notesInfo to see current fields.",
+            hint: "Field names have to match exactly (case-sensitive). notesInfo shows the note's current fields.",
           });
         }
       }
 
       return createErrorResponse(error, {
         noteId: note.id,
-        hint: "Make sure Anki is running and the note is not open in the browser",
+        hint: "This can happen when Anki is not running. Separately, an update to a note that is open in Anki's browser does not persist",
       });
     }
   }

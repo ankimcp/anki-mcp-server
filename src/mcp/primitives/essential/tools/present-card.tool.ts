@@ -3,7 +3,7 @@ import { Payload } from "@nestjs/microservices";
 import { McpController, Tool } from "@rekog/mcp-nest";
 import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
-import { AnkiCard, CardPresentation } from "@/mcp/types/anki.types";
+import { AnkiCard, CardPresentation, NoteInfo } from "@/mcp/types/anki.types";
 import {
   extractRenderedCardContent,
   getCardType,
@@ -22,7 +22,7 @@ export class PresentCardTool {
   @Tool({
     name: "present_card",
     description:
-      'Retrieve a card\'s content for review. WORKFLOW: 1) Show question, 2) Wait for user answer, 3) Show answer with show_answer=true, 4) Evaluate and suggest rating (1-4), 5) Wait for user confirmation ("ok"/"next" = accept, or they provide different rating), 6) Only then use rate_card',
+      "Returns a card's rendered front plus its deck, note type, tags and scheduling info. The back is included only when show_answer=true, so a card can be shown to the user before its answer is revealed. Reading a card does not record a review; rate_card does.",
     parameters: z.object({
       card_id: z.number().describe("The ID of the card to retrieve"),
       show_answer: z
@@ -38,7 +38,12 @@ export class PresentCardTool {
         back: z.string().optional(),
         deckName: z.string(),
         modelName: z.string(),
-        tags: z.array(z.string()),
+        tags: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "The note's tags; absent when the note lookup failed after the card was found",
+          ),
         currentInterval: z.number(),
         easeFactor: z.number(),
         reviews: z.number(),
@@ -53,6 +58,7 @@ export class PresentCardTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async presentCard(
@@ -71,7 +77,8 @@ export class PresentCardTool {
         cards: [card_id],
       });
 
-      if (!cardsInfo || cardsInfo.length === 0) {
+      // AnkiConnect returns `{}` (no cardId) for an unknown card ID.
+      if (typeof cardsInfo?.[0]?.cardId !== "number") {
         this.logger.warn(`Card not found: ${card_id}`);
         return createErrorResponse(
           new Error(`Card with ID ${card_id} not found`),
@@ -82,6 +89,7 @@ export class PresentCardTool {
       const card = cardsInfo[0];
       const { front, back } = extractRenderedCardContent(card);
       const cardType = getCardType(card.type);
+      const tags = await this.fetchNoteTags(card.note);
 
       // Build the presentation object
       const presentation: CardPresentation = {
@@ -89,7 +97,7 @@ export class PresentCardTool {
         front,
         deckName: card.deckName,
         modelName: card.modelName,
-        tags: card.tags || [],
+        ...(tags !== undefined && { tags }),
         currentInterval: card.interval || 0,
         easeFactor: card.factor || 2500,
         reviews: card.reps || 0,
@@ -106,8 +114,8 @@ export class PresentCardTool {
       this.logger.log(`Retrieved card ${card_id} for presentation`);
 
       const instruction = !showAnswer
-        ? "Question shown. Wait for user's answer, then use show_answer=true"
-        : "Answer revealed. Evaluate response and suggest rating, then wait for user confirmation";
+        ? "Question only; the answer is not included. Calling present_card again with show_answer=true returns it."
+        : "Answer included. No review has been recorded; rate_card records one with the user's rating (1-4).";
 
       return {
         success: true,
@@ -118,5 +126,30 @@ export class PresentCardTool {
       this.logger.error(`Failed to retrieve card ${card_id}`, error);
       return createErrorResponse(error, { cardId: card_id });
     }
+  }
+
+  /**
+   * cardsInfo carries no tags; they live on the note. A failed lookup returns
+   * undefined so the card is still presented, just without tags.
+   */
+  private async fetchNoteTags(noteId: number): Promise<string[] | undefined> {
+    try {
+      const notes = await this.ankiClient.invoke<Partial<NoteInfo>[]>(
+        "notesInfo",
+        { notes: [noteId] },
+      );
+      const tags = notes?.[0]?.tags;
+      if (Array.isArray(tags)) {
+        return tags;
+      }
+      this.logger.warn(
+        `Note ${noteId} not found; presenting card without tags`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to fetch tags for note ${noteId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    return undefined;
   }
 }

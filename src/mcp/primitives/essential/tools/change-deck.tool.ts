@@ -31,6 +31,7 @@ export class ChangeDeckTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() params: { cards: number[]; deck: string }) {
@@ -56,7 +57,7 @@ export class ChangeDeckTool {
       this.logger.error("Failed to execute changeDeck", error);
       return createErrorResponse(error, {
         action: "changeDeck",
-        hint: "Make sure Anki is running and the card IDs / deck name are valid",
+        hint: "This can happen when Anki is not running, the card IDs are invalid, or the deck name is wrong",
       });
     }
   }

@@ -72,6 +72,17 @@ export class MissingCardIdsError extends Error {
 }
 
 /**
+ * Whether a `cardsInfo`/`cardsModTime` entry describes a real card. AnkiConnect
+ * returns `{}` in the slot of a card ID that no longer exists, so an entry
+ * without a numeric `cardId` is a missing card, not a card with defaults.
+ */
+export function isExistingCardEntry<T extends { cardId?: unknown }>(
+  entry: T | null | undefined,
+): entry is T & { cardId: number } {
+  return typeof entry?.cardId === "number";
+}
+
+/**
  * Collect the requested card IDs whose positionally-aligned response entry
  * doesn't carry a numeric `cardId` — AnkiConnect's way of marking a missing
  * card in both `cardsInfo` and `cardsModTime`.
@@ -82,8 +93,7 @@ export function findMissingIds(
 ): number[] {
   const missingIds: number[] = [];
   cards.forEach((id, index) => {
-    const entry = responses?.[index];
-    if (!entry || typeof entry.cardId !== "number") {
+    if (!isExistingCardEntry(responses?.[index])) {
       missingIds.push(id);
     }
   });

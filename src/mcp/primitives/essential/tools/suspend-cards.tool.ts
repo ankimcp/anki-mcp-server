@@ -38,9 +38,8 @@ export class SuspendCardsTool {
       "first, and nothing is changed if any is missing — AnkiConnect's own suspend action handles " +
       "nonexistent IDs inconsistently (usually an error, sometimes a silent skip depending on input " +
       "order). Suspending a card that's " +
-      "already suspended is a safe no-op, so re-running with the same IDs is safe. IMPORTANT: Only " +
-      "suspend cards the user explicitly asked to suspend — a suspended card silently drops out of " +
-      "review until someone unsuspends it.",
+      "already suspended is a safe no-op, so re-running with the same IDs is safe. A suspended card " +
+      "silently drops out of the user's reviews (in Anki and on synced devices) until it is unsuspended.",
     parameters: suspendCardsInputSchema,
     outputSchema: z.object({
       success: z
@@ -78,6 +77,7 @@ export class SuspendCardsTool {
       destructiveHint: false,
       // Re-suspending an already-suspended card changes nothing further.
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() params: { cards: number[] }) {
@@ -151,7 +151,7 @@ export class SuspendCardsTool {
         success,
         message: readBackFailed
           ? `Suspended ${cards.length} card(s), but reading the new suspension ` +
-            `state back failed. The suspend was applied — do not retry.`
+            `state back failed. The suspend was applied, so a retry is not needed.`
           : success
             ? `Suspended ${cards.length} card(s): ${cardsChanged} newly suspended, ` +
               `${alreadySuspended.length} already suspended`
@@ -166,7 +166,7 @@ export class SuspendCardsTool {
       return createErrorResponse(error, {
         action: "suspend",
         cardIds: cards,
-        hint: "Make sure Anki is running and the card IDs are valid card IDs (not note IDs)",
+        hint: "This can happen when Anki is not running or the card IDs are invalid (note IDs are not card IDs)",
       });
     }
   }

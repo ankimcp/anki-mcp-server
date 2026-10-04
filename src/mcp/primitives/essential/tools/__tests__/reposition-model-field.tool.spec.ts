@@ -182,7 +182,7 @@ describe("RepositionModelFieldTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("write failed");
-      expect(result.hint).toContain("Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
 
     it("should handle generic AnkiConnect error", async () => {
@@ -196,7 +196,7 @@ describe("RepositionModelFieldTool", () => {
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
-      expect(result.hint).toContain("Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
   });
 });

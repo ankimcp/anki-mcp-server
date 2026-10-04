@@ -60,10 +60,4 @@ describe("GetMediaFilesNamesTool", () => {
     expect(result.files).toEqual([]);
     expect(result.count).toBe(0);
   });
-
-  it("should report progress", async () => {
-    ankiClient.invoke.mockResolvedValueOnce([]);
-
-    await tool.execute({});
-  });
 });

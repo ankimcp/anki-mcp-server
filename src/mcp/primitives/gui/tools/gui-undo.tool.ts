@@ -17,10 +17,8 @@ export class GuiUndoTool {
   @Tool({
     name: "guiUndo",
     description:
-      "Undo the last action or card in Anki. Returns true if undo succeeded, false otherwise. " +
-      "IMPORTANT: Only use when user explicitly requests undoing an action. " +
-      "This tool is for note editing/creation workflows, NOT for review sessions. " +
-      "Use this to undo mistakes in note creation, editing, or card management.",
+      "Triggers Anki's Edit > Undo in the desktop app, reverting whatever Anki's undo history holds as the most recent action — which may be something the user did in Anki rather than a change made through this server, and some AnkiConnect changes (e.g. updateNoteFields) are not recorded in that history at all. " +
+      "AnkiConnect reports success once the command is issued, even when there was nothing to undo. For when the user asks to undo something in Anki.",
     parameters: z.object({}),
     outputSchema: z.object({
       success: z.boolean(),
@@ -31,8 +29,9 @@ export class GuiUndoTool {
     annotations: {
       title: "Undo Last Action",
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
       idempotentHint: false,
+      openWorldHint: false,
     },
   })
   async guiUndo(@Payload() _args: Record<string, never>) {
@@ -58,13 +57,13 @@ export class GuiUndoTool {
         success: true,
         undone: true,
         message: "Last action undone successfully",
-        hint: "The previous action has been reversed. Check Anki GUI to verify.",
+        hint: "The previous action has been reversed; the Anki GUI shows the result.",
       };
     } catch (error) {
       this.logger.error("Failed to undo action", error);
 
       return createErrorResponse(error, {
-        hint: "Make sure Anki is running and the GUI is visible",
+        hint: "This can happen when Anki is not running or its GUI is not visible",
       });
     }
   }

@@ -15,7 +15,7 @@ export class AddTagsTool {
   @Tool({
     name: "addTags",
     description:
-      'Add tags to specified notes. Tags is a space-separated string (e.g., "tag1 tag2 tag3"). Use getTags first to discover existing tags and prevent duplication.',
+      'Add tags to specified notes. Tags is a space-separated string (e.g., "tag1 tag2 tag3"). getTags lists existing tags, which helps avoid near-duplicates (e.g. "roman-empire" vs "roman_empire").',
     parameters: z.object({
       notes: z
         .array(z.number())
@@ -37,6 +37,7 @@ export class AddTagsTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() params: { notes: number[]; tags: string }) {
@@ -62,7 +63,7 @@ export class AddTagsTool {
       this.logger.error("Failed to execute addTags", error);
       return createErrorResponse(error, {
         action: "addTags",
-        hint: "Make sure Anki is running and the note IDs are valid",
+        hint: "This can happen when Anki is not running or the note IDs are invalid",
       });
     }
   }

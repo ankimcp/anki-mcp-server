@@ -256,7 +256,7 @@ describe("UpdateModelTemplatesTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
-      expect(result.hint).toContain("Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
 
     it("should handle generic errors", async () => {

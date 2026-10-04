@@ -20,7 +20,7 @@ export class AddModelFieldTool {
       "Add a new field to an existing Anki note type (model). " +
       "The field is appended to the end by default, or inserted at a specific position. " +
       "Existing notes of this type will have the new field set to empty. " +
-      "Use modelFieldNames to see current fields before adding.",
+      "modelFieldNames lists the current fields.",
     parameters: z.object({
       modelName: z
         .string()
@@ -55,6 +55,7 @@ export class AddModelFieldTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
+      openWorldHint: false,
     },
   })
   async addModelField(
@@ -89,7 +90,7 @@ export class AddModelFieldTool {
           {
             modelName,
             fieldName,
-            hint: "Model not found. Use modelNames tool to see available models.",
+            hint: "Model not found. modelNames lists the available models.",
           },
         );
       }
@@ -104,7 +105,7 @@ export class AddModelFieldTool {
           {
             modelName,
             fieldName,
-            hint: `Field "${fieldName}" already exists. Use modelFieldNames to see existing fields.`,
+            hint: `Field "${fieldName}" already exists. modelFieldNames lists the existing fields.`,
           },
         );
       }
@@ -123,7 +124,7 @@ export class AddModelFieldTool {
           {
             modelName,
             fieldName,
-            hint: `Field names are case-sensitive, but "${fieldName}" differs from existing field "${caseVariant}" only in case. Pick a distinct name.`,
+            hint: `Field names are case-sensitive, but "${fieldName}" differs from existing field "${caseVariant}" only in case, and names that differ only in case are rejected.`,
           },
         );
       }
@@ -139,7 +140,7 @@ export class AddModelFieldTool {
             modelName,
             fieldName,
             index,
-            hint: "Use modelFieldNames to see how many fields exist.",
+            hint: "modelFieldNames lists the fields, which shows how many exist.",
           },
         );
       }
@@ -184,14 +185,14 @@ export class AddModelFieldTool {
         return createErrorResponse(error, {
           modelName,
           fieldName,
-          hint: "Model not found. Use modelNames tool to see available models.",
+          hint: "Model not found. modelNames lists the available models.",
         });
       }
 
       return createErrorResponse(error, {
         modelName,
         fieldName,
-        hint: "Make sure Anki is running and the model name is correct.",
+        hint: "This can happen when Anki is not running or the model name is wrong",
       });
     }
   }

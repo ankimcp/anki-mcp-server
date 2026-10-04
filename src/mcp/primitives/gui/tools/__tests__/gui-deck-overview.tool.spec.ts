@@ -51,7 +51,7 @@ describe("GuiDeckOverviewTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Failed to open Deck Overview");
-      expect(result.hint).toContain("Use listDecks");
+      expect(result.hint).toContain("listDecks lists the available decks");
     });
 
     it("should handle deck not found error", async () => {
@@ -63,7 +63,7 @@ describe("GuiDeckOverviewTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("not found");
-      expect(result.hint).toContain("Use listDecks");
+      expect(result.hint).toContain("listDecks lists the available decks");
     });
   });
 });

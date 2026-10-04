@@ -21,7 +21,6 @@ export class SystemInfoResource {
       totalMemory: `${Math.round(os.totalmem() / (1024 * 1024 * 1024))} GB`,
       freeMemory: `${Math.round(os.freemem() / (1024 * 1024 * 1024))} GB`,
       uptime: `${Math.round(os.uptime() / 3600)} hours`,
-      hostname: os.hostname(),
       nodeVersion: process.version,
       env: {
         NODE_ENV: process.env.NODE_ENV || "development",

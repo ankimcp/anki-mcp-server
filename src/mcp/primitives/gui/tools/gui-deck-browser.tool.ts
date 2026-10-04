@@ -17,10 +17,8 @@ export class GuiDeckBrowserTool {
   @Tool({
     name: "guiDeckBrowser",
     description:
-      "Open Anki Deck Browser dialog showing all decks. " +
-      "IMPORTANT: Only use when user explicitly requests opening the deck browser. " +
-      "This tool is for deck management and organization workflows, NOT for review sessions. " +
-      "Use this when user wants to see all decks or manage deck structure.",
+      "Switches the Anki desktop app's main window on the user's screen to the deck list (Deck Browser), leaving any screen it was on, such as an in-progress review. " +
+      "For when the user asks to see their decks in Anki; listDecks returns the deck list without changing the screen. Not part of a review session.",
     parameters: z.object({}),
     outputSchema: z.object({
       success: z.boolean(),
@@ -29,9 +27,10 @@ export class GuiDeckBrowserTool {
     }),
     annotations: {
       title: "Open Deck Browser",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async guiDeckBrowser(@Payload() _args: Record<string, never>) {
@@ -52,7 +51,7 @@ export class GuiDeckBrowserTool {
       this.logger.error("Failed to open Deck Browser", error);
 
       return createErrorResponse(error, {
-        hint: "Make sure Anki is running and the GUI is visible",
+        hint: "This can happen when Anki is not running or its GUI is not visible",
       });
     }
   }

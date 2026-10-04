@@ -141,7 +141,7 @@ describe("UpdateNoteFieldsTool", () => {
       expect(ankiClient.invoke).not.toHaveBeenCalled();
       expect(result.success).toBe(false);
       expect(result.error).toContain("No fields provided for update");
-      expect(result.hint).toContain("Provide at least one field to update");
+      expect(result.hint).toContain("an update needs at least one field");
     });
 
     it("should handle note not found error", async () => {
@@ -276,10 +276,8 @@ describe("UpdateNoteFieldsTool", () => {
       const result = parseToolResult(rawResult);
 
       // Assert
-      expect(result.warning).toContain("If changes don't appear");
-      expect(result.warning).toContain(
-        "ensure the note wasn't open in Anki browser",
-      );
+      expect(result.warning).toContain("Changes do not persist");
+      expect(result.warning).toContain("the note was open in Anki's browser");
     });
 
     it("should handle network errors", async () => {
@@ -298,7 +296,7 @@ describe("UpdateNoteFieldsTool", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toContain("fetch failed");
-      expect(result.hint).toContain("Make sure Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
 
     it("should handle AnkiConnect field errors", async () => {
@@ -324,23 +322,6 @@ describe("UpdateNoteFieldsTool", () => {
       expect(result.error).toContain("field");
       // The hint changes based on whether we get Note not found or field error
       expect(result.hint).toBeDefined();
-    });
-
-    it("should report progress correctly", async () => {
-      // Arrange
-      ankiClient.invoke
-        .mockResolvedValueOnce([mockNotes.spanish])
-        .mockResolvedValueOnce(null);
-
-      // Act
-      await tool.updateNoteFields({
-        note: {
-          id: mockNotes.spanish.noteId,
-          fields: { Front: "Test" },
-        },
-      });
-
-      // Assert
     });
 
     it("should preserve model name in response", async () => {

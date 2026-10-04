@@ -40,11 +40,13 @@ export function __resetAnkiQueueForTests(): void {
 }
 
 /**
- * Set of AnkiConnect actions that modify collection content.
+ * Set of AnkiConnect actions that modify the collection.
  * Used to block write operations in read-only mode.
  *
- * Only includes actions actually exposed by our tools.
- * Review/scheduling operations (answerCards, suspend, sync, etc.) are allowed.
+ * Only includes actions actually exposed by our tools. Rescheduling actions
+ * (forgetCards, setDueDate) and the Add/Edit dialogs (guiAddCards,
+ * guiEditNote) are blocked; answering a card during review (answerCards),
+ * suspend/unsuspend, sync and GUI navigation are allowed.
  */
 const WRITE_ACTIONS = new Set([
   // Note operations
@@ -70,6 +72,14 @@ const WRITE_ACTIONS = new Set([
   "modelFieldRemove",
   "modelFieldRename",
   "modelFieldReposition",
+  // Scheduling overrides
+  "forgetCards",
+  "setDueDate",
+  // Undo reverts the newest collection change, whatever it was
+  "guiUndo",
+  // Dialogs whose Add/Save writes the note into the collection
+  "guiAddCards",
+  "guiEditNote",
 ]);
 
 /**

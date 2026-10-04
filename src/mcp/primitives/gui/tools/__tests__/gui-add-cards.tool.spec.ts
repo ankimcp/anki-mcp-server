@@ -81,7 +81,7 @@ describe("GuiAddCardsTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Model");
-      expect(result.hint).toContain("Use modelNames");
+      expect(result.hint).toContain("modelNames lists the available models");
     });
 
     it("should handle deck not found error", async () => {
@@ -92,7 +92,7 @@ describe("GuiAddCardsTool", () => {
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
-      expect(result.hint).toContain("Use listDecks");
+      expect(result.hint).toContain("listDecks lists the available decks");
     });
 
     it("should handle field mismatch error", async () => {
@@ -103,7 +103,9 @@ describe("GuiAddCardsTool", () => {
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
-      expect(result.hint).toContain("Use modelFieldNames");
+      expect(result.hint).toContain(
+        "modelFieldNames lists the required fields",
+      );
     });
   });
 });

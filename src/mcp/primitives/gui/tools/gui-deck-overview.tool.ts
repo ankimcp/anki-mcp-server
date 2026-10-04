@@ -17,9 +17,8 @@ export class GuiDeckOverviewTool {
   @Tool({
     name: "guiDeckOverview",
     description:
-      "Open Anki Deck Overview dialog for a specific deck. Shows deck statistics and study options. Returns true if succeeded. " +
-      "IMPORTANT: Only use when user explicitly requests opening deck overview. " +
-      "This tool is for deck management and note organization workflows, NOT for review sessions.",
+      "Makes the named deck Anki's current deck and switches the Anki desktop app's main window on the user's screen to that deck's overview (due counts and the Study Now button). " +
+      "Returns an error if the deck does not exist. For when the user asks to open a deck in Anki; deckStats returns the numbers without changing the screen. Not part of a review session.",
     parameters: z.object({
       name: z
         .string()
@@ -34,9 +33,10 @@ export class GuiDeckOverviewTool {
     }),
     annotations: {
       title: "Open Deck Overview",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async guiDeckOverview(@Payload() { name }: { name: string }) {
@@ -54,7 +54,7 @@ export class GuiDeckOverviewTool {
           new Error(`Failed to open Deck Overview for deck "${name}"`),
           {
             deckName: name,
-            hint: "Deck not found or Anki GUI is not responding. Use listDecks to see available decks.",
+            hint: "Deck not found or Anki GUI is not responding. listDecks lists the available decks.",
           },
         );
       }
@@ -77,14 +77,14 @@ export class GuiDeckOverviewTool {
         ) {
           return createErrorResponse(error, {
             deckName: name,
-            hint: "Deck not found. Use listDecks to see available decks.",
+            hint: "Deck not found. listDecks lists the available decks.",
           });
         }
       }
 
       return createErrorResponse(error, {
         deckName: name,
-        hint: "Make sure Anki is running and the deck name is correct",
+        hint: "This can happen when Anki is not running or the deck name is wrong",
       });
     }
   }

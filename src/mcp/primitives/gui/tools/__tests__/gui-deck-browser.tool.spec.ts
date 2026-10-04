@@ -50,7 +50,7 @@ describe("GuiDeckBrowserTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("GUI not available");
-      expect(result.hint).toContain("Make sure Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
   });
 });

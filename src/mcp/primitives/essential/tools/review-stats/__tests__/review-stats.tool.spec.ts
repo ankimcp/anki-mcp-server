@@ -163,8 +163,6 @@ describe("ReviewStatsTool", () => {
         good: expect.any(Number),
         easy: expect.any(Number),
       });
-
-      // Progress reporting should be called
     });
 
     it("should handle no reviews in date range", async () => {

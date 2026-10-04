@@ -63,7 +63,7 @@ describe("FindNotesTool", () => {
       expect(result.message).toBe(
         "No notes found matching the search criteria",
       );
-      expect(result.hint).toContain("Try a broader search query");
+      expect(result.hint).toContain("The query may be too narrow");
     });
 
     it("should provide hint for large result sets", async () => {
@@ -82,9 +82,7 @@ describe("FindNotesTool", () => {
       expect(result.success).toBe(true);
       expect(result.count).toBe(150);
       expect(result.hint).toContain("Large result set");
-      expect(result.hint).toContain(
-        "Consider using notesInfo with smaller batches",
-      );
+      expect(result.hint).toContain("accepts the IDs in smaller batches");
     });
 
     it("should handle complex queries correctly", async () => {
@@ -138,7 +136,7 @@ describe("FindNotesTool", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toContain("fetch failed");
-      expect(result.hint).toContain("Make sure Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
 
     it("should handle various Anki query syntax patterns", async () => {
@@ -169,16 +167,6 @@ describe("FindNotesTool", () => {
         expect(result.success).toBe(true);
         expect(result.query).toBe(testCase.query);
       }
-    });
-
-    it("should report progress correctly", async () => {
-      // Arrange
-      ankiClient.invoke.mockResolvedValueOnce([1, 2, 3]);
-
-      // Act
-      await tool.findNotes({ query: "deck:Test" });
-
-      // Assert
     });
 
     it("should handle null or undefined results", async () => {

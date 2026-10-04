@@ -18,9 +18,9 @@ export class RenameModelFieldTool {
     name: "renameModelField",
     description:
       "Rename a field in an existing Anki note type (model). " +
-      "Card templates that reference the old field name (e.g., {{OldName}}) will need to be " +
-      "updated separately using updateModelTemplates — they are not updated automatically. " +
-      "Use modelFieldNames to confirm the current field name before renaming.",
+      "Anki rewrites references to the old name in the note type's card templates (e.g., {{OldName}} becomes {{NewName}}); " +
+      "Anki then validates all card templates when the note type is saved, and if any is invalid (for example it cannot be parsed, references a field the note type does not have, or has no field on the front), the rename fails. " +
+      "Field names are case-sensitive; modelFieldNames lists the current ones.",
     parameters: z.object({
       modelName: z
         .string()
@@ -43,13 +43,13 @@ export class RenameModelFieldTool {
       oldFieldName: z.string(),
       newFieldName: z.string(),
       message: z.string(),
-      warning: z.string().optional(),
     }),
     annotations: {
       title: "Rename Field in Note Type",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
+      openWorldHint: false,
     },
   })
   async renameModelField(
@@ -78,7 +78,7 @@ export class RenameModelFieldTool {
             modelName,
             oldFieldName,
             newFieldName,
-            hint: "Provide a new field name that differs from the current one.",
+            hint: "The new field name is the same as the current one, so there is nothing to rename.",
           },
         );
       }
@@ -99,7 +99,7 @@ export class RenameModelFieldTool {
             modelName,
             oldFieldName,
             newFieldName,
-            hint: "Model not found. Use modelNames tool to see available models.",
+            hint: "Model not found. modelNames lists the available models.",
           },
         );
       }
@@ -113,7 +113,7 @@ export class RenameModelFieldTool {
             modelName,
             oldFieldName,
             newFieldName,
-            hint: "Field names are case-sensitive. Use modelFieldNames to see the current field names.",
+            hint: "Field names are case-sensitive. modelFieldNames lists the current field names.",
           },
         );
       }
@@ -152,7 +152,7 @@ export class RenameModelFieldTool {
             modelName,
             oldFieldName,
             newFieldName,
-            hint: `Field names are case-sensitive, but "${newFieldName}" differs from existing field "${caseVariant}" only in case. Pick a distinct name.`,
+            hint: `Field names are case-sensitive, but "${newFieldName}" differs from existing field "${caseVariant}" only in case, and names that differ only in case are rejected.`,
           },
         );
       }
@@ -173,9 +173,6 @@ export class RenameModelFieldTool {
         oldFieldName,
         newFieldName,
         message: `Successfully renamed field "${oldFieldName}" to "${newFieldName}" in model "${modelName}"`,
-        warning:
-          `Card templates referencing "{{${oldFieldName}}}" must be updated manually ` +
-          `to "{{${newFieldName}}}" using the updateModelTemplates tool.`,
       };
     } catch (error) {
       this.logger.error(
@@ -194,7 +191,7 @@ export class RenameModelFieldTool {
           modelName,
           oldFieldName,
           newFieldName,
-          hint: "Model or field not found. Use modelNames and modelFieldNames tools to verify names.",
+          hint: "Model or field not found. modelNames and modelFieldNames list the valid names.",
         });
       }
 
@@ -202,7 +199,7 @@ export class RenameModelFieldTool {
         modelName,
         oldFieldName,
         newFieldName,
-        hint: "Make sure Anki is running and the model and field names are correct.",
+        hint: "This can happen when Anki is not running or the model or field name is wrong",
       });
     }
   }

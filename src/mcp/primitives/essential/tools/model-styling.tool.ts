@@ -43,6 +43,7 @@ export class ModelStylingTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async modelStyling(@Payload() { modelName }: { modelName: string }) {
@@ -63,7 +64,7 @@ export class ModelStylingTool {
           new Error(`Model "${modelName}" not found or has no styling`),
           {
             modelName: modelName,
-            hint: "Use modelNames tool to see available models",
+            hint: "modelNames lists the available models",
           },
         );
       }
@@ -101,7 +102,7 @@ export class ModelStylingTool {
       );
       return createErrorResponse(error, {
         modelName: modelName,
-        hint: "Make sure the model name is correct and Anki is running",
+        hint: "This can happen when Anki is not running or the model name is wrong",
       });
     }
   }

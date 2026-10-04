@@ -167,7 +167,7 @@ describe("GetTagsTool", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain("ECONNREFUSED");
       expect(result.hint).toBe(
-        "Make sure Anki is running and AnkiConnect is installed",
+        "This can happen when Anki is not running or the AnkiConnect add-on is not installed",
       );
     });
 
@@ -180,7 +180,7 @@ describe("GetTagsTool", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain("Unknown error");
       expect(result.hint).toBe(
-        "Make sure Anki is running and AnkiConnect is installed",
+        "This can happen when Anki is not running or the AnkiConnect add-on is not installed",
       );
     });
 
@@ -312,30 +312,6 @@ describe("GetTagsTool", () => {
       expect(result.success).toBe(true);
       expect(result.tags).toEqual(tags);
       expect(result.total).toBe(2);
-    });
-  });
-
-  describe("Progress Reporting", () => {
-    it("should report progress during retrieval", async () => {
-      const tags = ["vocab", "grammar"];
-
-      ankiClient.invoke.mockResolvedValueOnce(tags);
-
-      await tool.getTags({});
-    });
-
-    it("should report progress even when retrieval fails", async () => {
-      ankiClient.invoke.mockRejectedValueOnce(new Error("Failed"));
-
-      await tool.getTags({});
-    });
-
-    it("should report progress with pattern filtering", async () => {
-      const tags = ["roman-empire", "greek"];
-
-      ankiClient.invoke.mockResolvedValueOnce(tags);
-
-      await tool.getTags({ pattern: "roman" });
     });
   });
 

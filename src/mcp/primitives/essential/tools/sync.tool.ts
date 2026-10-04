@@ -17,7 +17,7 @@ export class SyncTool {
   @Tool({
     name: "sync",
     description:
-      "Synchronize local Anki collection with AnkiWeb. IMPORTANT: Always sync at the START of a review session (before getting cards) and at the END when user indicates they are done. This ensures data consistency across devices.",
+      "Synchronizes the local Anki collection with AnkiWeb (network call; needs the Anki desktop app to be logged in to AnkiWeb). The other tools work on the local collection (apart from media downloads from URLs passed to storeMediaFile or updateNoteFields), so reviews made on other devices show up only after a sync, and changes made here reach other devices only after a sync.",
     parameters: z.object({}),
     outputSchema: z.object({
       success: z.boolean(),
@@ -50,7 +50,7 @@ export class SyncTool {
       this.logger.error("Failed to sync with AnkiWeb", error);
 
       return createErrorResponse(error, {
-        hint: "Make sure Anki is running and you are logged into AnkiWeb",
+        hint: "This can happen when Anki is not running or the Anki desktop app is not logged into AnkiWeb",
       });
     }
   }

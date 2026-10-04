@@ -262,7 +262,7 @@ describe("ModelTemplatesTool", () => {
         'Model "NonExistent" not found or has no card templates',
       );
       expect(result.modelName).toBe(modelName);
-      expect(result.hint).toContain("Use modelNames tool");
+      expect(result.hint).toContain("modelNames lists the available models");
     });
 
     it("should handle null response from AnkiConnect", async () => {
@@ -299,7 +299,7 @@ describe("ModelTemplatesTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("model was not found");
-      expect(result.hint).toContain("Make sure the model name is correct");
+      expect(result.hint).toContain("the model name is wrong");
     });
   });
 
@@ -314,7 +314,7 @@ describe("ModelTemplatesTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("ECONNREFUSED");
-      expect(result.hint).toContain("Make sure the model name is correct");
+      expect(result.hint).toContain("the model name is wrong");
     });
 
     it("should handle network timeout", async () => {
@@ -386,7 +386,7 @@ describe("ModelTemplatesTool", () => {
       const result = parseToolResult(rawResult);
 
       expect(result.hint).toContain(
-        "Use updateModelTemplates to modify the Front/Back HTML",
+        "updateModelTemplates replaces the Front/Back HTML",
       );
     });
   });
@@ -426,8 +426,8 @@ describe("ModelTemplatesTool", () => {
       const rawResult = await tool.modelTemplates({ modelName });
       const result = parseToolResult(rawResult);
 
-      expect(result.hint).toContain("Make sure the model name is correct");
-      expect(result.hint).toContain("Anki is running");
+      expect(result.hint).toContain("the model name is wrong");
+      expect(result.hint).toContain("Anki is not running");
     });
   });
 });

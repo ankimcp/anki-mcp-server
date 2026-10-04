@@ -13,3 +13,13 @@ export class AnkiConnectError extends Error {
     this.name = "AnkiConnectError";
   }
 }
+
+export class ReadOnlyModeError extends Error {
+  constructor(public readonly action: string) {
+    super(
+      `Action "${action}" is blocked: server is running in read-only mode. ` +
+        `Write operations are disabled. Remove the --read-only flag to enable writes.`,
+    );
+    this.name = "ReadOnlyModeError";
+  }
+}

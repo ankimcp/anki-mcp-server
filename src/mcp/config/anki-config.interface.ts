@@ -27,7 +27,7 @@ export interface IAnkiConfig {
   ankiConnectTimeout: number;
 
   /**
-   * Read-only mode - blocks all write operations
+   * Read-only mode - blocks content changes and rescheduling; rating, suspend and sync still work
    * @default false
    */
   readOnly?: boolean;

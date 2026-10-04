@@ -14,23 +14,6 @@ export function parseToolResult(result: any): any {
 }
 
 /**
- * Create a mock context for MCP tools
- */
-export function createMockContext() {
-  return {
-    reportProgress: jest.fn().mockResolvedValue(undefined),
-    log: {
-      debug: jest.fn(),
-      error: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-    },
-    mcpServer: {} as any,
-    mcpRequest: {} as any,
-  };
-}
-
-/**
  * The `findCards` queries `fetchCardStateCounts` issues, in emission order.
  * Mirrors `CARD_STATE_QUERIES` in `@/mcp/utils/card-states.utils`; the
  * authoritative assertions on those literals live in

@@ -269,10 +269,4 @@ describe("ListDecksTool", () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain("fetch failed");
   });
-
-  it("should report progress", async () => {
-    ankiClient.invoke.mockResolvedValueOnce(["Deck1"]);
-
-    await tool.execute({});
-  });
 });

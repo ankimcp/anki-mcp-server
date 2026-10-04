@@ -52,14 +52,14 @@ export async function storeMediaFile(
 
   // Validate that at least one source is provided
   if (!data && !path && !url) {
-    throw new Error("Must provide either data, path, or url parameter");
+    throw new Error("One of the data, path, or url parameters is required");
   }
 
   // Validate that only one source is provided
   const sources = [data, path, url].filter(Boolean);
   if (sources.length > 1) {
     throw new Error(
-      "Cannot provide multiple sources (data, path, url). Choose one.",
+      "Multiple sources (data, path, url) were given; exactly one is accepted.",
     );
   }
 

@@ -44,6 +44,7 @@ export class GetTagsTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async getTags(@Payload() { pattern }: { pattern?: string }) {
@@ -90,7 +91,7 @@ export class GetTagsTool {
     } catch (error) {
       this.logger.error("Failed to retrieve tags", error);
       return createErrorResponse(error, {
-        hint: "Make sure Anki is running and AnkiConnect is installed",
+        hint: "This can happen when Anki is not running or the AnkiConnect add-on is not installed",
       });
     }
   }

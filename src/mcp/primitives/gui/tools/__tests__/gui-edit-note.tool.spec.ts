@@ -52,7 +52,7 @@ describe("GuiEditNoteTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Note not found");
-      expect(result.hint).toContain("Use findNotes");
+      expect(result.hint).toContain("findNotes searches for notes");
     });
 
     it("should handle general errors", async () => {
@@ -63,7 +63,7 @@ describe("GuiEditNoteTool", () => {
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
-      expect(result.hint).toContain("Make sure Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
   });
 });

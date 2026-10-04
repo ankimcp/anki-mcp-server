@@ -1,4 +1,5 @@
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
+import type { NoteInfo } from "@/mcp/types/anki.types";
 
 /**
  * Parameters for replaceTags action
@@ -58,8 +59,27 @@ export async function replaceTags(
 
   // Validate no spaces in tags (single tag only)
   if (trimmedOld.includes(" ") || trimmedNew.includes(" ")) {
-    throw new Error("Tags cannot contain spaces. Use single tags only.");
+    throw new Error(
+      "Tags cannot contain spaces; tagToReplace and replaceWithTag each take a single tag.",
+    );
   }
+
+  // AnkiConnect only touches notes that carry the tag (matched case-insensitively)
+  // and silently skips missing note IDs, so count those up front.
+  const notesInfo = await client.invoke<Array<Partial<NoteInfo>>>("notesInfo", {
+    notes,
+  });
+  const oldTagLower = trimmedOld.toLowerCase();
+  const notesWithTag = new Set(
+    notesInfo
+      .filter(
+        (note) =>
+          note?.noteId !== undefined &&
+          note.tags?.some((tag) => tag.toLowerCase() === oldTagLower),
+      )
+      .map((note) => note.noteId),
+  );
+  const notesAffected = notesWithTag.size;
 
   // Call AnkiConnect - replaceTags returns null on success
   await client.invoke<null>("replaceTags", {
@@ -70,8 +90,11 @@ export async function replaceTags(
 
   return {
     success: true,
-    message: `Successfully replaced "${trimmedOld}" with "${trimmedNew}" in ${notes.length} note(s)`,
-    notesAffected: notes.length,
+    message:
+      notesAffected === 0
+        ? `No note among the ${notes.length} given carried "${trimmedOld}"; nothing was replaced`
+        : `Successfully replaced "${trimmedOld}" with "${trimmedNew}" in ${notesAffected} of ${notes.length} note(s)`,
+    notesAffected,
     tagToReplace: trimmedOld,
     replaceWithTag: trimmedNew,
   };

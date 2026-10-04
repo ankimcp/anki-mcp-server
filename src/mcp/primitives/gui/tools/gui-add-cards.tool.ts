@@ -17,9 +17,9 @@ export class GuiAddCardsTool {
   @Tool({
     name: "guiAddCards",
     description:
-      "Open Anki Add Cards dialog with preset note details (deck, model, fields, tags). Returns potential note ID. " +
-      "IMPORTANT: Only use when user explicitly requests opening the Add Cards dialog. " +
-      "This tool is for note editing/creation workflows. Use this when user wants to manually review and finalize note creation in the GUI.",
+      "Opens the Add Cards dialog in the Anki desktop app on the user's screen, pre-filled with deck, note type, fields and tags (replacing an Add Cards dialog that is already open), and makes that deck and note type Anki's current ones. " +
+      "Nothing is saved until the user clicks Add, so the returned noteId does not refer to a saved note. " +
+      "For when the user wants to review and finish a note by hand in Anki; addNote creates notes directly.",
     parameters: z.object({
       note: z.object({
         deckName: z.string().min(1).describe("Deck to add the note to"),
@@ -48,6 +48,7 @@ export class GuiAddCardsTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async guiAddCards(
@@ -109,19 +110,19 @@ export class GuiAddCardsTool {
           return createErrorResponse(error, {
             modelName: note.modelName,
             providedFields: Object.keys(note.fields),
-            hint: "Field mismatch. Use modelFieldNames tool to see required fields.",
+            hint: "Field mismatch. modelFieldNames lists the required fields.",
           });
         }
         if (errorMessage.includes("model")) {
           return createErrorResponse(error, {
             modelName: note.modelName,
-            hint: "Model not found. Use modelNames tool to see available models.",
+            hint: "Model not found. modelNames lists the available models.",
           });
         }
         if (errorMessage.includes("deck")) {
           return createErrorResponse(error, {
             deckName: note.deckName,
-            hint: "Deck not found. Use listDecks tool to see available decks.",
+            hint: "Deck not found. listDecks lists the available decks.",
           });
         }
       }
@@ -129,7 +130,7 @@ export class GuiAddCardsTool {
       return createErrorResponse(error, {
         deckName: note.deckName,
         modelName: note.modelName,
-        hint: "Make sure Anki is running and the deck/model names are correct",
+        hint: "This can happen when Anki is not running or the deck/model names are wrong",
       });
     }
   }

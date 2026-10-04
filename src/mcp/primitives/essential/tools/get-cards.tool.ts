@@ -5,6 +5,7 @@ import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, SimplifiedCard } from "@/mcp/types/anki.types";
 import { deckScopeQuery } from "@/mcp/utils/card-states.utils";
+import { isExistingCardEntry } from "@/mcp/utils/card-validation.utils";
 import {
   extractRenderedCardContent,
   createErrorResponse,
@@ -39,7 +40,7 @@ export class GetCardsTool {
   @Tool({
     name: "get_cards",
     description:
-      "Retrieve cards from Anki with flexible filtering by deck and card state. IMPORTANT: Use sync tool FIRST before getting cards to ensure latest data. By default answers are NOT included (include_answer defaults to false) so they never enter context before the user has a chance to self-test — after getting cards, use present_card to show them one by one and reveal the answer only when the user is ready. Set include_answer=true only for content analysis/editing workflows that are not live review sessions.",
+      "Retrieve cards from Anki with flexible filtering by deck and card state. Reads the local collection as-is and does not sync with AnkiWeb, so reviews made on other devices since the last sync are not reflected. Answers are not included by default (include_answer=false), so a card's back stays out of the conversation until present_card reveals it; include_answer=true returns the backs too, which suits content analysis or editing rather than a live review.",
     parameters: z.object({
       deck_name: z
         .string()
@@ -60,7 +61,7 @@ export class GetCardsTool {
         .boolean()
         .default(false)
         .describe(
-          "Whether to include each card's answer (back). Keep this false during review sessions so answers never enter context before the user reveals them via present_card. Set true only for content analysis/editing workflows, not live review.",
+          "Whether to include each card's answer (back). Defaults to false so answers are not seen before the user reveals them via present_card; true suits content analysis or editing rather than live review.",
         ),
     }),
     outputSchema: z.object({
@@ -80,7 +81,11 @@ export class GetCardsTool {
           factor: z.number(),
         }),
       ),
-      total: z.number(),
+      total: z
+        .number()
+        .describe(
+          "Number of cards the search matched, including matches beyond limit, minus cards found deleted among the ones looked up (the first limit matches)",
+        ),
       returned: z.number().optional(),
       message: z.string(),
     }),
@@ -89,6 +94,7 @@ export class GetCardsTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async getCards(
@@ -149,8 +155,13 @@ export class GetCardsTool {
         cards: selectedCardIds,
       });
 
+      // A card deleted between findCards and cardsInfo comes back as `{}`;
+      // it is gone, so it is dropped from the result and from the total.
+      const existingCards = cardsInfo.filter(isExistingCardEntry);
+      const total = cardIds.length - (cardsInfo.length - existingCards.length);
+
       // Transform cards to simplified structure
-      const cards: SimplifiedCard[] = cardsInfo.map((card) => {
+      const cards: SimplifiedCard[] = existingCards.map((card) => {
         const { front, back } = extractRenderedCardContent(card);
 
         return {
@@ -166,15 +177,15 @@ export class GetCardsTool {
       });
 
       this.logger.log(
-        `Retrieved ${cards.length} ${card_state} cards out of ${cardIds.length} total`,
+        `Retrieved ${cards.length} ${card_state} cards out of ${total} total`,
       );
 
       return {
         success: true,
         cards,
-        total: cardIds.length,
+        total,
         returned: cards.length,
-        message: `Found ${cardIds.length} ${card_state} cards, returning ${cards.length}`,
+        message: `Found ${total} ${card_state} cards, returning ${cards.length}`,
       };
     } catch (error) {
       this.logger.error(`Failed to get ${card_state || "due"} cards`, error);

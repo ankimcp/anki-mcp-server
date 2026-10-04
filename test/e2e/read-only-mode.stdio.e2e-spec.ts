@@ -1,8 +1,8 @@
 /**
  * E2E tests for read-only mode - STDIO transport
  *
- * Verifies that --read-only flag blocks content modifications
- * while allowing read operations and review/scheduling.
+ * Verifies that --read-only flag blocks content modifications and
+ * manual rescheduling while allowing read operations and sync.
  *
  * Requires:
  *   - Docker container running: npm run e2e:up
@@ -117,6 +117,78 @@ describe("E2E: Read-Only Mode (STDIO)", () => {
       expect(result).toHaveProperty("success", false);
       expect(result).toHaveProperty("error");
       expect(result.error).toContain("read-only mode");
+    });
+
+    it("should block guiUndo", () => {
+      const result = callTool("guiUndo");
+      expect(result).toHaveProperty("success", false);
+      expect(result).toHaveProperty("error");
+      expect(result.error).toContain("read-only mode");
+    });
+
+    it("should block guiAddCards", () => {
+      const result = callTool("guiAddCards", {
+        note: {
+          deckName: "Default",
+          modelName: "Basic",
+          fields: { Front: "test", Back: "test" },
+        },
+      });
+      expect(result).toHaveProperty("success", false);
+      expect(result).toHaveProperty("error");
+      expect(result.error).toContain("read-only mode");
+    });
+
+    it("should block guiEditNote", () => {
+      const result = callTool("guiEditNote", { note: 1 });
+      expect(result).toHaveProperty("success", false);
+      expect(result).toHaveProperty("error");
+      expect(result.error).toContain("read-only mode");
+    });
+  });
+
+  describe("Scheduling Overrides (should be blocked)", () => {
+    // Both tools check that the cards exist before the blocked write, so they
+    // need a real card, created through a writable server.
+    let cardId: number;
+
+    beforeAll(() => {
+      setTransport("stdio");
+      const uid = String(Date.now()).slice(-8);
+      const noteResult = callTool("addNote", {
+        deckName: "Default",
+        modelName: "Basic",
+        fields: {
+          Front: `ReadOnly Schedule Front ${uid}`,
+          Back: `ReadOnly Schedule Back ${uid}`,
+        },
+      });
+      expect(noteResult).toHaveProperty("noteId");
+      const infoResult = callTool("notesInfo", {
+        notes: [noteResult.noteId as number],
+      });
+      const notes = infoResult.notes as Array<{ cards: number[] }>;
+      cardId = notes[0].cards[0];
+
+      setTransport("stdio", { readOnly: true });
+    });
+
+    it("should block forgetCards", () => {
+      const result = callTool("forgetCards", { cards: [cardId] });
+      expect(result).toHaveProperty("success", false);
+      expect(result).toHaveProperty("error");
+      expect(result.error).toContain("read-only mode");
+      expect(result.hint).toContain("read-only mode");
+    });
+
+    it("should block setDueDate", () => {
+      // The Inspector CLI JSON-parses each --tool-arg value, so "1" would
+      // arrive as the number 1; a range is not valid JSON and stays a string.
+      const result = callTool("setDueDate", { cards: [cardId], days: "1-2" });
+      expect(result).toHaveProperty("success", false);
+      expect(result).toHaveProperty("error");
+      expect(result.error).toContain("read-only mode");
+      expect(result.hint).toContain("read-only mode");
     });
   });
 });

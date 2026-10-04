@@ -41,23 +41,23 @@
   "tools": [
     {
       "name": "sync",
-      "description": "Sync with AnkiWeb to get latest data and push changes"
+      "description": "Synchronize the local collection with AnkiWeb (network call; Anki must be logged in to AnkiWeb). Other tools see changes from other devices only after a sync"
     },
     {
       "name": "get_due_cards",
-      "description": "Get cards that are due for review, optionally filtered by deck (answers omitted unless include_answer: true, default false)"
+      "description": "Get cards that are due for review, optionally filtered by deck, from the local collection without syncing (answers omitted unless include_answer: true, default false)"
     },
     {
       "name": "get_cards",
-      "description": "Get cards with flexible filtering by state (due, new, learning, suspended, buried) and deck (answers omitted unless include_answer: true, default false)"
+      "description": "Get cards with flexible filtering by state (due, new, learning, suspended, buried) and deck, from the local collection without syncing (answers omitted unless include_answer: true, default false)"
     },
     {
       "name": "present_card",
-      "description": "Show a card for review with its question/front side"
+      "description": "Return a card's front; the back only when show_answer is true. Does not record a review"
     },
     {
       "name": "rate_card",
-      "description": "Rate card performance (Again, Hard, Good, Easy) and schedule next review"
+      "description": "Record a real review with the user's rating (Again, Hard, Good, Easy), which sets the card's next due date"
     },
     {
       "name": "forgetCards",
@@ -73,7 +73,7 @@
     },
     {
       "name": "suspend",
-      "description": "Suspend cards so they're skipped during review until unsuspended. IMPORTANT: Only suspend cards the user explicitly asked to suspend — a suspended card silently drops out of review until someone unsuspends it."
+      "description": "Suspend cards so they're skipped during review until unsuspended. A suspended card silently drops out of the user's reviews until it is unsuspended."
     },
     {
       "name": "unsuspend",
@@ -81,11 +81,11 @@
     },
     {
       "name": "addNote",
-      "description": "Add a SINGLE note. To create multiple notes, use addNotes instead of calling addNote repeatedly — AnkiConnect processes requests one at a time, so repeated/parallel addNote calls are slower and unnecessary. IMPORTANT: Only create notes that were explicitly requested by the user"
+      "description": "Add a SINGLE note. addNotes creates several in one call — AnkiConnect processes requests one at a time, so repeated/parallel addNote calls are slower. The note's cards join the user's reviews"
     },
     {
       "name": "addNotes",
-      "description": "Add multiple notes in a single batch — the preferred way to create more than one note (use instead of repeated addNote calls). Up to 100 notes sharing the same deck and model. Duplicates are skipped individually; validation errors (empty required fields, bad tags) reject the batch."
+      "description": "Add multiple notes in a single batch — faster than repeated addNote calls. Up to 100 notes sharing the same deck and model. Duplicates are skipped individually; validation errors (empty required fields, bad tags) reject the batch."
     },
     {
       "name": "findNotes",
@@ -93,15 +93,15 @@
     },
     {
       "name": "notesInfo",
-      "description": "Get detailed information about notes including fields, tags, and CSS styling"
+      "description": "Get fields, tags, note type and card IDs for notes. CSS is per note type and not included (see modelStyling)"
     },
     {
       "name": "updateNoteFields",
-      "description": "Update existing note fields with support for HTML content. IMPORTANT: Only update notes that the user explicitly asked to modify"
+      "description": "Overwrite existing note fields (HTML supported), optionally appending audio/images downloaded from URLs. Changes do not persist if the note is open in Anki's browser"
     },
     {
       "name": "deleteNotes",
-      "description": "Delete notes and all associated cards. CRITICAL: This is destructive and permanent - only delete notes the user explicitly confirmed for deletion"
+      "description": "Permanently delete notes and all their cards. Rejected unless confirmDeletion is true"
     },
     {
       "name": "modelNames",
@@ -125,15 +125,15 @@
     },
     {
       "name": "updateModelStyling",
-      "description": "Update the CSS styling for an existing note type. Changes apply to all cards using this model. Useful for adding RTL support or modifying appearance."
+      "description": "Replace the entire CSS styling of an existing note type. Changes apply to all cards using this model. Useful for adding RTL support or modifying appearance."
     },
     {
       "name": "modelTemplates",
-      "description": "Get the card templates (Front and Back HTML) for a specific note type. Use this before updateModelTemplates to see current templates and plan changes."
+      "description": "Get the card templates (Front and Back HTML) for a specific note type, in the shape updateModelTemplates accepts."
     },
     {
       "name": "updateModelTemplates",
-      "description": "Update the card templates (Front and Back HTML) for an existing note type. Each card template defines how the card's front and back sides are rendered. Changes apply to all cards using this model."
+      "description": "Replace the Front and Back HTML of named card templates of an existing note type. Each card template defines how the card's front and back sides are rendered. Changes apply to all cards using this model."
     },
     {
       "name": "addModelField",
@@ -141,11 +141,11 @@
     },
     {
       "name": "removeModelField",
-      "description": "Remove a field from an existing Anki note type. WARNING: permanently deletes all field data."
+      "description": "Remove a field from an existing Anki note type, permanently deleting its data in every note. Rejected unless confirmDeletion is true."
     },
     {
       "name": "renameModelField",
-      "description": "Rename a field in an existing Anki note type. Card templates referencing the old name must be updated separately."
+      "description": "Rename a field in an existing Anki note type. Anki rewrites references to the old name in the card templates."
     },
     {
       "name": "repositionModelField",
@@ -153,47 +153,47 @@
     },
     {
       "name": "guiBrowse",
-      "description": "Open Anki Card Browser and search for cards. For note editing/creation workflows only, NOT for review sessions"
+      "description": "Open the Card Browser window in Anki on the user's screen and search for cards. For when the user asks to open the browser; not part of a review session"
     },
     {
       "name": "guiSelectCard",
-      "description": "Select a specific card in the Card Browser. For note editing/creation workflows only"
+      "description": "Change the selection in the open Card Browser window to one card. For when the user asks to select a card"
     },
     {
       "name": "guiSelectedNotes",
-      "description": "Get IDs of notes currently selected in Card Browser. For note editing/creation workflows only"
+      "description": "Read the IDs of the notes the user has selected in Anki's Card Browser. Changes nothing on screen"
     },
     {
       "name": "guiAddCards",
-      "description": "Open Add Cards dialog with preset note details. For note editing/creation workflows only"
+      "description": "Open Anki's Add Cards dialog on the user's screen, pre-filled; nothing is saved until the user clicks Add"
     },
     {
       "name": "guiEditNote",
-      "description": "Open note editor for a specific note. For note editing/creation workflows only"
+      "description": "Open Anki's note editor on the user's screen for one note, for editing by hand"
     },
     {
       "name": "guiDeckOverview",
-      "description": "Open Deck Overview dialog for a specific deck. For deck management workflows only"
+      "description": "Make a deck current and switch Anki's main window on the user's screen to its overview. Not part of a review session"
     },
     {
       "name": "guiDeckBrowser",
-      "description": "Open Deck Browser dialog. For deck management workflows only"
+      "description": "Switch Anki's main window on the user's screen to the deck list. Not part of a review session"
     },
     {
       "name": "guiCurrentCard",
-      "description": "Get current card info in review mode. For note editing/creation workflows only, NOT for review sessions"
+      "description": "Read the card on Anki's review screen, including its answer (so calling it mid-review reveals the answer). Errors outside review mode"
     },
     {
       "name": "guiShowQuestion",
-      "description": "Show question side of current card. For note editing/creation workflows only, NOT for review sessions"
+      "description": "Flip the card on Anki's review screen to its question side. For when the user asks; not how this server runs reviews"
     },
     {
       "name": "guiShowAnswer",
-      "description": "Show answer side of current card. For note editing/creation workflows only, NOT for review sessions"
+      "description": "Flip the card on Anki's review screen to its answer side. For when the user asks; not how this server runs reviews"
     },
     {
       "name": "guiUndo",
-      "description": "Undo the last action in Anki. For note editing/creation workflows only"
+      "description": "Trigger Anki's Edit > Undo, reverting the most recent action in Anki's undo history (which may be the user's own)"
     },
     {
       "name": "listDecks",
@@ -221,15 +221,15 @@
     },
     {
       "name": "storeMediaFile",
-      "description": "Upload a media file to Anki from base64 data, an absolute file path, or a URL. Perfect for workflows like ElevenLabs TTS -> Anki audio flashcards"
+      "description": "Upload a media file to Anki from base64 data, an absolute file path, or a URL. Overwrites a file with the same name by default"
     },
     {
       "name": "deleteMediaFile",
-      "description": "Remove a media file from Anki's collection.media folder. CRITICAL: This is destructive and permanent - only delete media the user explicitly confirmed for deletion"
+      "description": "Remove a media file from Anki's collection.media folder; cards that reference it stop showing or playing it"
     },
     {
       "name": "addTags",
-      "description": "Add space-separated tags to specified notes. Use getTags first to discover existing tags and prevent duplication"
+      "description": "Add space-separated tags to specified notes. getTags lists existing tags, which helps avoid near-duplicates"
     },
     {
       "name": "removeTags",
@@ -241,7 +241,7 @@
     },
     {
       "name": "clearUnusedTags",
-      "description": "Remove orphaned tags that are not used by any notes in the collection. CRITICAL: This is destructive and permanent - only run when the user explicitly asks to clean up tags"
+      "description": "Remove every tag not used by any note from the collection's tag list; notes are not changed"
     },
     {
       "name": "collection_stats",

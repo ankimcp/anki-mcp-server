@@ -40,9 +40,15 @@ describe("SystemInfoResource", () => {
       expect(data).toHaveProperty("totalMemory");
       expect(data).toHaveProperty("freeMemory");
       expect(data).toHaveProperty("uptime");
-      expect(data).toHaveProperty("hostname");
       expect(data).toHaveProperty("nodeVersion");
       expect(data).toHaveProperty("env");
+    });
+
+    it("should not expose the machine hostname", () => {
+      const result = resource.getSystemInfo({ uri: "system://info" });
+      const data = JSON.parse(result.contents[0].text);
+
+      expect(data).not.toHaveProperty("hostname");
     });
 
     it("should format memory as GB", () => {

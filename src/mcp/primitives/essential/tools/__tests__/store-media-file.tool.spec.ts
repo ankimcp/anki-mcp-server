@@ -146,16 +146,6 @@ describe("StoreMediaFileTool", () => {
     expect(result.error).toContain("Network error");
   });
 
-  it("should report progress", async () => {
-    const params = {
-      filename: "test.mp3",
-      data: "base64",
-    };
-    ankiClient.invoke.mockResolvedValueOnce("test.mp3");
-
-    await tool.execute(params);
-  });
-
   describe("security guards", () => {
     describe("path validation", () => {
       it("should reject non-media file paths (e.g., .ssh/id_rsa)", async () => {

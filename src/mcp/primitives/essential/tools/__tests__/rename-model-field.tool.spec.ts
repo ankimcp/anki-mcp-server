@@ -49,7 +49,7 @@ describe("RenameModelFieldTool", () => {
       expect(result.message).toContain("Grammar Notes");
     });
 
-    it("should include a template update warning in the response", async () => {
+    it("should not claim templates need a manual update (Anki rewrites them on rename)", async () => {
       ankiClient.invoke.mockResolvedValueOnce(["Front", "Back"]); // modelFieldNames
       ankiClient.invoke.mockResolvedValueOnce(null); // modelFieldRename
 
@@ -61,9 +61,7 @@ describe("RenameModelFieldTool", () => {
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
-      expect(result.warning).toContain("{{Front}}");
-      expect(result.warning).toContain("{{Question}}");
-      expect(result.warning).toContain("updateModelTemplates");
+      expect(result.warning).toBeUndefined();
     });
 
     it("should handle model not found error", async () => {
@@ -216,7 +214,7 @@ describe("RenameModelFieldTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("write failed");
-      expect(result.hint).toContain("Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
 
     it("should handle generic AnkiConnect error", async () => {
@@ -230,7 +228,7 @@ describe("RenameModelFieldTool", () => {
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
-      expect(result.hint).toContain("Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
   });
 });

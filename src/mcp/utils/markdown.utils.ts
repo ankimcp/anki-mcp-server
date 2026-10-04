@@ -1,6 +1,5 @@
 import { unified } from "unified";
 import remarkParse from "remark-parse";
-import { visit } from "unist-util-visit";
 import type { Root, RootContent } from "mdast";
 
 /**
@@ -72,32 +71,23 @@ export function parseMarkdownSections(markdown: string): MarkdownSections {
   const tree = unified().use(remarkParse).parse(markdown) as Root;
   const sections: MarkdownSections = {};
 
-  let currentHeading: string | null = null;
-  let currentContent: string[] = [];
+  // Only top-level H1 headings start sections; an H1 nested inside a
+  // blockquote or list is ignored and stays part of the enclosing section's
+  // body. Each body is sliced verbatim from the source so nested markdown
+  // (sub-headings, lists, emphasis) is kept intact.
+  const h1Headings = tree.children.filter(
+    (node) => node.type === "heading" && node.depth === 1,
+  );
 
-  visit(tree, (node) => {
-    if (node.type === "heading" && node.depth === 1) {
-      // Save previous section if exists
-      if (currentHeading) {
-        sections[currentHeading] = currentContent.join("\n").trim();
-      }
-
-      // Start new section
-      currentHeading = extractHeadingText(node as RootContent);
-      currentContent = [];
-    } else if (currentHeading) {
-      // Collect content under current heading
-      const content = nodeToString(node as RootContent);
-      if (content.trim()) {
-        currentContent.push(content.trim());
-      }
+  h1Headings.forEach((heading, index) => {
+    const start = heading.position?.end.offset;
+    const end =
+      h1Headings[index + 1]?.position?.start.offset ?? markdown.length;
+    if (start === undefined || end === undefined) {
+      return;
     }
+    sections[extractHeadingText(heading)] = markdown.slice(start, end).trim();
   });
-
-  // Save last section
-  if (currentHeading) {
-    sections[currentHeading] = currentContent.join("\n").trim();
-  }
 
   return sections;
 }

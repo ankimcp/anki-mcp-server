@@ -18,8 +18,8 @@ export class RemoveModelFieldTool {
     name: "removeModelField",
     description:
       "Remove a field from an existing Anki note type (model). " +
-      "WARNING: All data stored in this field across every note of this type will be permanently deleted. " +
-      "Use modelFieldNames to confirm the field name before removing.",
+      "All data stored in this field across every note of this type is permanently deleted. " +
+      "The call is rejected unless confirmDeletion is true. modelFieldNames lists the current field names.",
     parameters: z.object({
       modelName: z
         .string()
@@ -34,7 +34,7 @@ export class RemoveModelFieldTool {
       confirmDeletion: z
         .boolean()
         .describe(
-          "Must be set to true to confirm you understand all field data will be permanently deleted.",
+          "Confirms that all data in this field will be permanently deleted; the call is rejected unless this is true.",
         ),
     }),
     outputSchema: z.object({
@@ -48,6 +48,7 @@ export class RemoveModelFieldTool {
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: false,
+      openWorldHint: false,
     },
   })
   async removeModelField(
@@ -67,7 +68,7 @@ export class RemoveModelFieldTool {
         return createErrorResponse(new Error("Deletion not confirmed"), {
           modelName,
           fieldName,
-          hint: "Set confirmDeletion: true to confirm you want to permanently delete this field and all its data.",
+          hint: "The field is removed only when confirmDeletion is true; removal permanently deletes the field and all its data.",
         });
       }
 
@@ -106,14 +107,14 @@ export class RemoveModelFieldTool {
         return createErrorResponse(error, {
           modelName,
           fieldName,
-          hint: "Model or field not found. Use modelNames and modelFieldNames tools to verify names.",
+          hint: "Model or field not found. modelNames and modelFieldNames list the valid names.",
         });
       }
 
       return createErrorResponse(error, {
         modelName,
         fieldName,
-        hint: "Make sure Anki is running and the model and field names are correct.",
+        hint: "This can happen when Anki is not running or the model or field name is wrong",
       });
     }
   }

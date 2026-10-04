@@ -111,14 +111,4 @@ describe("AddTagsTool", () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain("Note not found");
   });
-
-  it("should report progress", async () => {
-    const params = {
-      notes: [1234567890],
-      tags: "test",
-    };
-    ankiClient.invoke.mockResolvedValueOnce(null);
-
-    await tool.execute(params);
-  });
 });

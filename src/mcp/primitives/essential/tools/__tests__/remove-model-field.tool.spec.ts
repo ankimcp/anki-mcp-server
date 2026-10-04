@@ -52,7 +52,7 @@ describe("RemoveModelFieldTool", () => {
 
       expect(ankiClient.invoke).not.toHaveBeenCalled();
       expect(result.success).toBe(false);
-      expect(result.hint).toContain("confirmDeletion: true");
+      expect(result.hint).toContain("only when confirmDeletion is true");
     });
 
     it("should handle model not found error", async () => {
@@ -96,7 +96,7 @@ describe("RemoveModelFieldTool", () => {
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
-      expect(result.hint).toContain("Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
   });
 });

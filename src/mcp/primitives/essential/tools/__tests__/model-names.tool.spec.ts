@@ -205,7 +205,7 @@ describe("ModelNamesTool", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain("ECONNREFUSED");
       expect(result.hint).toBe(
-        "Make sure Anki is running and AnkiConnect is installed",
+        "This can happen when Anki is not running or the AnkiConnect add-on is not installed",
       );
     });
 
@@ -218,7 +218,7 @@ describe("ModelNamesTool", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain("Unknown error");
       expect(result.hint).toBe(
-        "Make sure Anki is running and AnkiConnect is installed",
+        "This can happen when Anki is not running or the AnkiConnect add-on is not installed",
       );
     });
 
@@ -231,7 +231,7 @@ describe("ModelNamesTool", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain("Permission denied");
       expect(result.hint).toBe(
-        "Make sure Anki is running and AnkiConnect is installed",
+        "This can happen when Anki is not running or the AnkiConnect add-on is not installed",
       );
     });
 
@@ -244,7 +244,7 @@ describe("ModelNamesTool", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain("Request timeout");
       expect(result.hint).toBe(
-        "Make sure Anki is running and AnkiConnect is installed",
+        "This can happen when Anki is not running or the AnkiConnect add-on is not installed",
       );
     });
   });
@@ -348,22 +348,6 @@ describe("ModelNamesTool", () => {
     });
   });
 
-  describe("Progress Reporting", () => {
-    it("should report progress during retrieval", async () => {
-      const modelNames = ["Basic", "Cloze"];
-
-      ankiClient.invoke.mockResolvedValueOnce(modelNames);
-
-      await tool.modelNames({});
-    });
-
-    it("should report progress even when retrieval fails", async () => {
-      ankiClient.invoke.mockRejectedValueOnce(new Error("Failed"));
-
-      await tool.modelNames({});
-    });
-  });
-
   describe("Response Structure", () => {
     it("should return correct structure on success", async () => {
       const modelNames = ["Basic", "Cloze"];
@@ -411,7 +395,7 @@ describe("ModelNamesTool", () => {
       const result = parseToolResult(rawResult);
 
       expect(result.hint).toBe(
-        "Make sure Anki is running and AnkiConnect is installed",
+        "This can happen when Anki is not running or the AnkiConnect add-on is not installed",
       );
     });
   });

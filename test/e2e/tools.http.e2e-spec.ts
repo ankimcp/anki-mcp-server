@@ -89,9 +89,18 @@ describe("E2E: MCP Tools (HTTP Streamable)", () => {
       const deckName = `HTTP::Exist${uniqueId()}`;
       const result1 = callTool("createDeck", { deckName: deckName });
       const deckId = result1.deckId;
+      expect(result1.created).toBe(true);
 
       const result2 = callTool("createDeck", { deckName: deckName });
       expect(result2.deckId).toBe(deckId);
+      expect(result2.created).toBe(false);
+
+      const result3 = callTool("createDeck", {
+        deckName: deckName.toUpperCase(),
+      });
+      expect(result3.created).toBe(false);
+      expect(result3.deckId).toBe(deckId);
+      expect(result3.deckName).toBe(deckName);
     });
   });
 

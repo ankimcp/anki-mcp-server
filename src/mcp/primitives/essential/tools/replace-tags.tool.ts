@@ -37,6 +37,7 @@ export class ReplaceTagsTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(
@@ -76,7 +77,7 @@ export class ReplaceTagsTool {
       this.logger.error("Failed to execute replaceTags", error);
       return createErrorResponse(error, {
         action: "replaceTags",
-        hint: "Make sure Anki is running and the note IDs are valid",
+        hint: "This can happen when Anki is not running or the note IDs are invalid",
       });
     }
   }

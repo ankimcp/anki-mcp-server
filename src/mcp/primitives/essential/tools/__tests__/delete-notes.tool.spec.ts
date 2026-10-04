@@ -42,8 +42,10 @@ describe("DeleteNotesTool", () => {
       expect(ankiClient.invoke).not.toHaveBeenCalled();
       expect(result.success).toBe(false);
       expect(result.error).toContain("Deletion not confirmed");
-      expect(result.hint).toContain("Set confirmDeletion to true");
-      expect(result.warning).toContain("This action cannot be undone!");
+      expect(result.hint).toContain("only when confirmDeletion is true");
+      expect(result.warning).toContain(
+        "permanently removes these notes and all their cards",
+      );
     });
 
     it("should successfully delete notes with confirmation", async () => {
@@ -183,7 +185,7 @@ describe("DeleteNotesTool", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toContain("fetch failed");
-      expect(result.hint).toContain("Make sure Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
 
     it("should handle permission errors", async () => {
@@ -205,7 +207,7 @@ describe("DeleteNotesTool", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toContain("permission");
-      expect(result.hint).toContain("Check if Anki allows deletions");
+      expect(result.hint).toContain("may not allow deletions");
     });
 
     it("should enforce maximum batch size", async () => {
@@ -242,22 +244,7 @@ describe("DeleteNotesTool", () => {
       const result = parseToolResult(rawResult);
 
       // Assert
-      expect(result.hint).toContain("Consider syncing with AnkiWeb");
-    });
-
-    it("should report progress correctly", async () => {
-      // Arrange
-      ankiClient.invoke
-        .mockResolvedValueOnce([mockNotes.spanish])
-        .mockResolvedValueOnce(null);
-
-      // Act
-      const _rawResult = await tool.deleteNotes({
-        notes: [mockNotes.spanish.noteId],
-        confirmDeletion: true,
-      });
-
-      // Assert
+      expect(result.hint).toContain("synced with AnkiWeb");
     });
 
     it("should handle notes with no cards gracefully", async () => {

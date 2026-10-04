@@ -97,7 +97,7 @@ AppModule.forStdio()/forHttp()/forTunnel()
   → McpPrimitivesAnkiGuiModule.forRoot()
 ```
 
-Each entry point builds exactly one `McpStrategy` (`new McpStrategy({ name, version, icons, transports })` — see `createMcpStrategy()` in `bootstrap.ts`) and hands the same instance to both `AppModule.forX()` (as `MCP_STRATEGY`) and the NestJS microservice connection: `createMicroservice()` for STDIO/tunnel, `connectMicroservice()` + `startAllMicroservices()` for HTTP. Transports are instances, not enum values — `new StdioTransport()`, `new StreamableHttpTransport()`, `new TunnelTransport()`.
+Each entry point builds exactly one `McpStrategy` (`new McpStrategy({ name, version, icons, instructions, transports })` — see `createMcpStrategy()` in `bootstrap.ts`) and hands the same instance to both `AppModule.forX()` (as `MCP_STRATEGY`) and the NestJS microservice connection: `createMicroservice()` for STDIO/tunnel, `connectMicroservice()` + `startAllMicroservices()` for HTTP. Transports are instances, not enum values — `new StdioTransport()`, `new StreamableHttpTransport()`, `new TunnelTransport()`.
 
 All tools/prompts/resources are `@McpController()` classes listed in each primitive module's `controllers` array (see `ESSENTIAL_MCP_TOOLS` and `GUI_MCP_TOOLS`). NestJS scans every module's controllers for the `@MessagePattern` handlers that `@Tool`/`@Prompt`/`@Resource` compile to, so `AppModule` does not re-list them.
 
@@ -111,7 +111,7 @@ All tools/prompts/resources are `@McpController()` classes listed in each primit
 
 **Action helper pattern**: The former aggregate tools (`deckActions`, `tagActions`, `mediaActions`) were split into single-purpose tools (`list-decks.tool.ts`, `deck-stats.tool.ts`, `create-deck.tool.ts`, `change-deck.tool.ts`, `store-media-file.tool.ts`, `replace-tags.tool.ts`, …). Their directories now hold only `actions/*.action.ts` — pure functions taking `(params, ankiClient)` that the split tools import. The tool class stays thin: log, call the helper, wrap failures in `createErrorResponse`.
 
-**Read-only mode**: `AnkiConnectClient` enforces read-only mode by checking actions against a `WRITE_ACTIONS` set before sending requests. Throws `ReadOnlyModeError`. Review/scheduling operations are always allowed.
+**Read-only mode**: `AnkiConnectClient` enforces read-only mode by checking actions against a `WRITE_ACTIONS` set before sending requests. Throws `ReadOnlyModeError`. The set covers content, deck, tag, media and note-type writes, the manual rescheduling actions (`forgetCards`, `setDueDate`), `guiUndo`, and the Add/Edit dialogs (`guiAddCards`, `guiEditNote`). Still allowed: `answerCards` (rating during review), `suspend`/`unsuspend`, `sync`, and the GUI navigation actions. `createErrorResponse` replaces the caller's hint with a read-only hint for a `ReadOnlyModeError`, so tools need no special handling.
 
 **Config system**: Two injection tokens:
 - `APP_CONFIG` — validated `AppConfig` object (Zod schema in `src/config/config.schema.ts`). Provided as `useValue` after parsing env + CLI overrides.
@@ -121,12 +121,12 @@ All tools/prompts/resources are `@McpController()` classes listed in each primit
 
 ### Upstream AnkiConnect Quirks
 
-These are upstream behaviors that shape tool design — surface them in tool descriptions so the AI can avoid them:
+These are upstream behaviors that shape tool design — surface them in tool descriptions, stated as facts about the tool (see "Description style" below), so the AI can avoid them:
 
-- **`updateNoteFields` silently fails** if the target note is open in Anki's Browse window. The request returns 200 but fields don't persist. Warn users in the tool description.
+- **`updateNoteFields` silently fails** if the target note is open in Anki's Browse window. The request returns 200 but fields don't persist. The tool description states this.
 - **Model CSS is per-note-type, not per-note.** Use `modelStyling` to fetch CSS for a model; `notesInfo` tells you which model each note uses. `updateNoteFields` should preserve inline styles.
 - **`sync` relies on the desktop app being logged into AnkiWeb.** There's no API path to authenticate — surface a helpful error hint.
-- **`deleteNotes` is irreversible and cascades to all cards** of the note. The tool requires explicit `confirmDeletion: true`.
+- **`deleteNotes` permanently removes the notes and cascades to all their cards.** Anki's undo history (Edit > Undo, or `guiUndo`, which reverts the newest step) can restore them until that history is cleared, for example by a change Anki does not record for undo such as `updateNoteFields`; after that only a backup restores them. The tool requires explicit `confirmDeletion: true`.
 
 ### Build & Tooling Notes
 
@@ -203,9 +203,11 @@ For tools with complex output schemas, extract Zod types into a `*.types.ts` fil
 
 ### GUI Tools (interface operations)
 
-Same as above but in `src/mcp/primitives/gui/`. Must include dual warnings:
-- "IMPORTANT: Only use when user explicitly requests..."
-- "This tool is for note editing/creation workflows, NOT for review sessions"
+Same as above but in `src/mcp/primitives/gui/`. The description says, as facts, that the tool acts on the Anki desktop window on the user's screen and what it changes there, that it is for when the user asks for it, and (where relevant) that it is not part of a review session — e.g. "Opens the Card Browser window in the Anki desktop app on the user's screen… For when the user asks to open the browser… Not part of a review session." Any tool that opens a window or changes the displayed screen or current deck gets `readOnlyHint: false`; only tools that change neither Anki data nor the screen (`guiSelectedNotes`, `guiCurrentCard`) are read-only.
+
+### Description style
+
+Tool descriptions, parameter `.describe()` text and the server instructions (`MCP_SERVER_INSTRUCTIONS` in `src/mcp/mcp-instructions.ts`) state **facts** about the tool — what it does, when it is useful, its consequences — not **orders** to the model. No `IMPORTANT:`/`CRITICAL:`/`ALWAYS`/`NEVER`/`DO NOT`/"Use X FIRST"/"Wait for user". When an order carried a real signal, keep the signal as a fact ("Permanently deletes the notes and all their cards", "Records a real review in Anki's scheduler"). Cross-tool choreography (sync offer, review loop, GUI-on-request) lives in the server instructions. Cross-references to this server's own tools are fine. The `hint`, `message`, `warning` and error strings built in the tool and action files under `src/mcp/primitives` follow the same rule: "modelNames lists the available models", not "Use modelNames to see available models"; "This can happen when Anki is not running", not "Make sure Anki is running" (a catch-all branch names possible causes, not a definite one). Error messages thrown by `AnkiConnectClient` and the media-validation error classes are not covered. `src/mcp/primitives/__tests__/tool-metadata-policy.spec.ts` enforces the marker list and the annotation set for every registered tool.
 
 ### Tool Pattern
 
@@ -220,7 +222,7 @@ Same as above but in `src/mcp/primitives/gui/`. Must include dual warnings:
 
 **outputSchema**: All tools define a Zod `outputSchema` in the `@Tool` decorator. The mcp-nest handler validates success returns via `safeParse()` and wraps them as `structuredContent`. Error returns via `createErrorResponse()` have a `content` array and bypass schema validation.
 
-**annotations**: All tools declare `readOnlyHint`, `destructiveHint`, and optionally `idempotentHint` in the `@Tool` decorator.
+**annotations**: All tools declare `title`, `readOnlyHint`, `destructiveHint`, `openWorldHint`, and optionally `idempotentHint` in the `@Tool` decorator. `openWorldHint` is `true` only for tools that reach beyond the local collection (`sync`, `storeMediaFile`, `updateNoteFields` media URLs). `destructiveHint` is `true` when the call loses data that another call to this server cannot restore (field overwrite, full CSS/template replace, scheduling overwrite, media overwrite, deletes, undo); reversible changes (tag edits, deck moves, suspend, field rename/reposition) stay `false`.
 
 See `src/mcp/primitives/essential/tools/sync.tool.ts` for minimal example.
 
@@ -238,7 +240,7 @@ Three distinct tiers — pick the right one for the change:
 
 Shared test infra:
 
-- `src/test-fixtures/test-helpers.ts` — `parseToolResult()`, `createMockContext()`
+- `src/test-fixtures/test-helpers.ts` — `parseToolResult()`
 - `src/test-fixtures/mock-data.ts` — `mockNotes`, `mockDecks`, `mockCards`, `mockErrors`
 - `test/jest-environments/timezone.environment.ts` — Jest environment that pins the process timezone for one spec file via a `@jest-environment` docblock (writing `process.env.TZ` inside a test has no effect — Jest sandboxes `process.env`). Use it for anything that depends on local-day boundaries.
 

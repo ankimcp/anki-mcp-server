@@ -194,7 +194,9 @@ describe("SetDueDateTool", () => {
     expect(result.success).toBe(true);
     expect(result.cardsAffected).toBe(1);
     expect(result.scheduled).toEqual([]);
-    expect(result.message).toContain("do not retry");
+    expect(result.message).toContain(
+      "a retry would reschedule the cards again",
+    );
   });
 
   it("should treat a short read-back array as a failed read-back", async () => {
@@ -208,7 +210,9 @@ describe("SetDueDateTool", () => {
 
     expect(result.success).toBe(true);
     expect(result.scheduled).toEqual([]);
-    expect(result.message).toContain("do not retry");
+    expect(result.message).toContain(
+      "a retry would reschedule the cards again",
+    );
   });
 
   it("should treat a non-array read-back as a failed read-back", async () => {
@@ -222,7 +226,9 @@ describe("SetDueDateTool", () => {
 
     expect(result.success).toBe(true);
     expect(result.scheduled).toEqual([]);
-    expect(result.message).toContain("do not retry");
+    expect(result.message).toContain(
+      "a retry would reschedule the cards again",
+    );
   });
 
   it("should treat a card deleted between mutation and read-back as a failed read-back", async () => {
@@ -237,7 +243,9 @@ describe("SetDueDateTool", () => {
 
     expect(result.success).toBe(true);
     expect(result.scheduled).toEqual([]);
-    expect(result.message).toContain("do not retry");
+    expect(result.message).toContain(
+      "a retry would reschedule the cards again",
+    );
   });
 
   describe("setDueDateInputSchema", () => {

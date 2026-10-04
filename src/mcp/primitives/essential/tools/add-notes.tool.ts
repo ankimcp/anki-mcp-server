@@ -33,7 +33,7 @@ export class AddNotesTool {
   @Tool({
     name: "addNotes",
     description:
-      "Add multiple notes to Anki in a single batch — the preferred way to create more than one note (use this instead of repeated addNote calls). Up to 100 notes sharing the same deck and model. Duplicates are skipped individually; validation errors (empty required fields, bad tags) reject the batch. IMPORTANT: Only create notes that were explicitly requested by the user.",
+      "Add multiple notes to Anki in a single batch — faster than repeated addNote calls for more than one note. Up to 100 notes sharing the same deck and model. Duplicates are skipped individually; validation errors (empty required fields, bad tags) reject the batch. The notes and their cards are added to the user's collection and appear in their reviews.",
     parameters: z.object({
       deckName: z.string().min(1).describe("The deck to add all notes to"),
       modelName: z
@@ -96,6 +96,7 @@ export class AddNotesTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
+      openWorldHint: false,
     },
   })
   async addNotes(
@@ -137,7 +138,7 @@ export class AddNotesTool {
             deckName,
             modelName,
             totalRequested: notes.length,
-            hint: "Use modelNames tool to see available models",
+            hint: "modelNames lists the available models",
           },
         );
       }
@@ -273,7 +274,7 @@ export class AddNotesTool {
         deckName,
         modelName,
         totalRequested: notes.length,
-        hint: "Make sure Anki is running and the deck/model names are correct",
+        hint: "This can happen when Anki is not running or the deck/model names are wrong",
       });
     }
   }

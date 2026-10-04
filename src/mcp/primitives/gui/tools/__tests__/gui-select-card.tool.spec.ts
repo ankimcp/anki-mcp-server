@@ -52,7 +52,7 @@ describe("GuiSelectCardTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Card Browser is not open");
-      expect(result.hint).toContain("Use guiBrowse to open");
+      expect(result.hint).toContain("Card Browser is not open");
     });
 
     it("should handle card not found error", async () => {
@@ -76,7 +76,7 @@ describe("GuiSelectCardTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Connection failed");
-      expect(result.hint).toContain("Make sure Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
   });
 });

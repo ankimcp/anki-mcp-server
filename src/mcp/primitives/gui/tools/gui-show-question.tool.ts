@@ -17,10 +17,8 @@ export class GuiShowQuestionTool {
   @Tool({
     name: "guiShowQuestion",
     description:
-      "Show the question side of the current card in review mode. Returns true if in review mode, false otherwise. " +
-      "CRITICAL: This tool is ONLY for note editing/creation workflows when user needs to view the question side to verify content. " +
-      "NEVER use this for conducting review sessions. Use the dedicated review tools (present_card) instead. " +
-      "IMPORTANT: Only use when user explicitly requests showing the question.",
+      "Flips the card on the Anki desktop app's review screen back to its question side, on the user's screen. Does not return the card's content and does not record a review. " +
+      "inReview is false (and nothing changes) when Anki is not in review mode. For when the user asks to show the question in Anki; the review tools here (present_card, rate_card) run a review without the Anki window.",
     parameters: z.object({}),
     outputSchema: z.object({
       success: z.boolean(),
@@ -30,9 +28,10 @@ export class GuiShowQuestionTool {
     }),
     annotations: {
       title: "Show Card Question",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async guiShowQuestion(@Payload() _args: Record<string, never>) {
@@ -48,7 +47,7 @@ export class GuiShowQuestionTool {
           success: true,
           inReview: false,
           message: "Not in review mode - question cannot be shown",
-          hint: "Start reviewing a deck in Anki to use this tool.",
+          hint: "This tool works only while a deck is being reviewed in Anki.",
         };
       }
 
@@ -58,13 +57,13 @@ export class GuiShowQuestionTool {
         success: true,
         inReview: true,
         message: "Question side is now displayed",
-        hint: "Use guiCurrentCard to get the card details, or guiShowAnswer to reveal the answer.",
+        hint: "The question is shown in Anki's review window.",
       };
     } catch (error) {
       this.logger.error("Failed to show question", error);
 
       return createErrorResponse(error, {
-        hint: "Make sure Anki is running, GUI is visible, and you are in review mode",
+        hint: "This can happen when Anki is not running, its GUI is not visible, or it is not in review mode",
       });
     }
   }

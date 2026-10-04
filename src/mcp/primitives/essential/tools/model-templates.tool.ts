@@ -44,6 +44,7 @@ export class ModelTemplatesTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async modelTemplates(@Payload() { modelName }: { modelName: string }) {
@@ -62,7 +63,7 @@ export class ModelTemplatesTool {
           new Error(`Model "${modelName}" not found or has no card templates`),
           {
             modelName: modelName,
-            hint: "Use modelNames tool to see available models",
+            hint: "modelNames lists the available models",
           },
         );
       }
@@ -77,7 +78,7 @@ export class ModelTemplatesTool {
         modelName: modelName,
         templates: templates,
         message: `Retrieved ${cardCount} card template(s) for model "${modelName}"`,
-        hint: "Use updateModelTemplates to modify the Front/Back HTML of these card templates",
+        hint: "updateModelTemplates replaces the Front/Back HTML of these card templates",
       };
     } catch (error) {
       this.logger.error(
@@ -86,7 +87,7 @@ export class ModelTemplatesTool {
       );
       return createErrorResponse(error, {
         modelName: modelName,
-        hint: "Make sure the model name is correct and Anki is running",
+        hint: "This can happen when Anki is not running or the model name is wrong",
       });
     }
   }

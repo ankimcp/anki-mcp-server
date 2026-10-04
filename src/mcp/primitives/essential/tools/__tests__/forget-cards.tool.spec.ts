@@ -1,6 +1,10 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ForgetCardsTool, forgetCardsInputSchema } from "../forget-cards.tool";
-import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
+import {
+  AnkiConnectClient,
+  ReadOnlyModeError,
+} from "@/mcp/clients/anki-connect.client";
+import { READ_ONLY_HINT } from "@/mcp/utils/anki.utils";
 import { parseToolResult } from "@/test-fixtures/test-helpers";
 
 jest.mock("@/mcp/clients/anki-connect.client");
@@ -169,6 +173,19 @@ describe("ForgetCardsTool", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("collection is not open");
+  });
+
+  it("should carry the read-only hint when read-only mode blocks forgetCards", async () => {
+    ankiClient.invoke
+      .mockResolvedValueOnce(mockCardsInfo([{ cardId: 999 }]))
+      .mockRejectedValueOnce(new ReadOnlyModeError("forgetCards"));
+
+    const rawResult = await tool.execute({ cards: [999] });
+    const result = parseToolResult(rawResult);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("read-only mode");
+    expect(result.hint).toBe(READ_ONLY_HINT);
   });
 
   describe("forgetCardsInputSchema", () => {

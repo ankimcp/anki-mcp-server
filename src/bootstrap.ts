@@ -2,6 +2,7 @@ import { LoggerService } from "@nestjs/common";
 import { pino } from "pino";
 import { McpStrategy, type McpTransport } from "@rekog/mcp-nest";
 import { MCP_ICONS } from "@/mcp/mcp-icons";
+import { MCP_SERVER_INSTRUCTIONS } from "@/mcp/mcp-instructions";
 import type { AppConfig } from "@/config";
 
 /**
@@ -95,8 +96,8 @@ export function createLoggerService(pinoLogger: any): LoggerService {
 /**
  * Creates the MCP strategy every transport mode boots from.
  *
- * The strategy is the whole MCP server configuration (identity, icons, the
- * transports it serves). The same instance must be handed to both
+ * The strategy is the whole MCP server configuration (identity, icons,
+ * instructions, the transports it serves). The same instance must be handed to both
  * `AppModule.forX()` (as `MCP_STRATEGY`) and the microservice connection, so
  * each entry point builds exactly one and passes it around.
  *
@@ -116,6 +117,7 @@ export function createMcpStrategy(
     name: identity.name,
     version: identity.version,
     icons: MCP_ICONS,
+    instructions: MCP_SERVER_INSTRUCTIONS,
     transports,
   });
 }

@@ -17,10 +17,8 @@ export class GuiSelectCardTool {
   @Tool({
     name: "guiSelectCard",
     description:
-      "Select a specific card in an open Card Browser window. Returns true if browser is open and card was selected, false if browser is not open. " +
-      "IMPORTANT: Only use when user explicitly requests selecting a card in the browser. " +
-      "This tool is for note editing/creation workflows, NOT for review sessions. " +
-      "The Card Browser must already be open (use guiBrowse first).",
+      "Changes the selection in the Card Browser window open in the Anki desktop app on the user's screen to a single card, clearing the previous selection. " +
+      "Returns an error if the Card Browser is not open (guiBrowse opens it). For when the user asks to select a card in the browser. Not part of a review session.",
     parameters: z.object({
       card: z
         .number()
@@ -41,6 +39,7 @@ export class GuiSelectCardTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async guiSelectCard(@Payload() { card }: { card: number }) {
@@ -56,7 +55,7 @@ export class GuiSelectCardTool {
         this.logger.warn("Card Browser is not open");
         return createErrorResponse(new Error("Card Browser is not open"), {
           cardId: card,
-          hint: "Use guiBrowse to open the Card Browser first, then try selecting the card again.",
+          hint: "The Card Browser is not open.",
         });
       }
 
@@ -67,7 +66,7 @@ export class GuiSelectCardTool {
         cardId: card,
         browserOpen: true,
         message: `Successfully selected card ${card} in Card Browser`,
-        hint: "The card is now selected. Use guiEditNote to edit the associated note, or guiSelectedNotes to get note IDs.",
+        hint: "The card is now selected in the Card Browser.",
       };
     } catch (error) {
       this.logger.error("Failed to select card in browser", error);
@@ -79,14 +78,14 @@ export class GuiSelectCardTool {
         ) {
           return createErrorResponse(error, {
             cardId: card,
-            hint: "Card ID not found. Make sure the card exists and is visible in the current browser search.",
+            hint: "Card ID not found. Only a card that exists and is visible in the current browser search can be selected.",
           });
         }
       }
 
       return createErrorResponse(error, {
         cardId: card,
-        hint: "Make sure Anki is running, the Card Browser is open, and the card ID is valid",
+        hint: "This can happen when Anki is not running, the Card Browser is not open, or the card ID is invalid",
       });
     }
   }

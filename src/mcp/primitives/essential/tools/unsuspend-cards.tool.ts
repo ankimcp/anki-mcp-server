@@ -76,6 +76,7 @@ export class UnsuspendCardsTool {
       destructiveHint: false,
       // Re-unsuspending an already-unsuspended card changes nothing further.
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() params: { cards: number[] }) {
@@ -149,7 +150,7 @@ export class UnsuspendCardsTool {
         success,
         message: readBackFailed
           ? `Unsuspended ${cards.length} card(s), but reading the new suspension ` +
-            `state back failed. The unsuspend was applied — do not retry.`
+            `state back failed. The unsuspend was applied, so a retry is not needed.`
           : success
             ? `Unsuspended ${cards.length} card(s): ${cardsChanged} newly unsuspended, ` +
               `${alreadyUnsuspended.length} already unsuspended`
@@ -164,7 +165,7 @@ export class UnsuspendCardsTool {
       return createErrorResponse(error, {
         action: "unsuspend",
         cardIds: cards,
-        hint: "Make sure Anki is running and the card IDs are valid card IDs (not note IDs)",
+        hint: "This can happen when Anki is not running or the card IDs are invalid (note IDs are not card IDs)",
       });
     }
   }

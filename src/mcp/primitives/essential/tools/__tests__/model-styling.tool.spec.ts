@@ -435,7 +435,7 @@ describe("ModelStylingTool", () => {
         'Model "NonExistent" not found or has no styling',
       );
       expect(result.modelName).toBe(modelName);
-      expect(result.hint).toContain("Use modelNames tool");
+      expect(result.hint).toContain("modelNames lists the available models");
     });
 
     it("should handle model with no CSS property in response", async () => {
@@ -460,7 +460,7 @@ describe("ModelStylingTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("model was not found");
-      expect(result.hint).toContain("Make sure the model name is correct");
+      expect(result.hint).toContain("the model name is wrong");
     });
   });
 
@@ -475,7 +475,7 @@ describe("ModelStylingTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("ECONNREFUSED");
-      expect(result.hint).toContain("Make sure the model name is correct");
+      expect(result.hint).toContain("the model name is wrong");
     });
 
     it("should handle network timeout", async () => {
@@ -729,51 +729,6 @@ p {
     });
   });
 
-  describe("Progress Reporting", () => {
-    it("should report progress at 25% before API call", async () => {
-      const modelName = "Basic";
-      const css = ".card { color: black; }";
-
-      ankiClient.invoke.mockResolvedValueOnce({ css });
-
-      await tool.modelStyling({ modelName });
-    });
-
-    it("should report progress at 75% after API call", async () => {
-      const modelName = "Basic";
-      const css = ".card { color: black; }";
-
-      ankiClient.invoke.mockResolvedValueOnce({ css });
-
-      await tool.modelStyling({ modelName });
-    });
-
-    it("should report progress at 100% on success", async () => {
-      const modelName = "Basic";
-      const css = ".card { color: black; }";
-
-      ankiClient.invoke.mockResolvedValueOnce({ css });
-
-      await tool.modelStyling({ modelName });
-    });
-
-    it("should report progress at 100% on no styling found", async () => {
-      const modelName = "NoStyling";
-
-      ankiClient.invoke.mockResolvedValueOnce({ css: null });
-
-      await tool.modelStyling({ modelName });
-    });
-
-    it("should report partial progress on error", async () => {
-      const modelName = "Error";
-
-      ankiClient.invoke.mockRejectedValueOnce(new Error("Test error"));
-
-      await tool.modelStyling({ modelName });
-    });
-  });
-
   describe("Response Structure - Success", () => {
     it("should return complete structure on success", async () => {
       const modelName = "Test Model";
@@ -864,8 +819,8 @@ p {
       const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
-      expect(result.hint).toContain("Make sure the model name is correct");
-      expect(result.hint).toContain("Anki is running");
+      expect(result.hint).toContain("the model name is wrong");
+      expect(result.hint).toContain("Anki is not running");
     });
 
     it("should include modelNames hint when model not found", async () => {
@@ -876,7 +831,7 @@ p {
       const rawResult = await tool.modelStyling({ modelName });
       const result = parseToolResult(rawResult);
 
-      expect(result.hint).toContain("Use modelNames tool");
+      expect(result.hint).toContain("modelNames lists the available models");
       expect(result.hint).toContain("available models");
     });
   });

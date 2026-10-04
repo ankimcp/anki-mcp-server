@@ -15,7 +15,7 @@ export class StoreMediaFileTool {
   @Tool({
     name: "storeMediaFile",
     description:
-      "Upload a media file to Anki's collection.media folder. Supports base64 data, absolute file paths, or URLs. Perfect for workflows like ElevenLabs TTS -> Anki audio flashcards.",
+      "Upload a media file to Anki's collection.media folder. Supports base64 data, absolute file paths, or URLs. By default a file with the same name is overwritten.",
     parameters: z.object({
       filename: z
         .string()
@@ -79,7 +79,7 @@ export class StoreMediaFileTool {
       this.logger.error("Failed to execute storeMediaFile", error);
       return createErrorResponse(error, {
         action: "storeMediaFile",
-        hint: "Make sure Anki is running and the media source (data/path/url) is valid",
+        hint: "This can happen when Anki is not running or the media source (data/path/url) is invalid",
       });
     }
   }

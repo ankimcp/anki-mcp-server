@@ -164,7 +164,7 @@ describe("SuspendCardsTool", () => {
     expect(result.cardsChanged).toBeUndefined();
     expect(result.alreadySuspended).toEqual([222]);
     expect(result.cardsRequested).toBe(2);
-    expect(result.message).toContain("do not retry");
+    expect(result.message).toContain("a retry is not needed");
     expect(result.error).toBeUndefined();
   });
 
@@ -184,7 +184,7 @@ describe("SuspendCardsTool", () => {
     expect(result.cardsChanged).toBeUndefined();
     expect(result.alreadySuspended).toEqual([222]);
     expect(result.cardsRequested).toBe(2);
-    expect(result.message).toContain("do not retry");
+    expect(result.message).toContain("a retry is not needed");
     expect(result.error).toBeUndefined();
   });
 

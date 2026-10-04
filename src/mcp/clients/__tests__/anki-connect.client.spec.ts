@@ -1273,6 +1273,14 @@ describe("AnkiConnectClient", () => {
           action: "modelFieldReposition",
           params: { modelName: "Test", fieldName: "F", index: 0 },
         },
+        // Scheduling overrides
+        { action: "forgetCards", params: { cards: [1] } },
+        { action: "setDueDate", params: { cards: [1], days: "1" } },
+        // Undo
+        { action: "guiUndo", params: {} },
+        // Add/Edit dialogs
+        { action: "guiAddCards", params: { note: {} } },
+        { action: "guiEditNote", params: { note: 1 } },
       ];
 
       it.each(writeActions)(
@@ -1303,17 +1311,16 @@ describe("AnkiConnectClient", () => {
         { action: "guiCurrentCard", result: null },
         { action: "guiShowQuestion", result: true },
         { action: "guiShowAnswer", result: true },
-        // Review/scheduling operations are allowed (read-only protects content, not review state)
+        // Answering during review, suspend/unsuspend and sync are allowed
         { action: "sync", result: null },
         { action: "suspend", result: true },
         { action: "unsuspend", result: true },
         { action: "areSuspended", result: [true] },
         { action: "answerCards", result: [true] },
-        { action: "forgetCards", result: null },
         { action: "relearnCards", result: null },
         { action: "guiAnswerCard", result: true },
         { action: "guiSelectNote", result: true },
-        { action: "guiAddCards", result: 123 },
+        { action: "guiDeckOverview", result: true },
       ];
 
       it.each(readActions)(

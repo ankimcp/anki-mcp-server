@@ -35,6 +35,7 @@ export class RetrieveMediaFileTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() params: { filename: string }) {
@@ -51,7 +52,7 @@ export class RetrieveMediaFileTool {
       this.logger.error("Failed to execute retrieveMediaFile", error);
       return createErrorResponse(error, {
         action: "retrieveMediaFile",
-        hint: "Make sure Anki is running and the filename is valid",
+        hint: "This can happen when Anki is not running or the filename is invalid",
       });
     }
   }

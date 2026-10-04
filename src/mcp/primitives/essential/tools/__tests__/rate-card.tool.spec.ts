@@ -58,6 +58,45 @@ describe("RateCardTool", () => {
     });
   });
 
+  it("should stay a success with null nextReview when the card is gone at read-back", async () => {
+    const params = { card_id: 1502298033754, rating: 3 };
+
+    ankiClient.invoke
+      .mockResolvedValueOnce([{ cardId: params.card_id }]) // cardsInfo (validation)
+      .mockResolvedValueOnce(true) // answerCards
+      .mockResolvedValueOnce([{}]); // cardsInfo read-back: card deleted
+
+    const rawResult = await tool.rateCard(params);
+    const result = parseToolResult(rawResult);
+
+    expect(ankiClient.invoke).toHaveBeenCalledTimes(3);
+    expect(result.success).toBe(true);
+    expect(result.rating).toBe(3);
+    expect(result.nextReview).toBeNull();
+    expect(result.message).toContain("rated as Good");
+    expect(result.message).toContain("could not be read back");
+  });
+
+  it("should stay a success with null nextReview when the read-back throws", async () => {
+    const params = { card_id: 1502298033754, rating: 3 };
+
+    ankiClient.invoke
+      .mockResolvedValueOnce([{ cardId: params.card_id }]) // cardsInfo (validation)
+      .mockResolvedValueOnce(true) // answerCards
+      .mockRejectedValueOnce(new Error("Connection lost")); // cardsInfo read-back
+
+    const rawResult = await tool.rateCard(params);
+    const result = parseToolResult(rawResult);
+
+    expect(ankiClient.invoke).toHaveBeenCalledTimes(3);
+    expect(rawResult).not.toHaveProperty("isError");
+    expect(result.success).toBe(true);
+    expect(result.rating).toBe(3);
+    expect(result.nextReview).toBeNull();
+    expect(result.message).toContain("rated as Good");
+    expect(result.message).toContain("could not be read back");
+  });
+
   it("should fail when card ID does not exist", async () => {
     const params = { card_id: 9999999999, rating: 3 };
 

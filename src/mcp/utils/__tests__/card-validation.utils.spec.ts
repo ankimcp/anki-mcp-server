@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import {
   assertCardIdsExist,
   fetchExistingCards,
+  isExistingCardEntry,
   MissingCardIdsError,
 } from "@/mcp/utils/card-validation.utils";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
@@ -20,6 +21,22 @@ describe("card-validation.utils", () => {
       AnkiConnectClient,
     ) as jest.Mocked<AnkiConnectClient>;
     jest.clearAllMocks();
+  });
+
+  describe("isExistingCardEntry", () => {
+    it("should accept an entry with a numeric cardId", () => {
+      expect(isExistingCardEntry({ cardId: 111 })).toBe(true);
+    });
+
+    it("should reject AnkiConnect's empty object for a missing card", () => {
+      expect(isExistingCardEntry({})).toBe(false);
+    });
+
+    it("should reject null, undefined and a non-numeric cardId", () => {
+      expect(isExistingCardEntry(null)).toBe(false);
+      expect(isExistingCardEntry(undefined)).toBe(false);
+      expect(isExistingCardEntry({ cardId: "111" })).toBe(false);
+    });
   });
 
   describe("fetchExistingCards", () => {

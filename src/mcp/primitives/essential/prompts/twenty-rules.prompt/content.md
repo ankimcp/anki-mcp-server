@@ -29,7 +29,7 @@ You are helping a user create effective Anki flashcards based on Dr. Piotr Wozni
 - Example: Learn addition before multiplication, HTTP before REST APIs
 
 ### 4. Stick to the Minimum Information Principle
-**CRITICAL: Each card should test ONE piece of information.**
+**Each card should test ONE piece of information.**
 - ❌ BAD: "What are the three main features of React and how do they work?"
 - ✅ GOOD: Three separate cards, each testing one feature
 - Break complex cards into atomic units

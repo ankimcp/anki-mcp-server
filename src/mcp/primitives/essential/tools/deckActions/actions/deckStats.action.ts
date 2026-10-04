@@ -72,11 +72,6 @@ export interface DeckStatsResult {
 }
 
 /**
- * Progress callback type for reporting operation progress
- */
-export type ProgressCallback = (progress: number) => Promise<void>;
-
-/**
  * Get comprehensive statistics for a single deck: today's study queue
  * (`counts`), true card-state counts (`states`), and ease/interval
  * distributions.
@@ -102,7 +97,6 @@ export type ProgressCallback = (progress: number) => Promise<void>;
 export async function deckStats(
   params: DeckStatsParams,
   client: AnkiConnectClient,
-  onProgress?: ProgressCallback,
 ): Promise<DeckStatsResult> {
   const {
     deck,
@@ -177,8 +171,6 @@ export async function deckStats(
     other,
   };
 
-  await onProgress?.(30);
-
   // NOTE: deliberately no `counts.total === 0` short-circuit. `total` is the
   // storage-deck row count, the very number this tool cannot trust — a deck
   // whose cards are currently borrowed by a filtered deck can report
@@ -214,14 +206,10 @@ export async function deckStats(
     };
   }
 
-  await onProgress?.(40);
-
   // Step 4: True card-state counts (5 `findCards` queries). These are what
   // `counts` cannot give us: totals per state, ignoring due dates and daily
   // limits.
   const states = await fetchCardStateCounts(client, deckScope);
-
-  await onProgress?.(55);
 
   // Step 5: Get ease factors (divide by 1000!)
   const easeFactorsRaw = await client.invoke<number[]>("getEaseFactors", {
@@ -237,8 +225,6 @@ export async function deckStats(
     .map((e) => e / 1000) // 4100 → 4.1
     .filter((e) => e > 0); // Filter out invalid values (0 = new cards)
 
-  await onProgress?.(75);
-
   // Step 6: Get intervals (filter negatives = learning cards)
   const intervalsRaw = await client.invoke<number[]>("getIntervals", {
     cards: cardIds,
@@ -250,8 +236,6 @@ export async function deckStats(
 
   // Transform: filter out negative values (learning cards in seconds)
   const intervalValues = intervalsRaw.filter((i) => i > 0); // Only review cards (positive = days)
-
-  await onProgress?.(90);
 
   // Step 7: Compute distributions
   const ease = computeDistribution(easeValues, {

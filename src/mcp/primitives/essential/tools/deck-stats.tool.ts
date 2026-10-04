@@ -21,7 +21,7 @@ export class DeckStatsTool {
     name: "deckStats",
     description:
       'Get comprehensive statistics for a single deck including card counts, ease and interval distributions. Pass a deck name (e.g., "Japanese::JLPT N5") and optional bucket boundaries. ' +
-      "Returns TWO different views, do not mix them up: " +
+      "Returns TWO different views that answer different questions: " +
       "`counts` is today's study queue as shown in Anki's deck browser (cards DUE TODAY, capped by the deck's daily new/review limits, suspended/buried excluded); " +
       "`states` is the true number of cards in each state (new / learning / review / suspended / buried), ignoring due dates and daily limits. " +
       'To answer "how many cards do I have" use `states`; to answer "what will I study today" use `counts`. ' +
@@ -79,6 +79,7 @@ export class DeckStatsTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(
@@ -106,7 +107,7 @@ export class DeckStatsTool {
       this.logger.error("Failed to execute deckStats", error);
       return createErrorResponse(error, {
         action: "deckStats",
-        hint: "Make sure Anki is running and the deck name is valid",
+        hint: "This can happen when Anki is not running or the deck name is wrong",
       });
     }
   }

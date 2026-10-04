@@ -162,7 +162,7 @@ export function parseCliArgs(): CliOptions {
     )
     .option(
       "--read-only",
-      "Run in read-only mode (blocks all write operations)",
+      "Run in read-only mode (blocks content changes and rescheduling; rating, suspend and sync still work)",
     )
     .option(
       "--login [url]",
@@ -252,7 +252,7 @@ export function displayStartupBanner(
   ngrokUrl?: string,
 ): void {
   const readOnlyWarning = options.readOnly
-    ? "\n\n** READ-ONLY MODE ENABLED **\nContent modifications (addNote, deleteNotes, createDeck, etc.) are blocked.\nReview operations (sync, answerCards, suspend) remain available."
+    ? "\n\n** READ-ONLY MODE ENABLED **\nContent modifications (addNote, deleteNotes, createDeck, etc.), rescheduling (forgetCards, setDueDate), guiUndo, guiAddCards and guiEditNote are blocked.\nReview operations (sync, answerCards, suspend) remain available."
     : "";
 
   cli.info(`
@@ -265,7 +265,7 @@ Configuration:
   • Port:               ${options.port} (override: --port 8080)
   • Host:               ${options.host} (override: --host 0.0.0.0)
   • AnkiConnect:        ${options.ankiConnect}
-                        (override: --anki-connect http://localhost:8765)${options.readOnly ? "\n  • Read-only:          Yes (write operations blocked)" : ""}${ngrokUrl ? `\n  • Ngrok tunnel:       ${ngrokUrl}\n  • Ngrok dashboard:    http://localhost:4040` : ""}
+                        (override: --anki-connect http://localhost:8765)${options.readOnly ? "\n  • Read-only:          Yes (content changes and rescheduling blocked)" : ""}${ngrokUrl ? `\n  • Ngrok tunnel:       ${ngrokUrl}\n  • Ngrok dashboard:    http://localhost:4040` : ""}
 ${
   !ngrokUrl
     ? `

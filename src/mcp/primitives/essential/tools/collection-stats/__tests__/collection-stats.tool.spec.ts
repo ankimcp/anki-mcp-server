@@ -186,8 +186,6 @@ describe("CollectionStatsTool", () => {
         review: 20,
         other: 0,
       });
-
-      // Progress reporting should be called
     });
 
     it("should include decks silently omitted by getDeckStats (Bug #1 regression)", async () => {

@@ -17,10 +17,8 @@ export class GuiBrowseTool {
   @Tool({
     name: "guiBrowse",
     description:
-      "Open Anki Card Browser and search for cards using Anki query syntax. Returns array of card IDs found. " +
-      "IMPORTANT: Only use when user explicitly requests opening the browser. " +
-      "This tool is for note editing/creation workflows, NOT for review sessions. " +
-      "Use this to find and select cards/notes that need editing.",
+      "Opens the Card Browser window in the Anki desktop app on the user's screen and runs a search in it (Anki query syntax). Returns the matching card IDs. " +
+      "For when the user asks to open the browser, e.g. to find and edit notes by hand; findNotes searches without opening a window. Not part of a review session.",
     parameters: z.object({
       query: z
         .string()
@@ -52,9 +50,10 @@ export class GuiBrowseTool {
     }),
     annotations: {
       title: "Open Card Browser",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async guiBrowse(
@@ -96,8 +95,8 @@ export class GuiBrowseTool {
         message: `Card Browser opened with ${cardIds.length} card(s) matching query "${query}"`,
         hint:
           cardIds.length === 0
-            ? "No cards found. Try adjusting your search query."
-            : "Use guiSelectCard to select a specific card, or guiSelectedNotes to get selected notes.",
+            ? "No cards found; a different search query may match cards."
+            : "The Card Browser shows the matching cards.",
       };
     } catch (error) {
       this.logger.error("Failed to open Card Browser", error);
@@ -109,14 +108,14 @@ export class GuiBrowseTool {
         ) {
           return createErrorResponse(error, {
             query,
-            hint: 'Invalid search query. Check Anki search syntax. Examples: "deck:MyDeck", "tag:important", "is:due"',
+            hint: 'Invalid search query; it does not follow Anki search syntax. Examples: "deck:MyDeck", "tag:important", "is:due"',
           });
         }
       }
 
       return createErrorResponse(error, {
         query,
-        hint: "Make sure Anki is running and the GUI is visible",
+        hint: "This can happen when Anki is not running or its GUI is not visible",
       });
     }
   }

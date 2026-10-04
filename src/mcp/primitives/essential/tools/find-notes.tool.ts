@@ -43,6 +43,7 @@ export class FindNotesTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async findNotes(@Payload() { query }: { query: string }) {
@@ -63,7 +64,7 @@ export class FindNotesTool {
           count: 0,
           query: query,
           message: "No notes found matching the search criteria",
-          hint: "Try a broader search query or check your deck/tag names",
+          hint: "The query may be too narrow, or a deck/tag name in it may be misspelled",
         };
       }
 
@@ -77,8 +78,8 @@ export class FindNotesTool {
         message: `Found ${noteIds.length} note${noteIds.length === 1 ? "" : "s"} matching the query`,
         hint:
           noteIds.length > 100
-            ? "Large result set. Consider using notesInfo with smaller batches for detailed information."
-            : "Use notesInfo tool to get detailed information about these notes",
+            ? "Large result set. notesInfo returns note details and accepts the IDs in smaller batches."
+            : "notesInfo returns details for these note IDs.",
       };
     } catch (error) {
       this.logger.error("Failed to search for notes", error);
@@ -88,7 +89,7 @@ export class FindNotesTool {
         if (error.message.includes("query")) {
           return createErrorResponse(error, {
             query,
-            hint: "Invalid query syntax. Check Anki documentation for valid search syntax.",
+            hint: "Invalid query syntax. Anki's manual documents the valid search syntax.",
             examples: [
               '"deck:DeckName" - all notes in a deck',
               '"tag:important" - notes with specific tag',
@@ -102,7 +103,7 @@ export class FindNotesTool {
 
       return createErrorResponse(error, {
         query,
-        hint: "Make sure Anki is running and the query syntax is valid",
+        hint: "This can happen when Anki is not running or the query syntax is invalid",
       });
     }
   }

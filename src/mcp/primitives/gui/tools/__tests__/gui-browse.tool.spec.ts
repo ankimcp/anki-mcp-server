@@ -104,7 +104,7 @@ describe("GuiBrowseTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Anki not running");
-      expect(result.hint).toContain("Make sure Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
   });
 });

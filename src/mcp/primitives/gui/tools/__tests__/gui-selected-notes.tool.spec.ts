@@ -54,7 +54,7 @@ describe("GuiSelectedNotesTool", () => {
       expect(result.noteIds).toEqual([]);
       expect(result.noteCount).toBe(0);
       expect(result.message).toContain("No notes are currently selected");
-      expect(result.hint).toContain("Open the Card Browser");
+      expect(result.hint).toContain("Nothing is selected in the Card Browser");
     });
 
     it("should handle browser not open error", async () => {
@@ -66,7 +66,7 @@ describe("GuiSelectedNotesTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("browser");
-      expect(result.hint).toContain("Use guiBrowse");
+      expect(result.hint).toContain("Card Browser is not open");
     });
 
     it("should handle general errors", async () => {
@@ -78,7 +78,7 @@ describe("GuiSelectedNotesTool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Anki connection lost");
-      expect(result.hint).toContain("Make sure Anki is running");
+      expect(result.hint).toContain("Anki is not running");
     });
   });
 });

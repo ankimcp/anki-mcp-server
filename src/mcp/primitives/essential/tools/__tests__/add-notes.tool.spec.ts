@@ -5,6 +5,7 @@ import {
   AnkiConnectError,
   ReadOnlyModeError,
 } from "../../../../clients/anki-connect.client";
+import { READ_ONLY_HINT } from "../../../../utils/anki.utils";
 import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
 
 jest.mock("../../../../clients/anki-connect.client", () => {
@@ -283,6 +284,7 @@ describe("AddNotesTool", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toContain("read-only mode");
+      expect(result.hint).toBe(READ_ONLY_HINT);
     });
 
     it("should fail all notes when model name is invalid (empty fields)", async () => {
@@ -405,27 +407,6 @@ describe("AddNotesTool", () => {
       expect(result.invalidNotes[1].index).toBe(2);
       // Only modelFieldNames was called, no addNote calls
       expect(ankiClient.invoke).toHaveBeenCalledTimes(1);
-    });
-
-    it("should report progress correctly for each note", async () => {
-      // Arrange
-      ankiClient.invoke
-        .mockResolvedValueOnce(["Front", "Back"]) // modelFieldNames
-        .mockResolvedValueOnce(1001) // addNote #1
-        .mockResolvedValueOnce(1002); // addNote #2
-
-      // Act
-      await tool.addNotes({
-        deckName: "Spanish",
-        modelName: "Basic",
-        notes: [
-          { fields: { Front: "q1", Back: "a1" } },
-          { fields: { Front: "q2", Back: "a2" } },
-        ],
-      });
-
-      // Assert - totalSteps = 2 notes + 2 validation steps = 4
-      // Calls: step 0/4, step 1/4, step 2/4, step 3/4, step 4/4
     });
 
     it("should handle duplicate error messages from AnkiConnect", async () => {

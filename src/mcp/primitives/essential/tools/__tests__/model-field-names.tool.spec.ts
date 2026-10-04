@@ -48,7 +48,7 @@ describe("ModelFieldNamesTool", () => {
         Back: "Answer or response text",
       });
       expect(result.hint).toBe(
-        "Use these field names as keys when creating notes with addNote tool",
+        "These field names are the keys of addNote's fields object for this model",
       );
       expect(ankiClient.invoke).toHaveBeenCalledWith("modelFieldNames", {
         modelName: modelName,
@@ -227,7 +227,7 @@ describe("ModelFieldNamesTool", () => {
       expect(result.error).toContain("model was not found");
       expect(result.modelName).toBe(modelName);
       expect(result.hint).toBe(
-        "Make sure the model name is correct and Anki is running",
+        "This can happen when Anki is not running or the model name is wrong",
       );
     });
 
@@ -242,7 +242,7 @@ describe("ModelFieldNamesTool", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain("ECONNREFUSED");
       expect(result.hint).toBe(
-        "Make sure the model name is correct and Anki is running",
+        "This can happen when Anki is not running or the model name is wrong",
       );
     });
 
@@ -300,7 +300,7 @@ describe("ModelFieldNamesTool", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain('Model "NullModel" not found');
       expect(result.modelName).toBe(modelName);
-      expect(result.hint).toBe("Use modelNames tool to see available models");
+      expect(result.hint).toBe("modelNames lists the available models");
     });
 
     it("should handle undefined field list from AnkiConnect", async () => {
@@ -314,7 +314,7 @@ describe("ModelFieldNamesTool", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain('Model "UndefinedModel" not found');
       expect(result.modelName).toBe(modelName);
-      expect(result.hint).toBe("Use modelNames tool to see available models");
+      expect(result.hint).toBe("modelNames lists the available models");
     });
 
     it("should handle model with special characters in name", async () => {
@@ -341,25 +341,6 @@ describe("ModelFieldNamesTool", () => {
 
       expect(result.success).toBe(true);
       expect(result.modelName).toBe(modelName);
-    });
-  });
-
-  describe("Progress Reporting", () => {
-    it("should report progress during retrieval", async () => {
-      const modelName = "Basic";
-      const fieldNames = ["Front", "Back"];
-
-      ankiClient.invoke.mockResolvedValueOnce(fieldNames);
-
-      await tool.modelFieldNames({ modelName });
-    });
-
-    it("should report progress even when retrieval fails", async () => {
-      const modelName = "Basic";
-
-      ankiClient.invoke.mockRejectedValueOnce(new Error("Failed"));
-
-      await tool.modelFieldNames({ modelName });
     });
   });
 
@@ -454,7 +435,7 @@ describe("ModelFieldNamesTool", () => {
       const result = parseToolResult(rawResult);
 
       expect(result.hint).toBe(
-        "Use these field names as keys when creating notes with addNote tool",
+        "These field names are the keys of addNote's fields object for this model",
       );
     });
 
@@ -466,7 +447,7 @@ describe("ModelFieldNamesTool", () => {
       const rawResult = await tool.modelFieldNames({ modelName });
       const result = parseToolResult(rawResult);
 
-      expect(result.hint).toBe("Use modelNames tool to see available models");
+      expect(result.hint).toBe("modelNames lists the available models");
     });
   });
 });

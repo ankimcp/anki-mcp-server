@@ -93,13 +93,15 @@ export class SetDueDateTool {
     annotations: {
       title: "Set Card Due Date",
       readOnlyHint: false,
-      // Review history is preserved; only the next due date moves.
-      destructiveHint: false,
+      // Review history is preserved, but the existing due date (and, with "!",
+      // the interval) is overwritten — consistent with forgetCards.
+      destructiveHint: true,
       // A range spec like "3-7" re-rolls on every call, so repeating the same
       // arguments can land the same cards on different days. The hint describes
       // the tool rather than one set of arguments, and a client that auto-retries
       // on it would silently reshuffle scheduling.
       idempotentHint: false,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() params: { cards: number[]; days: string }) {
@@ -213,7 +215,7 @@ export class SetDueDateTool {
         success: true,
         message: readBackFailed
           ? `Successfully rescheduled ${cards.length} card(s) to "${days}", but reading ` +
-            `the new scheduling back failed. The reschedule was applied — do not retry.`
+            `the new scheduling back failed. The reschedule was applied, and a retry would reschedule the cards again.`
           : `Successfully rescheduled ${cards.length} card(s) to "${days}"`,
         cardsAffected: cards.length,
         days,
@@ -226,7 +228,7 @@ export class SetDueDateTool {
         action: "setDueDate",
         cardIds: cards,
         days: rawDays,
-        hint: 'Make sure Anki is running, the card IDs are valid card IDs (not note IDs), and days looks like "0", "5", "3-7", or "1!"',
+        hint: 'This can happen when Anki is not running, the card IDs are invalid (note IDs are not card IDs), or days is not in a form like "0", "5", "3-7", or "1!"',
       });
     }
   }

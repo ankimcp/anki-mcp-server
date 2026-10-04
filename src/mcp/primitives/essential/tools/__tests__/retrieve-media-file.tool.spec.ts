@@ -82,13 +82,4 @@ describe("RetrieveMediaFileTool", () => {
       filename: "pronunciation.mp3",
     });
   });
-
-  it("should report progress", async () => {
-    const params = {
-      filename: "test.mp3",
-    };
-    ankiClient.invoke.mockResolvedValueOnce("base64Data");
-
-    await tool.execute(params);
-  });
 });

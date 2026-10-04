@@ -5,6 +5,7 @@ import { z } from "zod";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { AnkiCard, SimplifiedCard } from "@/mcp/types/anki.types";
 import { deckScopeQuery } from "@/mcp/utils/card-states.utils";
+import { isExistingCardEntry } from "@/mcp/utils/card-validation.utils";
 import {
   extractRenderedCardContent,
   createErrorResponse,
@@ -22,7 +23,7 @@ export class GetDueCardsTool {
   @Tool({
     name: "get_due_cards",
     description:
-      "Retrieve cards that are due for review from Anki. IMPORTANT: Use sync tool FIRST before getting cards to ensure latest data. By default answers are NOT included (include_answer defaults to false) so they never enter context before the user has a chance to self-test — after getting cards, use present_card to show them one by one and reveal the answer only when the user is ready. Set include_answer=true only for content analysis/editing workflows that are not live review sessions.",
+      "Retrieve cards that are due for review from Anki. Reads the local collection as-is and does not sync with AnkiWeb, so reviews made on other devices since the last sync are not reflected. Answers are not included by default (include_answer=false), so a card's back stays out of the conversation until present_card reveals it; include_answer=true returns the backs too, which suits content analysis or editing rather than a live review.",
     parameters: z.object({
       deck_name: z
         .string()
@@ -50,7 +51,7 @@ export class GetDueCardsTool {
         .boolean()
         .default(false)
         .describe(
-          "Whether to include each card's answer (back). Keep this false during review sessions so answers never enter context before the user reveals them via present_card. Set true only for content analysis/editing workflows, not live review.",
+          "Whether to include each card's answer (back). Defaults to false so answers are not seen before the user reveals them via present_card; true suits content analysis or editing rather than live review.",
         ),
     }),
     outputSchema: z.object({
@@ -70,7 +71,11 @@ export class GetDueCardsTool {
           factor: z.number(),
         }),
       ),
-      total: z.number(),
+      total: z
+        .number()
+        .describe(
+          "Number of cards the due-card search matched, including matches beyond limit, minus cards found deleted among the ones looked up (the first limit matches)",
+        ),
       returned: z.number().optional(),
       message: z.string(),
     }),
@@ -79,6 +84,7 @@ export class GetDueCardsTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async getDueCards(
@@ -140,7 +146,7 @@ export class GetDueCardsTool {
       // When include_new is true, the result set mixes "new" and actually-due
       // cards. Fetch the new-only subset so we can report honest counts instead
       // of labeling everything as "due".
-      let newCount = 0;
+      let newIdSet = new Set<number>();
       if (include_new) {
         const newOnlyStates = ["is:new"];
         let newQuery = `-is:suspended (${newOnlyStates.join(" OR ")})`;
@@ -154,7 +160,7 @@ export class GetDueCardsTool {
           // Intersect with the result set to avoid counting cards that the
           // outer query happened to exclude (e.g. from a different deck filter).
           const resultSet = new Set(cardIds);
-          newCount = newIds.filter((id) => resultSet.has(id)).length;
+          newIdSet = new Set(newIds.filter((id) => resultSet.has(id)));
         } catch (err) {
           // Non-fatal: fall back to treating all cards as due.
           this.logger.warn(
@@ -162,7 +168,6 @@ export class GetDueCardsTool {
           );
         }
       }
-      const dueOnlyCount = cardIds.length - newCount;
 
       // Limit the number of cards
       const selectedCardIds = cardIds.slice(0, cardLimit);
@@ -172,8 +177,19 @@ export class GetDueCardsTool {
         cards: selectedCardIds,
       });
 
+      // A card deleted between findCards and cardsInfo comes back as `{}`;
+      // it is gone, so it is dropped from the result and from every count.
+      const deletedIds = cardsInfo.flatMap((card, index) =>
+        isExistingCardEntry(card) ? [] : [selectedCardIds[index]],
+      );
+      const existingCards = cardsInfo.filter(isExistingCardEntry);
+      const total = cardIds.length - deletedIds.length;
+      const newCount =
+        newIdSet.size - deletedIds.filter((id) => newIdSet.has(id)).length;
+      const dueOnlyCount = total - newCount;
+
       // Transform cards to simplified structure
-      const dueCards: SimplifiedCard[] = cardsInfo.map((card) => {
+      const dueCards: SimplifiedCard[] = existingCards.map((card) => {
         const { front, back } = extractRenderedCardContent(card);
 
         return {
@@ -189,17 +205,17 @@ export class GetDueCardsTool {
       });
 
       this.logger.log(
-        `Retrieved ${dueCards.length} cards out of ${cardIds.length} total`,
+        `Retrieved ${dueCards.length} cards out of ${total} total`,
       );
 
       const message = include_new
-        ? `Found ${cardIds.length} cards (${newCount} new, ${dueOnlyCount} due), returning ${dueCards.length}`
-        : `Found ${cardIds.length} due cards, returning ${dueCards.length}`;
+        ? `Found ${total} cards (${newCount} new, ${dueOnlyCount} due), returning ${dueCards.length}`
+        : `Found ${total} due cards, returning ${dueCards.length}`;
 
       return {
         success: true,
         cards: dueCards,
-        total: cardIds.length,
+        total,
         returned: dueCards.length,
         message,
       };

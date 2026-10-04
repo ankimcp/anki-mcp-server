@@ -31,12 +31,13 @@ describe("ReviewSessionPrompt", () => {
       expect(typeof message.content.text).toBe("string");
     });
 
-    it("should include critical synchronization instructions", () => {
+    it("should offer syncing at session start and end rather than mandate it", () => {
       const result = prompt.getAnkiReviewPrompt();
       const text = result.messages[0].content.text;
 
-      expect(text).toContain("CRITICAL: Synchronization Requirements");
-      expect(text).toContain("ALWAYS sync first");
+      expect(text).toContain("Syncing with AnkiWeb");
+      expect(text).toContain("Offer to sync with AnkiWeb");
+      expect(text).not.toContain("ALWAYS sync");
       expect(text).toContain("At Session Start");
       expect(text).toContain("At Session End");
     });
@@ -46,7 +47,7 @@ describe("ReviewSessionPrompt", () => {
       const text = result.messages[0].content.text;
 
       expect(text).toContain("Review Workflow");
-      expect(text).toContain("Sync First");
+      expect(text).toContain("Offer a Sync");
       expect(text).toContain("Ask About Deck Selection");
       expect(text).toContain("Present the Question");
       expect(text).toContain("Wait for User's Answer");
@@ -59,8 +60,8 @@ describe("ReviewSessionPrompt", () => {
       const result = prompt.getAnkiReviewPrompt();
       const text = result.messages[0].content.text;
 
-      expect(text).toContain("IMPORTANT - Wait for Confirmation");
-      expect(text).toContain("Wait for user response");
+      expect(text).toContain("Confirm the Rating with the User");
+      expect(text).toContain("depending on the user's response");
       expect(text).toContain("Submit Rating");
     });
 
@@ -89,7 +90,7 @@ describe("ReviewSessionPrompt", () => {
       const text = result.messages[0].content.text;
 
       expect(text).toContain("Key Principles");
-      expect(text).toContain("Never auto-rate without user input");
+      expect(text).toContain("Ratings come from the user");
       expect(text).toContain("Accept user's self-assessment");
     });
 

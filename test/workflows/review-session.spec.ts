@@ -131,6 +131,9 @@ describe("Review Session Workflow", () => {
           if (action === "cardsInfo") {
             return [cardsData[0]];
           }
+          if (action === "notesInfo") {
+            return [{ noteId: cardsData[0].note, tags: ["spanish"] }];
+          }
           return null;
         },
       );
@@ -142,8 +145,9 @@ describe("Review Session Workflow", () => {
       const presentResult = parseToolResult(presentRawResult);
       expect(presentResult.success).toBe(true);
       expect(presentResult.card.front).toBeDefined();
+      expect(presentResult.card.tags).toEqual(["spanish"]);
       expect(presentResult.card.back).toBeUndefined(); // Answer not shown yet
-      expect(presentResult.instruction).toContain("Question shown");
+      expect(presentResult.instruction).toContain("Question only");
 
       // Step 5: Show answer
       const presentWithAnswerRawResult = await presentCardTool.presentCard({
@@ -154,7 +158,7 @@ describe("Review Session Workflow", () => {
         presentWithAnswerRawResult,
       );
       expect(presentWithAnswerResult.card.back).toBeDefined();
-      expect(presentWithAnswerResult.instruction).toContain("Answer revealed");
+      expect(presentWithAnswerResult.instruction).toContain("Answer included");
 
       // Step 6: Rate the card
       ankiClient.invoke.mockImplementation(
@@ -192,6 +196,9 @@ describe("Review Session Workflow", () => {
           async (action: string, _params?: any) => {
             if (action === "cardsInfo") {
               return [cardsData[i]];
+            }
+            if (action === "notesInfo") {
+              return [{ noteId: cardsData[i].note, tags: ["spanish"] }];
             }
             return null;
           },

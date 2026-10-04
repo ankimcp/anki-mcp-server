@@ -37,6 +37,7 @@ export class RemoveTagsTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(@Payload() params: { notes: number[]; tags: string }) {
@@ -62,7 +63,7 @@ export class RemoveTagsTool {
       this.logger.error("Failed to execute removeTags", error);
       return createErrorResponse(error, {
         action: "removeTags",
-        hint: "Make sure Anki is running and the note IDs are valid",
+        hint: "This can happen when Anki is not running or the note IDs are invalid",
       });
     }
   }

@@ -84,6 +84,7 @@ export class CreateModelTool {
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
+      openWorldHint: false,
     },
   })
   async createModel(
@@ -191,13 +192,13 @@ export class CreateModelTool {
       ) {
         return createErrorResponse(error, {
           modelName,
-          hint: "A model with this name already exists. Use a different name or use modelNames tool to see existing models.",
+          hint: "A model with this name already exists, and model names are unique. modelNames lists the existing models.",
         });
       }
 
       return createErrorResponse(error, {
         modelName,
-        hint: "Make sure Anki is running and all parameters are valid.",
+        hint: "This can happen when Anki is not running or a parameter is invalid",
       });
     }
   }

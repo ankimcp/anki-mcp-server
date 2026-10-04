@@ -17,8 +17,9 @@ export class DeleteNotesTool {
   @Tool({
     name: "deleteNotes",
     description:
-      "Delete notes by their IDs. This will permanently remove the notes and ALL associated cards. " +
-      "This action cannot be undone unless you have a backup. CRITICAL: This is destructive and permanent - only delete notes the user explicitly confirmed for deletion.",
+      "Delete notes by their IDs. Permanently removes the notes and ALL their cards, including the cards' scheduling. " +
+      "Anki's undo history (Edit > Undo, or guiUndo, which reverts the newest step) can restore them until that history is cleared, for example by a change Anki does not record for undo such as updateNoteFields; after that only a backup restores them. " +
+      "The call is rejected unless confirmDeletion is true.",
     parameters: z.object({
       notes: z
         .array(z.number())
@@ -31,7 +32,7 @@ export class DeleteNotesTool {
       confirmDeletion: z
         .boolean()
         .describe(
-          "Must be set to true to confirm you want to permanently delete these notes and their cards",
+          "Confirms the permanent deletion of these notes and their cards; the call is rejected unless this is true",
         ),
     }),
     outputSchema: z.object({
@@ -50,6 +51,7 @@ export class DeleteNotesTool {
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async deleteNotes(
@@ -62,8 +64,9 @@ export class DeleteNotesTool {
         return createErrorResponse(new Error("Deletion not confirmed"), {
           requestedNotes: notes,
           noteCount: notes.length,
-          hint: "Set confirmDeletion to true to permanently delete these notes and all their cards",
-          warning: "This action cannot be undone!",
+          hint: "Deletion runs only when confirmDeletion is true; it permanently deletes these notes and all their cards",
+          warning:
+            "Deleting permanently removes these notes and all their cards from the collection",
         });
       }
 
@@ -121,7 +124,7 @@ export class DeleteNotesTool {
         requestedIds: notes,
         message: message,
         warning: "These notes and cards have been permanently deleted",
-        hint: "Consider syncing with AnkiWeb to propagate deletions to other devices",
+        hint: "Other devices see the deletions after the collection is synced with AnkiWeb",
       };
     } catch (error) {
       this.logger.error("Failed to delete notes", error);
@@ -130,14 +133,14 @@ export class DeleteNotesTool {
         if (error.message.includes("permission")) {
           return createErrorResponse(error, {
             requestedNotes: notes,
-            hint: "Permission denied. Check if Anki allows deletions via AnkiConnect.",
+            hint: "Permission denied. AnkiConnect's configuration in Anki may not allow deletions.",
           });
         }
       }
 
       return createErrorResponse(error, {
         requestedNotes: notes,
-        hint: "Make sure Anki is running and the note IDs are valid",
+        hint: "This can happen when Anki is not running or the note IDs are invalid",
       });
     }
   }

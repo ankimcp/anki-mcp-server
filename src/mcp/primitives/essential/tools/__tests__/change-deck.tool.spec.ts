@@ -208,16 +208,4 @@ describe("ChangeDeckTool", () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain("Card not found");
   });
-
-  it("should report progress", async () => {
-    const params = {
-      cards: [1234567890],
-      deck: "Test Deck",
-    };
-    ankiClient.invoke
-      .mockResolvedValueOnce(mockCardsInfo(params.cards))
-      .mockResolvedValueOnce(null);
-
-    await tool.execute(params);
-  });
 });

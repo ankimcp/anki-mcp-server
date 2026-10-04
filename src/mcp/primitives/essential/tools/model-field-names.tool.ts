@@ -38,6 +38,7 @@ export class ModelFieldNamesTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async modelFieldNames(@Payload() { modelName }: { modelName: string }) {
@@ -58,7 +59,7 @@ export class ModelFieldNamesTool {
           new Error(`Model "${modelName}" not found`),
           {
             modelName: modelName,
-            hint: "Use modelNames tool to see available models",
+            hint: "modelNames lists the available models",
           },
         );
       }
@@ -124,7 +125,7 @@ export class ModelFieldNamesTool {
       if (exampleFields) {
         response.example = exampleFields;
         response.hint =
-          "Use these field names as keys when creating notes with addNote tool";
+          "These field names are the keys of addNote's fields object for this model";
       }
 
       return response;
@@ -135,7 +136,7 @@ export class ModelFieldNamesTool {
       );
       return createErrorResponse(error, {
         modelName: modelName,
-        hint: "Make sure the model name is correct and Anki is running",
+        hint: "This can happen when Anki is not running or the model name is wrong",
       });
     }
   }

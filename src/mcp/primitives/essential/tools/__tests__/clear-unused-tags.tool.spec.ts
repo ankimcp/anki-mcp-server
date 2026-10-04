@@ -31,10 +31,4 @@ describe("ClearUnusedTagsTool", () => {
     expect(result.success).toBe(true);
     expect(result.message).toContain("Successfully cleared unused tags");
   });
-
-  it("should report progress", async () => {
-    ankiClient.invoke.mockResolvedValueOnce(null);
-
-    await tool.execute({});
-  });
 });

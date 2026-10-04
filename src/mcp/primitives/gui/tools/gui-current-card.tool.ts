@@ -18,10 +18,9 @@ export class GuiCurrentCardTool {
   @Tool({
     name: "guiCurrentCard",
     description:
-      "Get information about the current card displayed in review mode. Returns card details (question, answer, deck, model, etc.) or null if not in review. " +
-      "CRITICAL: This tool is ONLY for note editing/creation workflows when user needs to check what card is currently displayed in the GUI. " +
-      "NEVER use this for conducting review sessions. Use the dedicated review tools (get_due_cards, present_card, rate_card) instead. " +
-      "IMPORTANT: Only use when user explicitly requests current card information.",
+      "Reads the card currently shown in the Anki desktop app's review screen: question, answer, fields, deck, note type and answer buttons. Changes nothing on screen. " +
+      "The result always includes the answer, so calling it while the user is reviewing in Anki reveals the answer before they respond; present_card can show a card without its answer. " +
+      "When Anki is not in review mode, AnkiConnect reports an error ('Gui review is not currently active.').",
     parameters: z.object({}),
     outputSchema: z.object({
       success: z.boolean(),
@@ -51,6 +50,7 @@ export class GuiCurrentCardTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async guiCurrentCard(@Payload() _args: Record<string, never>) {
@@ -69,7 +69,7 @@ export class GuiCurrentCardTool {
           cardInfo: null,
           inReview: false,
           message: "Not currently in review mode",
-          hint: "Open a deck in Anki and start reviewing to see current card information.",
+          hint: "Current card information exists only while a deck is being reviewed in Anki.",
         };
       }
 
@@ -82,13 +82,13 @@ export class GuiCurrentCardTool {
         cardInfo,
         inReview: true,
         message: `Current card: ${cardInfo.cardId} from deck "${cardInfo.deckName}"`,
-        hint: "Use guiEditNote to edit the note associated with this card.",
+        hint: "This is the card currently shown in Anki's review window.",
       };
     } catch (error) {
       this.logger.error("Failed to get current card information", error);
 
       return createErrorResponse(error, {
-        hint: "Make sure Anki is running and the GUI is visible",
+        hint: "This can happen when Anki is not running or its GUI is not visible",
       });
     }
   }

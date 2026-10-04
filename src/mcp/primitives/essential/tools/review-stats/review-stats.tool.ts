@@ -117,6 +117,7 @@ export class ReviewStatsTool {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
   })
   async execute(
@@ -235,7 +236,7 @@ export class ReviewStatsTool {
     } catch (error) {
       this.logger.error(`Failed to get review statistics`, error);
       return createErrorResponse(error, {
-        hint: "Make sure Anki is running and date format is YYYY-MM-DD. Use listDecks to verify deck name if filtering by deck.",
+        hint: "This can happen when Anki is not running or a date is not in YYYY-MM-DD format. When filtering by deck, listDecks lists the valid deck names.",
       });
     }
   }
