@@ -208,6 +208,10 @@
       "description": "Create a new empty Anki deck. Supports parent::child structure (max 2 levels, e.g., \"Japanese::JLPT N5\")"
     },
     {
+      "name": "setDeckLimits",
+      "description": "Set daily limits (new cards per day and/or reviews per day) for an Anki deck and refresh the deck browser GUI"
+    },
+    {
       "name": "changeDeck",
       "description": "Move cards to a different deck. Target deck will be created if it doesn't exist"
     },
