@@ -134,7 +134,7 @@ These are upstream behaviors that shape tool design — surface them in tool des
 - **`prebuild` hook** runs `scripts/generate-icon.mjs` before every `npm run build` (via npm's `pre*` lifecycle) — that's why an icon-generation step fires on build. It's expected, not a stray command.
 - **ESLint flat config** (`eslint.config.mjs`) — not legacy `.eslintrc`. Uses `typescript-eslint` + Prettier integration.
 - **TypeScript**: `strict: true`, target ES2023, `nodenext` module resolution. Path aliases are resolved by both `tsconfig.json` and Jest's `moduleNameMapper`.
-- **Zod 4** (`^4.4.3`) — not Zod 3. Some patterns like `z.preprocess` in `config.schema.ts` are Zod 3 holdovers that still work but may need migration.
+- **Zod 4** (`^4.6.7`) — not Zod 3. Some patterns like `z.preprocess` in `config.schema.ts` are Zod 3 holdovers that still work but may need migration.
 
 ### Path Aliases
 
