@@ -6,7 +6,7 @@ import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { createErrorResponse } from "@/mcp/utils/anki.utils";
 import {
   validateMediaUrl,
-  sanitizeMediaFilename,
+  validateMediaFilename,
   getMediaUrlConfigFromEnv,
 } from "@/mcp/utils/media-validation.utils";
 
@@ -114,10 +114,11 @@ export class UpdateNoteFieldsTool {
         });
       }
 
-      // Validate audio URLs for SSRF and sanitize filenames
+      // Validate audio filenames and URLs (SSRF)
       if (note.audio) {
         const urlConfig = getMediaUrlConfigFromEnv();
         for (const audioItem of note.audio) {
+          validateMediaFilename(audioItem.filename);
           const { hostname, resolvedIp } = await validateMediaUrl(
             audioItem.url,
             urlConfig,
@@ -125,14 +126,14 @@ export class UpdateNoteFieldsTool {
           this.logger.warn(
             `updateNoteFields audio URL validation: hostname="${hostname}", resolvedIp="${resolvedIp}"`,
           );
-          audioItem.filename = sanitizeMediaFilename(audioItem.filename);
         }
       }
 
-      // Validate picture URLs for SSRF and sanitize filenames
+      // Validate picture filenames and URLs (SSRF)
       if (note.picture) {
         const urlConfig = getMediaUrlConfigFromEnv();
         for (const pictureItem of note.picture) {
+          validateMediaFilename(pictureItem.filename);
           const { hostname, resolvedIp } = await validateMediaUrl(
             pictureItem.url,
             urlConfig,
@@ -140,7 +141,6 @@ export class UpdateNoteFieldsTool {
           this.logger.warn(
             `updateNoteFields picture URL validation: hostname="${hostname}", resolvedIp="${resolvedIp}"`,
           );
-          pictureItem.filename = sanitizeMediaFilename(pictureItem.filename);
         }
       }
 

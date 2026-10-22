@@ -134,7 +134,7 @@ These are upstream behaviors that shape tool design — surface them in tool des
 - **`prebuild` hook** runs `scripts/generate-icon.mjs` before every `npm run build` (via npm's `pre*` lifecycle) — that's why an icon-generation step fires on build. It's expected, not a stray command.
 - **ESLint flat config** (`eslint.config.mjs`) — not legacy `.eslintrc`. Uses `typescript-eslint` + Prettier integration.
 - **TypeScript**: `strict: true`, target ES2023, `nodenext` module resolution. Path aliases are resolved by both `tsconfig.json` and Jest's `moduleNameMapper`.
-- **Zod 4** (`^4.4.3`) — not Zod 3. Some patterns like `z.preprocess` in `config.schema.ts` are Zod 3 holdovers that still work but may need migration.
+- **Zod 4** (`^4.6.7`) — not Zod 3. Some patterns like `z.preprocess` in `config.schema.ts` are Zod 3 holdovers that still work but may need migration.
 
 ### Path Aliases
 
@@ -308,11 +308,11 @@ Key environment variables (all have defaults, see `src/config/config.schema.ts`)
 
 The media tools (`storeMediaFile`, `retrieveMediaFile`, `deleteMediaFile`) and `updateNoteFields` audio/picture/video fields validate inputs against prompt-injection and SSRF attacks:
 
-- **File paths** — MIME-type allowlist (media only). Non-media files (SSH keys, creds, shell configs) are rejected.
+- **File paths** — MIME-type allowlist (media only). Non-media files (SSH keys, creds, shell configs) are rejected. Paths are resolved on the MCP server's host with symlinks followed; the type and import-dir checks apply to the target.
   - `MEDIA_ALLOWED_TYPES` — extra MIME types (comma-separated)
   - `MEDIA_IMPORT_DIR` — restrict imports to a specific directory
 - **URLs** — SSRF guard blocks loopback (127.x), RFC1918 (10/8, 172.16/12, 192.168/16), link-local (169.254.x), and non-HTTP(S) schemes.
   - `MEDIA_ALLOWED_HOSTS` — allowlist specific private hosts (e.g., `192.168.1.50,my-nas`)
-- **Filenames** — path-traversal sanitization (`../`, absolute paths stripped).
+- **Filenames** — must be plain names; names with path separators, drive prefixes, null bytes, or that are `.`/`..`/empty are rejected (not rewritten).
 
 Validation lives in `src/mcp/utils/media-validation.utils.ts`; callers are `mediaActions/actions/{store,retrieve,delete}MediaFile.action.ts` and `update-note-fields.tool.ts`. Unit coverage in `src/mcp/utils/__tests__/media-validation.utils.spec.ts`, E2E in `test/e2e/media-security.stdio.e2e-spec.ts`. When touching these, always add a test — the recent path-traversal fix (commit f94cfb8) was reported externally.

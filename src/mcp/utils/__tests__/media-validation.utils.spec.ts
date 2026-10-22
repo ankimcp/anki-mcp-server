@@ -3,12 +3,18 @@
  */
 
 import * as dns from "node:dns";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import {
   validateMediaFilePath,
   validateMediaUrl,
-  sanitizeMediaFilename,
+  validateMediaFilename,
+  MediaFilenameError,
   MediaFileTypeError,
+  MediaFileNotFoundError,
   MediaImportDirError,
+  MediaImportDirNotFoundError,
   MediaUrlBlockedError,
   MediaUrlSchemeError,
   MediaUrlInvalidError,
@@ -41,31 +47,58 @@ const mockLookup = dns.promises.lookup as unknown as jest.MockedFunction<
 // ── validateMediaFilePath ───────────────────────────────────────────────────
 
 describe("validateMediaFilePath", () => {
+  // Validation resolves real paths, so accepted paths must exist on disk.
+  // tmpRoot is itself realpath'd (os.tmpdir() is a symlink on macOS).
+  let tmpRoot: string;
+
+  const createFile = (relativePath: string): string => {
+    const filePath = path.join(tmpRoot, relativePath);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, "");
+    return filePath;
+  };
+
+  const createDir = (relativePath: string): string => {
+    const dirPath = path.join(tmpRoot, relativePath);
+    fs.mkdirSync(dirPath, { recursive: true });
+    return dirPath;
+  };
+
+  beforeEach(() => {
+    tmpRoot = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "media-validation-")),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
   describe("allows common media extensions", () => {
     const allowedFiles = [
-      "/photos/cat.jpg",
-      "/photos/cat.jpeg",
-      "/photos/diagram.png",
-      "/photos/icon.gif",
-      "/photos/photo.webp",
-      "/photos/vector.svg",
-      "/photos/raw.bmp",
-      "/photos/icon.ico",
-      "/audio/speech.mp3",
-      "/audio/sound.wav",
-      "/audio/track.ogg",
-      "/audio/music.flac",
-      "/audio/clip.m4a",
-      "/audio/voice.aac",
-      "/video/clip.mp4",
-      "/video/movie.webm",
-      "/video/recording.avi",
-      "/video/film.mkv",
-      "/video/clip.mov",
+      "photos/cat.jpg",
+      "photos/cat.jpeg",
+      "photos/diagram.png",
+      "photos/icon.gif",
+      "photos/photo.webp",
+      "photos/vector.svg",
+      "photos/raw.bmp",
+      "photos/icon.ico",
+      "audio/speech.mp3",
+      "audio/sound.wav",
+      "audio/track.ogg",
+      "audio/music.flac",
+      "audio/clip.m4a",
+      "audio/voice.aac",
+      "video/clip.mp4",
+      "video/movie.webm",
+      "video/recording.avi",
+      "video/film.mkv",
+      "video/clip.mov",
     ];
 
-    it.each(allowedFiles)("allows %s", (filePath) => {
-      const result = validateMediaFilePath(filePath);
+    it.each(allowedFiles)("allows %s", (relativePath) => {
+      const result = validateMediaFilePath(createFile(relativePath));
       // Just verify it starts with one of the allowed prefixes
       expect(
         result.mimeType.startsWith("image/") ||
@@ -116,7 +149,7 @@ describe("validateMediaFilePath", () => {
       // A real .ts TypeScript file named "app.ts" would pass the MIME check
       // but that's an edge case since media tools wouldn't realistically be
       // pointed at TypeScript files via prompt injection.
-      const result = validateMediaFilePath("/home/user/app.ts");
+      const result = validateMediaFilePath(createFile("app.ts"));
       expect(result.mimeType).toBe("video/mp2t");
     });
   });
@@ -137,21 +170,21 @@ describe("validateMediaFilePath", () => {
 
   describe("double extension handling", () => {
     it("allows double extension if final extension is media (accepted risk)", () => {
-      const result = validateMediaFilePath("/home/user/payload.env.jpg");
+      const result = validateMediaFilePath(createFile("payload.env.jpg"));
       expect(result.mimeType).toBe("image/jpeg");
     });
   });
 
   describe("MEDIA_ALLOWED_TYPES env var", () => {
     it("allows extra MIME types when configured", () => {
-      const result = validateMediaFilePath("/docs/manual.pdf", {
+      const result = validateMediaFilePath(createFile("docs/manual.pdf"), {
         allowedTypes: ["application/pdf"],
       });
       expect(result.mimeType).toBe("application/pdf");
     });
 
     it("still allows default media types when extra types are configured", () => {
-      const result = validateMediaFilePath("/photos/cat.jpg", {
+      const result = validateMediaFilePath(createFile("photos/cat.jpg"), {
         allowedTypes: ["application/pdf"],
       });
       expect(result.mimeType).toBe("image/jpeg");
@@ -168,68 +201,203 @@ describe("validateMediaFilePath", () => {
 
   describe("MEDIA_IMPORT_DIR restriction", () => {
     it("allows files inside the import directory", () => {
-      const result = validateMediaFilePath("/allowed/media/cat.jpg", {
-        importDir: "/allowed/media",
-      });
+      const importDir = createDir("allowed/media");
+      const result = validateMediaFilePath(
+        createFile("allowed/media/cat.jpg"),
+        { importDir },
+      );
       expect(result.resolvedPath).toContain("cat.jpg");
     });
 
     it("allows files in subdirectories of import dir", () => {
-      const result = validateMediaFilePath("/allowed/media/subdir/cat.jpg", {
-        importDir: "/allowed/media",
-      });
+      const importDir = createDir("allowed/media");
+      const result = validateMediaFilePath(
+        createFile("allowed/media/subdir/cat.jpg"),
+        { importDir },
+      );
       expect(result.resolvedPath).toContain("cat.jpg");
     });
 
     it("blocks files outside the import directory", () => {
+      const importDir = createDir("allowed/media");
       expect(() =>
-        validateMediaFilePath("/other/dir/cat.jpg", {
-          importDir: "/allowed/media",
+        validateMediaFilePath(createFile("other/dir/cat.jpg"), { importDir }),
+      ).toThrow(MediaImportDirError);
+    });
+
+    it("blocks a sibling directory sharing the import dir's name as a prefix", () => {
+      const importDir = createDir("allowed/media");
+      expect(() =>
+        validateMediaFilePath(createFile("allowed/media-evil/cat.jpg"), {
+          importDir,
         }),
       ).toThrow(MediaImportDirError);
     });
 
     it("includes configured directory in error message", () => {
+      const importDir = createDir("allowed/media");
       expect(() =>
-        validateMediaFilePath("/other/dir/cat.jpg", {
-          importDir: "/allowed/media",
-        }),
-      ).toThrow(/\/allowed\/media/);
+        validateMediaFilePath(createFile("other/dir/cat.jpg"), { importDir }),
+      ).toThrow(importDir);
     });
 
     it("does not apply directory restriction when not configured", () => {
       // Should only check MIME type, not directory
-      const result = validateMediaFilePath("/any/path/cat.jpg");
+      const result = validateMediaFilePath(createFile("any/path/cat.jpg"));
       expect(result.mimeType).toBe("image/jpeg");
+    });
+
+    it("rejects when the configured import dir does not exist", () => {
+      expect(() =>
+        validateMediaFilePath(createFile("cat.jpg"), {
+          importDir: path.join(tmpRoot, "missing-dir"),
+        }),
+      ).toThrow(MediaImportDirNotFoundError);
     });
   });
 
   describe("path traversal attempts", () => {
     it("resolves path traversal before checking directory", () => {
-      // ../../../etc/passwd.jpg resolves to /etc/passwd.jpg
-      // which is outside /allowed/media and should be blocked by dir check
+      const importDir = createDir("allowed/media");
+      createFile("passwd.jpg");
       expect(() =>
-        validateMediaFilePath("/allowed/media/../../../etc/passwd.jpg", {
-          importDir: "/allowed/media",
-        }),
+        validateMediaFilePath(`${importDir}/../../passwd.jpg`, { importDir }),
       ).toThrow(MediaImportDirError);
     });
 
     it("allows traversal that stays within import dir", () => {
-      // /allowed/media/sub/../cat.jpg resolves to /allowed/media/cat.jpg
-      const result = validateMediaFilePath("/allowed/media/sub/../cat.jpg", {
-        importDir: "/allowed/media",
+      const importDir = createDir("allowed/media");
+      createDir("allowed/media/sub");
+      createFile("allowed/media/cat.jpg");
+      const result = validateMediaFilePath(`${importDir}/sub/../cat.jpg`, {
+        importDir,
       });
       expect(result.mimeType).toBe("image/jpeg");
+      expect(result.resolvedPath).toBe(path.join(importDir, "cat.jpg"));
     });
 
-    it("still validates MIME type for traversal with media extension", () => {
-      // Even with .jpg extension, path traversal is caught by dir restriction
-      // Without dir restriction, the MIME check passes (it IS an image)
-      const result = validateMediaFilePath("/etc/passwd.jpg");
+    it("allows a media-named file anywhere when no import dir is set", () => {
+      // MIME-only check allows it because extension is .jpg; the directory
+      // restriction is the second layer of defense
+      const result = validateMediaFilePath(createFile("passwd.jpg"));
       expect(result.mimeType).toBe("image/jpeg");
-      // This is expected: MIME-only check allows it because extension is .jpg
-      // The directory restriction is the second layer of defense
+    });
+  });
+
+  describe("existence", () => {
+    it("rejects a nonexistent media path", () => {
+      expect(() =>
+        validateMediaFilePath(path.join(tmpRoot, "missing.jpg")),
+      ).toThrow(MediaFileNotFoundError);
+    });
+
+    it("reports a nonexistent path outside the import dir as outside, not as missing", () => {
+      const importDir = createDir("allowed/media");
+      expect(() =>
+        validateMediaFilePath(path.join(tmpRoot, "other/missing.jpg"), {
+          importDir,
+        }),
+      ).toThrow(MediaImportDirError);
+    });
+
+    it("reports a nonexistent path inside the import dir as missing", () => {
+      const importDir = createDir("allowed/media");
+      expect(() =>
+        validateMediaFilePath(path.join(importDir, "missing.jpg"), {
+          importDir,
+        }),
+      ).toThrow(MediaFileNotFoundError);
+    });
+
+    it("rejects a dangling symlink", () => {
+      const link = path.join(tmpRoot, "dangling.png");
+      fs.symlinkSync(path.join(tmpRoot, "nowhere.png"), link);
+      expect(() => validateMediaFilePath(link)).toThrow(MediaFileNotFoundError);
+    });
+  });
+
+  describe("symlinks", () => {
+    it("rejects a media-named symlink pointing at a non-media file", () => {
+      const target = createFile("secrets/id_rsa");
+      const link = path.join(tmpRoot, "holiday.png");
+      fs.symlinkSync(target, link);
+
+      expect(() => validateMediaFilePath(link)).toThrow(MediaFileTypeError);
+    });
+
+    it("rejects a symlink inside the import dir whose target is outside it", () => {
+      const importDir = createDir("allowed/media");
+      const target = createFile("outside/photo.jpg");
+      const link = path.join(importDir, "photo.jpg");
+      fs.symlinkSync(target, link);
+
+      expect(() => validateMediaFilePath(link, { importDir })).toThrow(
+        MediaImportDirError,
+      );
+    });
+
+    it("rejects a symlinked directory inside the import dir that points outside it", () => {
+      const importDir = createDir("allowed/media");
+      const outsideDir = createDir("outside");
+      createFile("outside/photo.jpg");
+      fs.symlinkSync(outsideDir, path.join(importDir, "linked"));
+
+      expect(() =>
+        validateMediaFilePath(path.join(importDir, "linked/photo.jpg"), {
+          importDir,
+        }),
+      ).toThrow(MediaImportDirError);
+    });
+
+    it("accepts a file inside a symlinked import dir", () => {
+      const realDir = createDir("real-media");
+      const filePath = createFile("real-media/cat.jpg");
+      const linkedDir = path.join(tmpRoot, "linked-media");
+      fs.symlinkSync(realDir, linkedDir);
+
+      const result = validateMediaFilePath(path.join(linkedDir, "cat.jpg"), {
+        importDir: linkedDir,
+      });
+      expect(result.resolvedPath).toBe(filePath);
+    });
+
+    it("accepts a path under the real dir of a symlinked import dir", () => {
+      const realDir = createDir("real-media");
+      const filePath = createFile("real-media/cat.jpg");
+      const linkedDir = path.join(tmpRoot, "linked-media");
+      fs.symlinkSync(realDir, linkedDir);
+
+      const result = validateMediaFilePath(filePath, { importDir: linkedDir });
+      expect(result.resolvedPath).toBe(filePath);
+    });
+
+    it("resolves the import dir on every call, so re-pointing its symlink takes effect", () => {
+      createDir("first");
+      createDir("second");
+      const firstFile = createFile("first/cat.jpg");
+      const linkedDir = path.join(tmpRoot, "linked-media");
+      fs.symlinkSync(path.join(tmpRoot, "first"), linkedDir);
+
+      expect(
+        validateMediaFilePath(firstFile, { importDir: linkedDir }).resolvedPath,
+      ).toBe(firstFile);
+
+      fs.unlinkSync(linkedDir);
+      fs.symlinkSync(path.join(tmpRoot, "second"), linkedDir);
+
+      expect(() =>
+        validateMediaFilePath(firstFile, { importDir: linkedDir }),
+      ).toThrow(MediaImportDirError);
+    });
+
+    it("returns the symlink target's real path as resolvedPath", () => {
+      const target = createFile("real/photo.jpg");
+      const link = path.join(tmpRoot, "link.jpg");
+      fs.symlinkSync(target, link);
+
+      const result = validateMediaFilePath(link);
+      expect(result.resolvedPath).toBe(target);
+      expect(result.mimeType).toBe("image/jpeg");
     });
   });
 });
@@ -663,71 +831,49 @@ describe("validateMediaUrl", () => {
   });
 });
 
-// ── sanitizeMediaFilename ───────────────────────────────────────────────────
+// ── validateMediaFilename ───────────────────────────────────────────────────
 
-describe("sanitizeMediaFilename", () => {
-  it("returns simple filenames unchanged", () => {
-    expect(sanitizeMediaFilename("photo.jpg")).toBe("photo.jpg");
+describe("validateMediaFilename", () => {
+  it.each([
+    "photo.jpg",
+    "my file (1).jpg",
+    "_audio_clip.mp3",
+    "my..file.jpg",
+    "..hidden.jpg",
+    ".bashrc",
+  ])("returns plain name %j unchanged", (name) => {
+    expect(validateMediaFilename(name)).toBe(name);
   });
 
-  it("strips ../ sequences", () => {
-    expect(sanitizeMediaFilename("../../../etc/passwd")).toBe("etcpasswd");
+  it.each([
+    "../../../etc/passwd",
+    "images/../secret.txt",
+    "path/to/file.jpg",
+    "path\\to\\file.jpg",
+    "..\\..\\windows\\system32\\file.jpg",
+    "a/b.jpg",
+    "/abs.jpg",
+    "trailing/",
+    "../",
+    "///",
+    ".",
+    "..",
+    "",
+    "   ",
+    "photo\0.jpg",
+    "../\0../../etc/passwd",
+    "C:evil.jpg",
+  ])("rejects %j", (name) => {
+    expect(() => validateMediaFilename(name)).toThrow(MediaFilenameError);
   });
 
-  it("strips ../ mixed with normal path", () => {
-    expect(sanitizeMediaFilename("images/../secret.txt")).toBe(
-      "imagessecret.txt",
-    );
+  it("does not collapse distinct names onto the same name", () => {
+    expect(validateMediaFilename("ab.jpg")).toBe("ab.jpg");
+    expect(() => validateMediaFilename("a/b.jpg")).toThrow(MediaFilenameError);
   });
 
-  it("strips forward slashes", () => {
-    expect(sanitizeMediaFilename("path/to/file.jpg")).toBe("pathtofile.jpg");
-  });
-
-  it("strips backslashes", () => {
-    expect(sanitizeMediaFilename("path\\to\\file.jpg")).toBe("pathtofile.jpg");
-  });
-
-  it("handles mixed separators", () => {
-    expect(sanitizeMediaFilename("..\\..\\windows\\system32\\file.jpg")).toBe(
-      "windowssystem32file.jpg",
-    );
-  });
-
-  it("returns 'unnamed' for empty string", () => {
-    expect(sanitizeMediaFilename("")).toBe("unnamed");
-  });
-
-  it("returns 'unnamed' for whitespace-only string", () => {
-    expect(sanitizeMediaFilename("   ")).toBe("unnamed");
-  });
-
-  it("returns 'unnamed' for just dots", () => {
-    expect(sanitizeMediaFilename("....")).toBe("unnamed");
-  });
-
-  it("returns 'unnamed' for just path separators", () => {
-    expect(sanitizeMediaFilename("///")).toBe("unnamed");
-  });
-
-  it("preserves filenames with special characters", () => {
-    expect(sanitizeMediaFilename("my file (1).jpg")).toBe("my file (1).jpg");
-  });
-
-  it("preserves underscored filenames", () => {
-    expect(sanitizeMediaFilename("_audio_clip.mp3")).toBe("_audio_clip.mp3");
-  });
-
-  it("handles filename that is just ../", () => {
-    expect(sanitizeMediaFilename("../")).toBe("unnamed");
-  });
-
-  it("strips null bytes", () => {
-    expect(sanitizeMediaFilename("photo\0.jpg")).toBe("photo.jpg");
-  });
-
-  it("strips null bytes mixed with traversal", () => {
-    expect(sanitizeMediaFilename("../\0../../etc/passwd")).toBe("etcpasswd");
+  it("names the rejected filename in the error message", () => {
+    expect(() => validateMediaFilename("a/b.jpg")).toThrow(/"a\/b\.jpg"/);
   });
 });
 

@@ -19,63 +19,90 @@ import { APP_CONFIG, type AppConfig } from "@/config";
  * Configuration:
  * - Set ALLOWED_ORIGINS environment variable (comma-separated list of patterns)
  * - Default: 'http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*'
- * - Supports wildcard patterns: 'http://localhost:*' matches any port
+ * - Supports wildcard patterns: '*' matches one host label or a port, never
+ *   '.', '/' or ':' — 'http://localhost:*' matches any port and
+ *   'https://*.ngrok.io' matches 'https://abc.ngrok.io' but not
+ *   'https://a.b.ngrok.io'
+ *
+ * The Origin header is compared as-is. A Referer (used when Origin is absent)
+ * is reduced to its origin first, so its path and query cannot satisfy a
+ * pattern; an unparseable Referer is rejected.
  *
  * The allowlist is sourced from validated config (`allowedOrigins`), which reads
- * ALLOWED_ORIGINS through the Zod config pipeline.
+ * ALLOWED_ORIGINS through the Zod config pipeline. Entries are checked here
+ * rather than in the config schema because only HTTP mode uses them: an entry
+ * that is not an origin throws at construction, which fails HTTP startup
+ * without affecting STDIO or tunnel mode.
  */
 @Injectable()
 export class OriginValidationGuard implements CanActivate {
   private readonly logger = new Logger(OriginValidationGuard.name);
-  private readonly allowedOrigins: string[];
+  private readonly allowedOriginPatterns: RegExp[];
 
   constructor(@Inject(APP_CONFIG) config: AppConfig) {
-    this.allowedOrigins = config.allowedOrigins;
+    config.allowedOrigins.forEach(assertOriginPatternShape);
+    this.allowedOriginPatterns =
+      config.allowedOrigins.map(compileOriginPattern);
   }
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
-    const origin = request.headers.origin || request.headers.referer;
+    const { origin, referer } = request.headers;
 
     // No origin header - allow for direct API calls (curl, Postman, etc.)
-    if (!origin) {
+    if (!origin && !referer) {
       return true;
     }
 
-    // Check if origin matches any allowed pattern
-    const isAllowed = this.allowedOrigins.some((allowedOrigin) =>
-      this.matchesPattern(origin, allowedOrigin),
-    );
+    const requestOrigin = origin || (referer ? refererOrigin(referer) : null);
+
+    const isAllowed =
+      requestOrigin !== null &&
+      this.allowedOriginPatterns.some((pattern) => pattern.test(requestOrigin));
 
     if (!isAllowed) {
-      this.logger.warn(`Rejected request from unauthorized origin: ${origin}`);
+      this.logger.warn(
+        `Rejected request from unauthorized origin: ${origin || referer}`,
+      );
     }
 
     return isAllowed;
   }
+}
 
-  /**
-   * Matches an origin against a pattern with wildcard support
-   *
-   * @param origin - The origin to check (e.g., 'http://localhost:3000')
-   * @param pattern - The pattern to match against (e.g., 'http://localhost:*')
-   * @returns True if the origin matches the pattern
-   */
-  private matchesPattern(origin: string, pattern: string): boolean {
-    // Exact match
-    if (origin === pattern) {
-      return true;
-    }
+/**
+ * Shape of an ALLOWED_ORIGINS entry: `scheme://host[:port]`, where host and
+ * port may contain `*`. No path, query, fragment or trailing slash — requests
+ * are compared as origins, so such an entry could never match.
+ */
+const ORIGIN_PATTERN_SHAPE = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^/?#\s]+$/;
 
-    // Wildcard match
-    if (pattern.includes("*")) {
-      const regexPattern = pattern
-        .replace(/\./g, "\\.") // Escape dots
-        .replace(/\*/g, ".*"); // Convert * to .*
-      const regex = new RegExp(`^${regexPattern}$`);
-      return regex.test(origin);
-    }
+function assertOriginPatternShape(pattern: string): void {
+  if (!ORIGIN_PATTERN_SHAPE.test(pattern)) {
+    throw new Error(
+      `Invalid ALLOWED_ORIGINS entry ${JSON.stringify(pattern)}: entries must be origins ` +
+        "like https://example.com or http://localhost:*, with a scheme and no path or trailing slash.",
+    );
+  }
+}
 
-    return false;
+/**
+ * Compiles an allowlist pattern into an anchored regex. Every regex
+ * metacharacter is escaped, so any configured string compiles; `*` then
+ * becomes one segment that cannot cross '.', '/' or ':'.
+ */
+function compileOriginPattern(pattern: string): RegExp {
+  const source = pattern
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\\\*/g, "[^./:]+");
+  return new RegExp(`^${source}$`);
+}
+
+/** Returns the origin of a Referer URL, or null when it does not parse. */
+function refererOrigin(referer: string): string | null {
+  try {
+    return new URL(referer).origin;
+  } catch {
+    return null;
   }
 }

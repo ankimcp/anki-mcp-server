@@ -3,7 +3,7 @@ import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import {
   validateMediaFilePath,
   validateMediaUrl,
-  sanitizeMediaFilename,
+  validateMediaFilename,
   getMediaFilePathConfigFromEnv,
   getMediaUrlConfigFromEnv,
 } from "@/mcp/utils/media-validation.utils";
@@ -68,11 +68,11 @@ export async function storeMediaFile(
     throw new Error("Filename cannot be empty");
   }
 
-  // Sanitize filename to prevent path traversal in output
-  const filename = sanitizeMediaFilename(params.filename);
+  // Reject filenames that are not plain names (path traversal, collisions)
+  const filename = validateMediaFilename(params.filename);
 
   // Validate file path if provided (MIME type allowlist + optional directory restriction)
-  // Store the resolved path to send to AnkiConnect instead of the original unsanitized path
+  // Store the real (symlink-resolved) path to send to AnkiConnect instead of the original path
   let validatedPath: string | undefined;
   if (path) {
     const { resolvedPath, mimeType } = validateMediaFilePath(
