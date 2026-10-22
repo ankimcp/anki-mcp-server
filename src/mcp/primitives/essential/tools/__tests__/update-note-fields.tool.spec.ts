@@ -6,6 +6,7 @@ import {
 } from "../../../../clients/anki-connect.client";
 import { mockNotes } from "../../../../../test-fixtures/mock-data";
 import { parseToolResult } from "../../../../../test-fixtures/test-helpers";
+import { MEDIA_FILENAME_HINT } from "@/mcp/utils/anki.utils";
 import * as dns from "node:dns";
 
 jest.mock("../../../../clients/anki-connect.client");
@@ -572,11 +573,57 @@ describe("UpdateNoteFieldsTool", () => {
       });
     });
 
-    describe("media filename sanitization", () => {
-      it("sanitizes audio filename path traversal", async () => {
+    describe("media filename validation", () => {
+      it("rejects an audio filename with path traversal without calling AnkiConnect", async () => {
         mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
 
-        // Mock the notesInfo call that happens before updateNoteFields
+        const rawResult = await tool.updateNoteFields({
+          note: {
+            id: 1234567890,
+            fields: { Front: "test" },
+            audio: [
+              {
+                url: "https://safe.com/audio.mp3",
+                filename: "../../evil.mp3",
+                fields: ["Front"],
+              },
+            ],
+          },
+        });
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("Invalid media filename");
+        expect(result.hint).toBe(MEDIA_FILENAME_HINT);
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+
+      it("rejects a picture filename with a folder prefix", async () => {
+        mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+
+        const rawResult = await tool.updateNoteFields({
+          note: {
+            id: 1234567890,
+            fields: { Front: "test" },
+            picture: [
+              {
+                url: "https://safe.com/image.jpg",
+                filename: "a/b.jpg",
+                fields: ["Front"],
+              },
+            ],
+          },
+        });
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("Invalid media filename");
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+
+      it("passes a plain audio filename through unchanged", async () => {
+        mockLookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+
         ankiClient.invoke.mockImplementation(async (action: string) => {
           if (action === "notesInfo") {
             return [
@@ -601,20 +648,19 @@ describe("UpdateNoteFieldsTool", () => {
             audio: [
               {
                 url: "https://safe.com/audio.mp3",
-                filename: "../../evil.mp3",
+                filename: "my..clip.mp3",
                 fields: ["Front"],
               },
             ],
           },
         });
 
-        // Verify the filename was sanitized in the AnkiConnect call
         expect(ankiClient.invoke).toHaveBeenCalledWith(
           "updateNoteFields",
           expect.objectContaining({
             note: expect.objectContaining({
               audio: expect.arrayContaining([
-                expect.objectContaining({ filename: "evil.mp3" }),
+                expect.objectContaining({ filename: "my..clip.mp3" }),
               ]),
             }),
           }),

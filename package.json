@@ -1,7 +1,7 @@
 {
   "name": "@ankimcp/anki-mcp-server",
   "mcpName": "ai.ankimcp/anki-mcp-server",
-  "version": "0.27.0",
+  "version": "0.27.1",
   "description": "Model Context Protocol server for Anki - enables AI assistants to interact with your Anki flashcards",
   "author": "Anatoly Tarnavsky",
   "private": false,
@@ -57,15 +57,15 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@modelcontextprotocol/core": "2.0.0",
-    "@modelcontextprotocol/node": "2.0.0",
-    "@modelcontextprotocol/server": "2.0.0",
+    "@modelcontextprotocol/core": "2.3.1",
+    "@modelcontextprotocol/node": "2.1.1",
+    "@modelcontextprotocol/server": "2.3.1",
     "@nestjs/common": "^12.0.3",
     "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^12.0.3",
     "@nestjs/microservices": "^12.0.3",
     "@nestjs/platform-express": "^12.0.3",
-    "@rekog/mcp-nest": "^2.0.6",
+    "@rekog/mcp-nest": "^2.0.8",
     "async-mutex": "^0.5.0",
     "commander": "^15.0.0",
     "ipaddr.js": "^2.5.0",

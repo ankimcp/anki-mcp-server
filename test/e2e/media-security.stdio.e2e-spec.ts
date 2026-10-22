@@ -1,13 +1,16 @@
 /**
  * E2E tests for media security validation - STDIO transport
  *
- * Verifies that path traversal, SSRF, and filename sanitization
+ * Verifies that path traversal, SSRF, and filename validation
  * guards work end-to-end through the full MCP protocol stack.
  *
  * Requires:
  *   - Docker container running: npm run e2e:up
  *   - Built project: npm run build
  */
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { callTool, setTransport, getTransport } from "./helpers";
 
 describe("E2E: Media Security Guards (STDIO)", () => {
@@ -58,6 +61,33 @@ describe("E2E: Media Security Guards (STDIO)", () => {
     // Null byte injection is tested at unit level (media-validation.utils.spec.ts).
     // Node.js rejects null bytes in execFileSync args before they reach the MCP transport,
     // so this vector cannot be tested E2E.
+
+    describe("symlinks", () => {
+      // The STDIO server runs on this host, so a temp dir here is what it sees
+      let tmpDir: string;
+
+      beforeAll(() => {
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "e2e-media-symlink-"));
+      });
+
+      afterAll(() => {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      });
+
+      it("should block a media-named symlink pointing at a non-media file", () => {
+        const target = path.join(tmpDir, "id_rsa");
+        fs.writeFileSync(target, "not a key");
+        const link = path.join(tmpDir, "holiday.png");
+        fs.symlinkSync(target, link);
+
+        const result = callTool("storeMediaFile", {
+          filename: "_e2e_symlink_test.png",
+          path: link,
+        });
+        expect(result).toHaveProperty("success", false);
+        expect(result.error).toContain("File type not allowed");
+      });
+    });
   });
 
   describe("SSRF protection", () => {
@@ -139,8 +169,8 @@ describe("E2E: Media Security Guards (STDIO)", () => {
     });
   });
 
-  describe("Filename sanitization", () => {
-    it("should sanitize path traversal in filenames when storing", () => {
+  describe("Filename validation", () => {
+    it("should reject path traversal in filenames when storing", () => {
       const tinyPng =
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
@@ -148,15 +178,16 @@ describe("E2E: Media Security Guards (STDIO)", () => {
         filename: "../../evil.png",
         data: tinyPng,
       });
-      // Should succeed but with sanitized filename (no ../)
-      expect(result).toHaveProperty("success", true);
-      expect(result.filename).not.toContain("..");
-      expect(result.filename).not.toContain("/");
+      expect(result).toHaveProperty("success", false);
+      expect(result.error).toContain("Invalid media filename");
     });
 
-    it("should clean up sanitized test file", () => {
-      const result = callTool("deleteMediaFile", { filename: "evil.png" });
-      expect(result).toHaveProperty("success", true);
+    it("should reject path traversal in filenames when deleting", () => {
+      const result = callTool("deleteMediaFile", {
+        filename: "../../evil.png",
+      });
+      expect(result).toHaveProperty("success", false);
+      expect(result.error).toContain("Invalid media filename");
     });
   });
 });

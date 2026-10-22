@@ -308,11 +308,11 @@ Key environment variables (all have defaults, see `src/config/config.schema.ts`)
 
 The media tools (`storeMediaFile`, `retrieveMediaFile`, `deleteMediaFile`) and `updateNoteFields` audio/picture/video fields validate inputs against prompt-injection and SSRF attacks:
 
-- **File paths** — MIME-type allowlist (media only). Non-media files (SSH keys, creds, shell configs) are rejected.
+- **File paths** — MIME-type allowlist (media only). Non-media files (SSH keys, creds, shell configs) are rejected. Paths are resolved on the MCP server's host with symlinks followed; the type and import-dir checks apply to the target.
   - `MEDIA_ALLOWED_TYPES` — extra MIME types (comma-separated)
   - `MEDIA_IMPORT_DIR` — restrict imports to a specific directory
 - **URLs** — SSRF guard blocks loopback (127.x), RFC1918 (10/8, 172.16/12, 192.168/16), link-local (169.254.x), and non-HTTP(S) schemes.
   - `MEDIA_ALLOWED_HOSTS` — allowlist specific private hosts (e.g., `192.168.1.50,my-nas`)
-- **Filenames** — path-traversal sanitization (`../`, absolute paths stripped).
+- **Filenames** — must be plain names; names with path separators, drive prefixes, null bytes, or that are `.`/`..`/empty are rejected (not rewritten).
 
 Validation lives in `src/mcp/utils/media-validation.utils.ts`; callers are `mediaActions/actions/{store,retrieve,delete}MediaFile.action.ts` and `update-note-fields.tool.ts`. Unit coverage in `src/mcp/utils/__tests__/media-validation.utils.spec.ts`, E2E in `test/e2e/media-security.stdio.e2e-spec.ts`. When touching these, always add a test — the recent path-traversal fix (commit f94cfb8) was reported externally.
