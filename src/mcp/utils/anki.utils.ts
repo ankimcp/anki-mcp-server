@@ -8,6 +8,13 @@ import {
   AnkiConnectError,
   ReadOnlyModeError,
 } from "../clients/anki-connect.client";
+import {
+  MediaFileNotFoundError,
+  MediaFileTypeError,
+  MediaFilenameError,
+  MediaImportDirError,
+  MediaImportDirNotFoundError,
+} from "./media-validation.utils";
 
 /**
  * Hint attached to every read-only rejection. It replaces the caller's hint,
@@ -16,6 +23,36 @@ import {
 export const READ_ONLY_HINT =
   "The server is running in read-only mode, which blocks this operation. " +
   "Read-only mode is set by the READ_ONLY environment variable or the --read-only flag.";
+
+/**
+ * Hint attached to every rejected media filename, replacing the caller's
+ * generic hint. Media files live flat in collection.media, so a name is
+ * never a path.
+ */
+export const MEDIA_FILENAME_HINT =
+  'Media files live directly in Anki\'s collection.media folder, so a filename is a plain name such as "audio.mp3", ' +
+  "with no folder prefix or path separator.";
+
+/**
+ * Hints for media file path rejections. The path is resolved on the MCP
+ * server's host, which the caller's generic "Anki is not running" hint does
+ * not explain.
+ */
+export const MEDIA_FILE_NOT_FOUND_HINT =
+  "The path is resolved on the machine running the MCP server, which can differ from the machine running Anki " +
+  "(for example when Anki runs in Docker or on another host). The file has to exist there and be readable by the server process.";
+
+export const MEDIA_FILE_TYPE_HINT =
+  "File path imports accept only image, audio and video files, judged by the file extension of the path " +
+  "(of the link target when the path is a symlink). MEDIA_ALLOWED_TYPES on the MCP server adds further MIME types.";
+
+export const MEDIA_IMPORT_DIR_NOT_FOUND_HINT =
+  "MEDIA_IMPORT_DIR is resolved on the machine running the MCP server, and the configured directory does not exist there " +
+  "or the server process cannot access it.";
+
+export const MEDIA_IMPORT_DIR_HINT =
+  "MEDIA_IMPORT_DIR restricts file path imports to one directory on the machine running the MCP server. " +
+  "Symlinks are resolved, so a link inside the directory that points outside it is also rejected.";
 
 /**
  * Matches Anki's answer separator that most back templates emit right after
@@ -193,6 +230,16 @@ export function createErrorResponse(
 
   if (error instanceof ReadOnlyModeError) {
     errorData.hint = READ_ONLY_HINT;
+  } else if (error instanceof MediaFilenameError) {
+    errorData.hint = MEDIA_FILENAME_HINT;
+  } else if (error instanceof MediaFileNotFoundError) {
+    errorData.hint = MEDIA_FILE_NOT_FOUND_HINT;
+  } else if (error instanceof MediaFileTypeError) {
+    errorData.hint = MEDIA_FILE_TYPE_HINT;
+  } else if (error instanceof MediaImportDirNotFoundError) {
+    errorData.hint = MEDIA_IMPORT_DIR_NOT_FOUND_HINT;
+  } else if (error instanceof MediaImportDirError) {
+    errorData.hint = MEDIA_IMPORT_DIR_HINT;
   }
 
   return {

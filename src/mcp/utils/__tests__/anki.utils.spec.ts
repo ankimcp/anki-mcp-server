@@ -3,6 +3,18 @@ import {
   ReadOnlyModeError,
 } from "@/mcp/clients/anki-connect.client";
 import {
+  MediaFileNotFoundError,
+  MediaFileTypeError,
+  MediaFilenameError,
+  MediaImportDirError,
+  MediaImportDirNotFoundError,
+} from "@/mcp/utils/media-validation.utils";
+import {
+  MEDIA_FILENAME_HINT,
+  MEDIA_FILE_NOT_FOUND_HINT,
+  MEDIA_FILE_TYPE_HINT,
+  MEDIA_IMPORT_DIR_HINT,
+  MEDIA_IMPORT_DIR_NOT_FOUND_HINT,
   READ_ONLY_HINT,
   cleanHtml,
   createErrorResponse,
@@ -71,6 +83,52 @@ describe("createErrorResponse", () => {
     expect(READ_ONLY_HINT).toContain("read-only mode");
     expect(READ_ONLY_HINT).toContain("READ_ONLY");
     expect(READ_ONLY_HINT).toContain("--read-only");
+  });
+
+  it("replaces the caller's hint with the filename hint for a MediaFilenameError", () => {
+    const data = parseErrorResponse(
+      createErrorResponse(new MediaFilenameError("a/b.jpg"), {
+        hint: "caller hint",
+      }),
+    );
+
+    expect(data.error).toContain('"a/b.jpg"');
+    expect(data.hint).toBe(MEDIA_FILENAME_HINT);
+  });
+
+  it.each([
+    [
+      "MediaFileNotFoundError",
+      new MediaFileNotFoundError(),
+      MEDIA_FILE_NOT_FOUND_HINT,
+    ],
+    ["MediaFileTypeError", new MediaFileTypeError(), MEDIA_FILE_TYPE_HINT],
+    [
+      "MediaImportDirNotFoundError",
+      new MediaImportDirNotFoundError("/srv/media"),
+      MEDIA_IMPORT_DIR_NOT_FOUND_HINT,
+    ],
+    [
+      "MediaImportDirError",
+      new MediaImportDirError("/srv/media"),
+      MEDIA_IMPORT_DIR_HINT,
+    ],
+  ])(
+    "replaces the caller's hint with the path hint for a %s",
+    (_name, error, hint) => {
+      const data = parseErrorResponse(
+        createErrorResponse(error, { hint: "caller hint" }),
+      );
+
+      expect(data.error).toBe(error.message);
+      expect(data.hint).toBe(hint);
+    },
+  );
+
+  it("says the file path is resolved on the MCP server's machine", () => {
+    expect(MEDIA_FILE_NOT_FOUND_HINT).toContain(
+      "resolved on the machine running the MCP server",
+    );
   });
 });
 

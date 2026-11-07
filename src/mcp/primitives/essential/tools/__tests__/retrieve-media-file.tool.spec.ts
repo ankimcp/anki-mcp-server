@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { RetrieveMediaFileTool } from "../retrieve-media-file.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { parseToolResult } from "@/test-fixtures/test-helpers";
+import { MEDIA_FILENAME_HINT } from "@/mcp/utils/anki.utils";
 
 jest.mock("@/mcp/clients/anki-connect.client");
 
@@ -54,20 +55,18 @@ describe("RetrieveMediaFileTool", () => {
     expect(result.message).toContain("not found");
   });
 
-  it("should sanitize path traversal in filename", async () => {
+  it("should reject path traversal in filename", async () => {
     const params = {
       filename: "../../.bashrc",
     };
-    ankiClient.invoke.mockResolvedValueOnce("file-contents-base64");
 
     const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
-    expect(ankiClient.invoke).toHaveBeenCalledWith("retrieveMediaFile", {
-      filename: ".bashrc",
-    });
-    expect(result.success).toBe(true);
-    expect(result.filename).toBe(".bashrc");
+    expect(ankiClient.invoke).not.toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Invalid media filename");
+    expect(result.hint).toBe(MEDIA_FILENAME_HINT);
   });
 
   it("should pass normal filenames through unchanged", async () => {

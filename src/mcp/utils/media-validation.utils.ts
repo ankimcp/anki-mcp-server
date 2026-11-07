@@ -4,9 +4,10 @@
  * Provides three layers of defense:
  * 1. MIME type allowlist for file paths (blocks non-media files)
  * 2. URL/SSRF validation (blocks private/internal network requests)
- * 3. Filename sanitization (strips path traversal sequences)
+ * 3. Filename validation (rejects names that are not plain file names)
  */
 
+import * as fs from "node:fs";
 import * as path from "node:path";
 import * as dns from "node:dns";
 import mime from "mime";
@@ -31,6 +32,34 @@ export class MediaImportDirError extends Error {
         "Update MEDIA_IMPORT_DIR to change the allowed directory.",
     );
     this.name = "MediaImportDirError";
+  }
+}
+
+export class MediaFileNotFoundError extends Error {
+  constructor() {
+    super("File does not exist or cannot be accessed.");
+    this.name = "MediaFileNotFoundError";
+  }
+}
+
+export class MediaImportDirNotFoundError extends Error {
+  constructor(configuredDir: string) {
+    super(
+      `The allowed import directory (${configuredDir}) does not exist or cannot be accessed. ` +
+        "Update MEDIA_IMPORT_DIR to point to an existing directory.",
+    );
+    this.name = "MediaImportDirNotFoundError";
+  }
+}
+
+export class MediaFilenameError extends Error {
+  constructor(filename: string) {
+    super(
+      `Invalid media filename ${JSON.stringify(filename)}: a media filename is a plain name ` +
+        'such as "audio.mp3". Empty names, "." and "..", path separators (/ or \\), ' +
+        "drive prefixes (C:) and null bytes are rejected.",
+    );
+    this.name = "MediaFilenameError";
   }
 }
 
@@ -156,29 +185,14 @@ function normalizeIp(value: string): string | null {
 
 // ── Path validation ─────────────────────────────────────────────────────────
 
-/**
- * Validate a local file path for media import.
- *
- * Checks:
- * 1. File extension resolves to an allowed MIME type (image/*, audio/*, video/* by default)
- * 2. If importDir is configured, the resolved path must be inside that directory
- *
- * @throws MediaFileTypeError if the MIME type is not allowed
- * @throws MediaImportDirError if the path is outside the allowed directory
- */
-export function validateMediaFilePath(
+// Returns the MIME type for the path's extension, or throws if it is not on
+// the allowlist.
+function assertAllowedMimeType(
   filePath: string,
-  config: MediaFilePathConfig = {},
-): { resolvedPath: string; mimeType: string } {
-  // Reject null bytes to prevent injection bypasses
-  if (filePath.includes("\0")) {
-    throw new MediaFileTypeError();
-  }
+  config: MediaFilePathConfig,
+): string {
+  const detectedMime = mime.getType(filePath);
 
-  const resolvedPath = path.resolve(filePath);
-  const detectedMime = mime.getType(resolvedPath);
-
-  // Check MIME type against allowlist
   const isDefaultAllowed =
     detectedMime !== null &&
     DEFAULT_ALLOWED_PREFIXES.some((prefix) => detectedMime.startsWith(prefix));
@@ -192,20 +206,87 @@ export function validateMediaFilePath(
     throw new MediaFileTypeError();
   }
 
-  // Check directory restriction if configured
-  if (config.importDir) {
-    const resolvedImportDir = path.resolve(config.importDir);
-    // Ensure the import dir path ends with separator for prefix matching
-    const normalizedImportDir = resolvedImportDir.endsWith(path.sep)
-      ? resolvedImportDir
-      : resolvedImportDir + path.sep;
+  return detectedMime;
+}
 
-    if (!resolvedPath.startsWith(normalizedImportDir)) {
-      throw new MediaImportDirError(config.importDir);
+function resolveImportDir(importDir: string): string {
+  try {
+    return fs.realpathSync(importDir);
+  } catch {
+    throw new MediaImportDirNotFoundError(importDir);
+  }
+}
+
+function isInsideDir(filePath: string, dir: string): boolean {
+  const prefix = dir.endsWith(path.sep) ? dir : dir + path.sep;
+  return filePath.startsWith(prefix);
+}
+
+/**
+ * Validate a local file path for media import.
+ *
+ * Symlinks are resolved: every check runs on the file's real path (the link
+ * target), and that real path is returned as `resolvedPath` so the caller
+ * hands AnkiConnect exactly the file that was validated.
+ *
+ * Checks:
+ * 1. If importDir is configured, the path as given must be inside it (checked
+ *    before the file is looked up)
+ * 2. The file exists and its real path can be resolved
+ * 3. The real path's extension resolves to an allowed MIME type (image/*, audio/*, video/* by default)
+ * 4. If importDir is configured, the real path must be inside the import dir's real path
+ *
+ * @throws MediaFileTypeError if the MIME type is not allowed
+ * @throws MediaFileNotFoundError if the file does not exist or cannot be accessed
+ * @throws MediaImportDirNotFoundError if the configured import dir does not exist
+ * @throws MediaImportDirError if the path is outside the allowed directory
+ */
+export function validateMediaFilePath(
+  filePath: string,
+  config: MediaFilePathConfig = {},
+): { resolvedPath: string; mimeType: string } {
+  // Reject null bytes to prevent injection bypasses
+  if (filePath.includes("\0")) {
+    throw new MediaFileTypeError();
+  }
+
+  // Check the name as given first, so a non-media path is rejected without
+  // touching the filesystem (and without revealing whether it exists)
+  assertAllowedMimeType(filePath, config);
+
+  // With an import dir configured, a path outside it (as given, or under the
+  // dir's real path) is rejected before the filesystem lookup, so the
+  // not-found error cannot reveal whether files outside the dir exist
+  const { importDir } = config;
+  const realImportDir = importDir ? resolveImportDir(importDir) : undefined;
+  if (importDir && realImportDir !== undefined) {
+    const givenPath = path.resolve(filePath);
+    if (
+      !isInsideDir(givenPath, path.resolve(importDir)) &&
+      !isInsideDir(givenPath, realImportDir)
+    ) {
+      throw new MediaImportDirError(importDir);
     }
   }
 
-  return { resolvedPath, mimeType: detectedMime };
+  let resolvedPath: string;
+  try {
+    resolvedPath = fs.realpathSync(filePath);
+  } catch {
+    throw new MediaFileNotFoundError();
+  }
+
+  const mimeType = assertAllowedMimeType(resolvedPath, config);
+
+  if (
+    importDir &&
+    realImportDir !== undefined &&
+    !isInsideDir(resolvedPath, realImportDir)
+  ) {
+    throw new MediaImportDirError(importDir);
+  }
+
+  return { resolvedPath, mimeType };
 }
 
 // ── URL/SSRF validation ─────────────────────────────────────────────────────
@@ -307,36 +388,38 @@ export async function validateMediaUrl(
   return { hostname, resolvedIp };
 }
 
-// ── Filename sanitization ───────────────────────────────────────────────────
+// ── Filename validation ─────────────────────────────────────────────────────
 
 /**
- * Sanitize a media filename by stripping path traversal sequences and extracting basename.
+ * Validate a media filename and return it unchanged.
  *
- * - Strips null bytes
- * - Removes `..` sequences
- * - Strips path separators (`/`, `\`)
- * - Returns `path.basename()` of the cleaned result
- * - Returns "unnamed" for empty/invalid results
+ * The name is rejected rather than rewritten: stripping separators would map
+ * distinct names onto one (`a/b.jpg` and `ab.jpg` → `ab.jpg`), and with
+ * storeMediaFile's overwrite default the second store would silently replace
+ * the first file.
+ *
+ * Rejects empty names, null bytes, `/` and `\`, the names `.` and `..`, and
+ * any name that POSIX or Windows `basename()` would change (e.g. `C:x.jpg`).
+ * `..` inside a plain name (`my..file.jpg`) is accepted: without a separator
+ * it cannot leave the media folder.
+ *
+ * @throws MediaFilenameError if the name is not a plain file name
  */
-export function sanitizeMediaFilename(filename: string): string {
-  // Strip null bytes
-  let sanitized = filename.replace(/\0/g, "");
+export function validateMediaFilename(filename: string): string {
+  const isPlainName =
+    filename.trim() !== "" &&
+    !filename.includes("\0") &&
+    !/[/\\]/.test(filename) &&
+    filename !== "." &&
+    filename !== ".." &&
+    path.posix.basename(filename) === filename &&
+    path.win32.basename(filename) === filename;
 
-  // Remove .. sequences
-  sanitized = sanitized.replace(/\.\./g, "");
-
-  // Remove path separators
-  sanitized = sanitized.replace(/[/\\]/g, "");
-
-  // Extract basename (handles any remaining edge cases)
-  sanitized = path.basename(sanitized);
-
-  // Fallback for empty results
-  if (!sanitized || sanitized.trim() === "" || sanitized === ".") {
-    return "unnamed";
+  if (!isPlainName) {
+    throw new MediaFilenameError(filename);
   }
 
-  return sanitized;
+  return filename;
 }
 
 // ── Convenience functions that read from process.env ────────────────────────

@@ -2,7 +2,11 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { StoreMediaFileTool } from "../store-media-file.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { parseToolResult } from "@/test-fixtures/test-helpers";
+import { MEDIA_FILENAME_HINT } from "@/mcp/utils/anki.utils";
 import * as dns from "node:dns";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 
 jest.mock("@/mcp/clients/anki-connect.client");
 
@@ -29,6 +33,25 @@ const mockLookup = dns.promises.lookup as unknown as jest.MockedFunction<
 describe("StoreMediaFileTool", () => {
   let tool: StoreMediaFileTool;
   let ankiClient: jest.Mocked<AnkiConnectClient>;
+  let tmpRoot: string;
+
+  // Path validation resolves real paths, so path-based tests need real files
+  const createFile = (relativePath: string): string => {
+    const filePath = path.join(tmpRoot, relativePath);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, "");
+    return filePath;
+  };
+
+  beforeAll(() => {
+    tmpRoot = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "store-media-file-")),
+    );
+  });
+
+  afterAll(() => {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  });
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -69,9 +92,10 @@ describe("StoreMediaFileTool", () => {
   });
 
   it("should store media file with file path", async () => {
+    const filePath = createFile("absolute/path/to/image.jpg");
     const params = {
       filename: "image.jpg",
-      path: "/absolute/path/to/image.jpg",
+      path: filePath,
     };
     ankiClient.invoke.mockResolvedValueOnce("image.jpg");
 
@@ -80,7 +104,7 @@ describe("StoreMediaFileTool", () => {
 
     expect(ankiClient.invoke).toHaveBeenCalledWith("storeMediaFile", {
       filename: "image.jpg",
-      path: "/absolute/path/to/image.jpg",
+      path: filePath,
       deleteExisting: true,
     });
     expect(result.success).toBe(true);
@@ -176,10 +200,11 @@ describe("StoreMediaFileTool", () => {
         expect(ankiClient.invoke).not.toHaveBeenCalled();
       });
 
-      it("should allow media file paths (e.g., /photos/cat.jpg)", async () => {
+      it("should allow media file paths (e.g., photos/cat.jpg)", async () => {
+        const filePath = createFile("photos/cat.jpg");
         const params = {
           filename: "cat.jpg",
-          path: "/photos/cat.jpg",
+          path: filePath,
         };
         ankiClient.invoke.mockResolvedValueOnce("cat.jpg");
 
@@ -189,7 +214,49 @@ describe("StoreMediaFileTool", () => {
         expect(result.success).toBe(true);
         expect(ankiClient.invoke).toHaveBeenCalledWith(
           "storeMediaFile",
-          expect.objectContaining({ path: "/photos/cat.jpg" }),
+          expect.objectContaining({ path: filePath }),
+        );
+      });
+
+      it("should reject a nonexistent media path", async () => {
+        const rawResult = await tool.execute({
+          filename: "cat.jpg",
+          path: path.join(tmpRoot, "missing/cat.jpg"),
+        });
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("does not exist");
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+
+      it("should reject a .png-named symlink to a non-media file and not call AnkiConnect", async () => {
+        const target = createFile("secrets/id_rsa");
+        const link = path.join(tmpRoot, "holiday.png");
+        fs.symlinkSync(target, link);
+
+        const rawResult = await tool.execute({
+          filename: "holiday.png",
+          path: link,
+        });
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("Only media files");
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+
+      it("should send the symlink target's real path to AnkiConnect", async () => {
+        const target = createFile("real/photo.jpg");
+        const link = path.join(tmpRoot, "link-photo.jpg");
+        fs.symlinkSync(target, link);
+        ankiClient.invoke.mockResolvedValueOnce("photo.jpg");
+
+        await tool.execute({ filename: "photo.jpg", path: link });
+
+        expect(ankiClient.invoke).toHaveBeenCalledWith(
+          "storeMediaFile",
+          expect.objectContaining({ path: target }),
         );
       });
 
@@ -198,7 +265,7 @@ describe("StoreMediaFileTool", () => {
         try {
           const params = {
             filename: "doc.pdf",
-            path: "/docs/manual.pdf",
+            path: createFile("docs/manual.pdf"),
           };
 
           const rawResultBlocked = await tool.execute(params);
@@ -225,11 +292,13 @@ describe("StoreMediaFileTool", () => {
       it("should respect MEDIA_IMPORT_DIR env var", async () => {
         const originalEnv = process.env.MEDIA_IMPORT_DIR;
         try {
-          process.env.MEDIA_IMPORT_DIR = "/allowed/media";
+          const importDir = path.join(tmpRoot, "allowed/media");
+          fs.mkdirSync(importDir, { recursive: true });
+          process.env.MEDIA_IMPORT_DIR = importDir;
 
           const params = {
             filename: "cat.jpg",
-            path: "/other/directory/cat.jpg",
+            path: createFile("other/directory/cat.jpg"),
           };
 
           const rawResult = await tool.execute(params);
@@ -339,27 +408,38 @@ describe("StoreMediaFileTool", () => {
       });
     });
 
-    describe("filename sanitization", () => {
-      it("sanitizes path traversal in filename", async () => {
-        ankiClient.invoke.mockResolvedValue("safe_name.jpg");
-
-        await tool.execute({
+    describe("filename validation", () => {
+      it("rejects path traversal in filename", async () => {
+        const rawResult = await tool.execute({
           filename: "../../evil.jpg",
           data: "base64data",
         });
+        const result = parseToolResult(rawResult);
 
-        expect(ankiClient.invoke).toHaveBeenCalledWith(
-          "storeMediaFile",
-          expect.objectContaining({ filename: "evil.jpg" }),
-        );
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("Invalid media filename");
+        expect(result.hint).toBe(MEDIA_FILENAME_HINT);
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
+      });
+
+      it("rejects a folder-prefixed name instead of collapsing it onto another name", async () => {
+        const rawResult = await tool.execute({
+          filename: "a/b.jpg",
+          data: "base64data",
+        });
+        const result = parseToolResult(rawResult);
+
+        expect(result.success).toBe(false);
+        expect(ankiClient.invoke).not.toHaveBeenCalled();
       });
 
       it("sends resolved path to AnkiConnect, not original path", async () => {
         ankiClient.invoke.mockResolvedValue("image.jpg");
+        createFile("photos/image.jpg");
 
         await tool.execute({
           filename: "image.jpg",
-          path: "/photos/../photos/image.jpg",
+          path: path.join(tmpRoot, "photos") + "/../photos/image.jpg",
         });
 
         expect(ankiClient.invoke).toHaveBeenCalledWith(

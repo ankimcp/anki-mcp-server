@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { DeleteMediaFileTool } from "../delete-media-file.tool";
 import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
 import { parseToolResult } from "@/test-fixtures/test-helpers";
+import { MEDIA_FILENAME_HINT } from "@/mcp/utils/anki.utils";
 
 jest.mock("@/mcp/clients/anki-connect.client");
 
@@ -38,20 +39,18 @@ describe("DeleteMediaFileTool", () => {
     expect(result.message).toContain("Successfully deleted");
   });
 
-  it("should sanitize path traversal in filename", async () => {
+  it("should reject path traversal in filename", async () => {
     const params = {
       filename: "../../etc/passwd",
     };
-    ankiClient.invoke.mockResolvedValueOnce(undefined);
 
     const rawResult = await tool.execute(params);
     const result = parseToolResult(rawResult);
 
-    expect(ankiClient.invoke).toHaveBeenCalledWith("deleteMediaFile", {
-      filename: "etcpasswd",
-    });
-    expect(result.success).toBe(true);
-    expect(result.filename).toBe("etcpasswd");
+    expect(ankiClient.invoke).not.toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Invalid media filename");
+    expect(result.hint).toBe(MEDIA_FILENAME_HINT);
   });
 
   it("should pass normal filenames through unchanged", async () => {

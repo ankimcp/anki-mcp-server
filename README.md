@@ -503,7 +503,7 @@ For more details, see the [official MCP documentation](https://modelcontextproto
 | `PORT` | HTTP mode: port to listen on (`--port` flag takes precedence) | `3000` |
 | `HOST` | HTTP mode: address to bind to (`--host` flag takes precedence) | `127.0.0.1` |
 | `ALLOWED_HOSTS` | HTTP mode: extra `Host` header values to accept beyond loopback (comma-separated hostnames). Required when binding to a LAN/public address or running behind a reverse proxy. See [HTTP Mode Configuration](#http-mode-configuration). | loopback only |
-| `ALLOWED_ORIGINS` | HTTP mode: comma-separated allowlist of browser `Origin`/`Referer` patterns (wildcards supported, e.g. `https://*.ngrok.io`). | `http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*` |
+| `ALLOWED_ORIGINS` | HTTP mode: comma-separated allowlist of browser `Origin`/`Referer` patterns (wildcards supported, e.g. `https://*.ngrok.io`; `*` matches one host label or a port, so a multi-label host such as `https://a.b.ngrok.io` needs its own entry). | `http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*` |
 | `TUNNEL_SERVER_URL` | Tunnel server WebSocket URL (tunnel mode only) | `wss://tunnel.ankimcp.ai` |
 | `MEDIA_ALLOWED_TYPES` | Extra MIME types to allow for file path imports (comma-separated, e.g., `application/pdf`) | - |
 | `MEDIA_IMPORT_DIR` | Restrict file path imports to this directory | - |
@@ -567,9 +567,9 @@ The `deleteNotes` tool requires explicit confirmation (`confirmDeletion: true`) 
 
 The media tools (`storeMediaFile`, `retrieveMediaFile`, `deleteMediaFile`) and `updateNoteFields` audio/picture fields include security validation to prevent misuse via prompt injection:
 
-- **File path imports** are restricted to media file types only (images, audio, video). Non-media files (e.g., SSH keys, credentials, shell configs) are rejected based on MIME type. Configure `MEDIA_ALLOWED_TYPES` to allow additional file types, or `MEDIA_IMPORT_DIR` to restrict imports to a specific directory.
+- **File path imports** are restricted to media file types only (images, audio, video). Non-media files (e.g., SSH keys, credentials, shell configs) are rejected based on MIME type. Symlinks are resolved first, so the type and directory checks apply to the link's target, not its name. The path is resolved on the machine running the MCP server, so the file has to exist there — this matters when Anki runs in Docker or on another host. Configure `MEDIA_ALLOWED_TYPES` to allow additional file types, or `MEDIA_IMPORT_DIR` to restrict imports to a specific directory.
 - **URL imports** are validated against SSRF attacks. Requests to private networks (10.x, 172.16.x, 192.168.x), loopback (127.x), link-local (169.254.x), and non-HTTP(S) schemes are blocked. Configure `MEDIA_ALLOWED_HOSTS` to allow specific private network hosts.
-- **Filenames** are sanitized to prevent path traversal (e.g., `../../` sequences are stripped).
+- **Filenames** must be plain names (e.g., `audio.mp3`). Names containing path separators, `.`/`..` as the whole name, or null bytes are rejected rather than rewritten, so distinct names never collapse onto the same file.
 
 These protections apply to `storeMediaFile`, `retrieveMediaFile`, `deleteMediaFile`, and `updateNoteFields` audio/picture fields.
 
@@ -675,7 +675,7 @@ npm run build  # Builds once, creates dist/ with all three entry points
 - `PORT` - HTTP server port (default: 3000)
 - `HOST` - Bind address (default: 127.0.0.1 for localhost-only)
 - `ALLOWED_HOSTS` - Comma-separated extra `Host` header values to accept beyond the built-in loopback set (`localhost`, `127.0.0.1`, `::1`). Hostname-only and port-agnostic. Default: loopback only.
-- `ALLOWED_ORIGINS` - Comma-separated allowlist of browser `Origin`/`Referer` patterns; wildcards supported (e.g. `https://*.ngrok.io`). Default: `http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*`.
+- `ALLOWED_ORIGINS` - Comma-separated allowlist of browser `Origin`/`Referer` patterns; wildcards supported (e.g. `https://*.ngrok.io`; `*` matches one host label or a port, so a multi-label host such as `https://a.b.ngrok.io` needs its own entry). Default: `http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*`.
 - `LOG_LEVEL` - Logging level (default: info)
 
 **Security:**
@@ -985,7 +985,7 @@ This project follows [Semantic Versioning](https://semver.org/) with a pre-1.0 d
     - Will be released when the API is stable and tested
     - Breaking changes will require major version bumps (2.0.0, etc.)
 
-**Current Status**: `0.27.0` - Active beta development. Recent features include collection-wide review analysis (`review_stats` now aggregates across all decks when `deck` is omitted), model field management (`addModelField`, `removeModelField`, `renameModelField`, `repositionModelField`), batch note creation (`addNotes`), integrated ngrok tunneling (`--ngrok` flag), media file management, model/template management, and comprehensive deck statistics. APIs may change based on feedback and testing.
+**Current Status**: `0.27.1` - Active beta development. Recent features include collection-wide review analysis (`review_stats` now aggregates across all decks when `deck` is omitted), model field management (`addModelField`, `removeModelField`, `renameModelField`, `repositionModelField`), batch note creation (`addNotes`), integrated ngrok tunneling (`--ngrok` flag), media file management, model/template management, and comprehensive deck statistics. APIs may change based on feedback and testing.
 
 ### MCPB spec evolution
 

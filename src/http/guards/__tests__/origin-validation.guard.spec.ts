@@ -305,6 +305,142 @@ describe("OriginValidationGuard", () => {
       );
     });
   });
+
+  describe("Referer handling", () => {
+    it("should reject a Referer whose path or query carries an allowed host", () => {
+      process.env.ALLOWED_ORIGINS = "https://*.example.com";
+      guard = buildGuard();
+
+      const context = createMockContext(
+        undefined,
+        "https://evil.net/?x=.example.com",
+      );
+
+      expect(guard.canActivate(context)).toBe(false);
+    });
+
+    it("should reject a Referer pointing at a lookalike path on another host", () => {
+      guard = buildGuard();
+
+      const context = createMockContext(
+        undefined,
+        "https://evil.net/http://localhost:3000",
+      );
+
+      expect(guard.canActivate(context)).toBe(false);
+    });
+
+    it("should accept a Referer with a path when its origin is allowed", () => {
+      guard = buildGuard();
+
+      const context = createMockContext(
+        undefined,
+        "http://localhost:3000/some/page?q=1",
+      );
+
+      expect(guard.canActivate(context)).toBe(true);
+    });
+
+    it("should reject a Referer that does not parse as a URL", () => {
+      guard = buildGuard();
+
+      const context = createMockContext(undefined, "not a url");
+
+      expect(guard.canActivate(context)).toBe(false);
+    });
+  });
+
+  describe("wildcard scope", () => {
+    beforeEach(() => {
+      process.env.ALLOWED_ORIGINS = "https://*.example.com";
+      guard = buildGuard();
+    });
+
+    it("should match a single subdomain label", () => {
+      expect(
+        guard.canActivate(createMockContext("https://a.example.com")),
+      ).toBe(true);
+    });
+
+    it.each([
+      "https://a.b.example.com.evil.net",
+      "https://evil.net/?x=.example.com",
+      "https://a.b.example.com",
+      "https://.example.com",
+      "https://a.example.com:443",
+      "https://a.example.com.evil.net",
+    ])("should not match %s", (origin) => {
+      expect(guard.canActivate(createMockContext(origin))).toBe(false);
+    });
+
+    it("should keep the port wildcard within one label, not crossing '.' or '/'", () => {
+      process.env.ALLOWED_ORIGINS = "http://localhost:*";
+      guard = buildGuard();
+
+      expect(
+        guard.canActivate(createMockContext("http://localhost:3000")),
+      ).toBe(true);
+      expect(
+        guard.canActivate(createMockContext("http://localhost:3000.evil.net")),
+      ).toBe(false);
+      expect(
+        guard.canActivate(createMockContext("http://localhost:3000/x")),
+      ).toBe(false);
+    });
+  });
+
+  describe("pattern compilation", () => {
+    it("should treat regex metacharacters in a pattern literally without throwing", () => {
+      process.env.ALLOWED_ORIGINS = "https://exa(mple.com,https://a+b.com";
+      guard = buildGuard();
+
+      expect(() =>
+        guard.canActivate(createMockContext("https://evil.com")),
+      ).not.toThrow();
+      expect(guard.canActivate(createMockContext("https://exa(mple.com"))).toBe(
+        true,
+      );
+      expect(guard.canActivate(createMockContext("https://aab.com"))).toBe(
+        false,
+      );
+    });
+
+    it("should match an IPv6 loopback origin with a port wildcard", () => {
+      process.env.ALLOWED_ORIGINS = "http://[::1]:*";
+      guard = buildGuard();
+
+      expect(guard.canActivate(createMockContext("http://[::1]:3000"))).toBe(
+        true,
+      );
+      expect(guard.canActivate(createMockContext("http://:3000"))).toBe(false);
+    });
+
+    it.each([
+      "https://example.com/app",
+      "https://claude.ai/",
+      "example.com",
+      "*",
+    ])(
+      "should throw at construction for the non-origin entry %s, naming it",
+      (entry) => {
+        process.env.ALLOWED_ORIGINS = `https://ok.example.com,${entry}`;
+
+        expect(() => buildGuard()).toThrow(
+          `Invalid ALLOWED_ORIGINS entry ${JSON.stringify(entry)}`,
+        );
+      },
+    );
+
+    it("should leave non-origin entries to the guard so config parsing still succeeds", () => {
+      process.env.ALLOWED_ORIGINS = "*,https://claude.ai/";
+
+      const config = configSchema.parse(
+        transformEnvToConfig(buildConfigInput()),
+      );
+
+      expect(config.allowedOrigins).toEqual(["*", "https://claude.ai/"]);
+    });
+  });
 });
 
 /**
