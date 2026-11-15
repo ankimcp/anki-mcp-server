@@ -18,6 +18,7 @@ describe("Config Schema", () => {
         LOG_LEVEL: "debug",
         MCP_SERVER_NAME: "custom-server",
         MCP_SERVER_VERSION: "9.9.9",
+        DISABLE_GUI_TOOLS: "true",
       };
 
       const config = transformEnvToConfig(env);
@@ -44,6 +45,7 @@ describe("Config Schema", () => {
         tunnel: {
           serverUrl: "wss://tunnel.example.com",
         },
+        disableGuiTools: "true",
         logLevel: "debug",
       });
     });
@@ -73,6 +75,7 @@ describe("Config Schema", () => {
         tunnel: {
           serverUrl: undefined,
         },
+        disableGuiTools: undefined,
         logLevel: undefined,
       });
     });
@@ -103,6 +106,7 @@ describe("Config Schema", () => {
             "https://127.0.0.1:*",
           ],
           readOnly: false,
+          disableGuiTools: false,
           ankiConnect: {
             url: "http://localhost:8765",
             apiVersion: 6,
@@ -241,6 +245,27 @@ describe("Config Schema", () => {
       it("should treat undefined as false", () => {
         const config = configSchema.parse({ ...base, readOnly: undefined });
         expect(config.readOnly).toBe(false);
+      });
+    });
+
+    describe("disableGuiTools config", () => {
+      const base = { ankiConnect: {}, auth: {}, tunnel: {} };
+
+      it("defaults to visible GUI tools for backwards compatibility", () => {
+        expect(configSchema.parse(base).disableGuiTools).toBe(false);
+      });
+
+      it("parses true/1, false/0 and empty strings without truthiness errors", () => {
+        for (const v of [true, "true", "1"]) {
+          expect(
+            configSchema.parse({ ...base, disableGuiTools: v }).disableGuiTools,
+          ).toBe(true);
+        }
+        for (const v of [false, "false", "0", ""]) {
+          expect(
+            configSchema.parse({ ...base, disableGuiTools: v }).disableGuiTools,
+          ).toBe(false);
+        }
       });
     });
 

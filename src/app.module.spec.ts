@@ -216,6 +216,34 @@ describe("AppModule", () => {
     });
   });
 
+  describe("headless CLI mode", () => {
+    it("omits GUI primitives in STDIO and HTTP when DISABLE_GUI_TOOLS=true", () => {
+      const opts = { ...buildConfigInput(), DISABLE_GUI_TOOLS: "true" };
+      const stdioModule = AppModule.forStdio(stdioStrategy(), opts);
+      const httpModule = AppModule.forHttp(httpServer(), opts);
+      expect(stdioModule.imports?.length).toBe(2);
+      expect(httpModule.imports?.length).toBe(2);
+    });
+
+    it("omits GUI primitives in tunnel mode using validated env", () => {
+      const previous = process.env.DISABLE_GUI_TOOLS;
+      process.env.DISABLE_GUI_TOOLS = "true";
+      try {
+        const tunnelModule = AppModule.forTunnel(stdioStrategy(), {});
+        expect(tunnelModule.imports?.length).toBe(2);
+      } finally {
+        if (previous === undefined) delete process.env.DISABLE_GUI_TOOLS;
+        else process.env.DISABLE_GUI_TOOLS = previous;
+      }
+    });
+
+    it("keeps GUI primitives by default for all transports", () => {
+      const opts = { ...buildConfigInput(), DISABLE_GUI_TOOLS: "false" };
+      expect(AppModule.forStdio(stdioStrategy(), opts).imports?.length).toBe(3);
+      expect(AppModule.forHttp(httpServer(), opts).imports?.length).toBe(3);
+    });
+  });
+
   describe("MCP server identity", () => {
     const originalEnv = process.env;
 

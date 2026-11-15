@@ -18,7 +18,25 @@ import {
   APP_CONFIG,
   loadValidatedConfig,
   CliOverrides,
+  AppConfig,
 } from "@/config";
+
+/** GUI-only tools must not be advertised when the backend has no desktop. */
+function optionalGuiModule(config: AppConfig): DynamicModule[] {
+  if (config.disableGuiTools) return [];
+  return [
+    McpPrimitivesAnkiGuiModule.forRoot({
+      ankiConfigProvider: {
+        provide: ANKI_CONFIG,
+        useClass: AppConfigService,
+      },
+      appConfigProvider: {
+        provide: APP_CONFIG,
+        useValue: config,
+      },
+    }),
+  ];
+}
 
 /**
  * The capability classes themselves are registered as `controllers` by
@@ -62,17 +80,8 @@ export class AppModule {
           },
         }),
 
-        // Import GUI primitives with config
-        McpPrimitivesAnkiGuiModule.forRoot({
-          ankiConfigProvider: {
-            provide: ANKI_CONFIG,
-            useClass: AppConfigService,
-          },
-          appConfigProvider: {
-            provide: APP_CONFIG,
-            useValue: validatedConfig,
-          },
-        }),
+        // Headless deployments can omit GUI-only tools in every transport.
+        ...optionalGuiModule(validatedConfig),
       ],
       providers: [
         {
@@ -125,17 +134,8 @@ export class AppModule {
           },
         }),
 
-        // Import GUI primitives with config
-        McpPrimitivesAnkiGuiModule.forRoot({
-          ankiConfigProvider: {
-            provide: ANKI_CONFIG,
-            useClass: AppConfigService,
-          },
-          appConfigProvider: {
-            provide: APP_CONFIG,
-            useValue: validatedConfig,
-          },
-        }),
+        // Headless deployments can omit GUI-only tools in every transport.
+        ...optionalGuiModule(validatedConfig),
       ],
       // The MCP endpoint is a controller we own rather than a route the
       // transport self-mounts, so it goes through the Nest pipeline and the
@@ -200,17 +200,8 @@ export class AppModule {
           },
         }),
 
-        // Import GUI primitives with config
-        McpPrimitivesAnkiGuiModule.forRoot({
-          ankiConfigProvider: {
-            provide: ANKI_CONFIG,
-            useClass: AppConfigService,
-          },
-          appConfigProvider: {
-            provide: APP_CONFIG,
-            useValue: validatedConfig,
-          },
-        }),
+        // Headless deployments can omit GUI-only tools in every transport.
+        ...optionalGuiModule(validatedConfig),
       ],
       providers: [
         // Provide validated config for type-safe injection

@@ -117,6 +117,16 @@ export const configSchema = z.object({
     }, z.boolean())
     .default(false),
 
+  // Opt-in headless mode: omit GUI-only MCP tools when no Anki desktop exists.
+  disableGuiTools: z
+    .preprocess((val) => {
+      if (val === "true" || val === "1") return true;
+      if (val === "false" || val === "0" || val === undefined || val === "")
+        return false;
+      return val;
+    }, z.boolean())
+    .default(false),
+
   // Logging
   logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
@@ -154,6 +164,7 @@ export function transformEnvToConfig(env: Record<string, any>): any {
       serverUrl: env.TUNNEL_SERVER_URL,
     },
     readOnly: env.READ_ONLY,
+    disableGuiTools: env.DISABLE_GUI_TOOLS,
     logLevel: env.LOG_LEVEL,
   };
 }
