@@ -49,6 +49,12 @@ Three representative prompts showing the tool flows this server enables:
 
 The server exposes **53 MCP tools** — 42 essential tools for everyday Anki operations and 11 GUI tools that drive the Anki desktop interface for note editing/creation workflows.
 
+For a **GUI-free AnkiConnect backend**, set `DISABLE_GUI_TOOLS=true` when
+launching the MCP server. This removes the 11 desktop-only tools from the MCP
+tool list across STDIO, HTTP and managed tunnel transports; the essential
+card, deck and scheduling tools remain available. By default the GUI tools
+remain enabled for normal Anki Desktop users.
+
 ### Essential Tools
 
 #### Review & Study
@@ -500,6 +506,7 @@ For more details, see the [official MCP documentation](https://modelcontextproto
 | `ANKI_CONNECT_API_KEY` | API key if configured in AnkiConnect | - |
 | `ANKI_CONNECT_TIMEOUT` | Request timeout in ms | `5000` |
 | `READ_ONLY` | Enable read-only mode (`true` or `1`) | `false` |
+| `DISABLE_GUI_TOOLS` | Hide GUI-only tools for a headless Anki backend (`true` or `1`) | `false` |
 | `PORT` | HTTP mode: port to listen on (`--port` flag takes precedence) | `3000` |
 | `HOST` | HTTP mode: address to bind to (`--host` flag takes precedence) | `127.0.0.1` |
 | `ALLOWED_HOSTS` | HTTP mode: extra `Host` header values to accept beyond loopback (comma-separated hostnames). Required when binding to a LAN/public address or running behind a reverse proxy. See [HTTP Mode Configuration](#http-mode-configuration). | loopback only |
