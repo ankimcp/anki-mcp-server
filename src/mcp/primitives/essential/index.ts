@@ -53,6 +53,7 @@ export { ChangeDeckTool } from "./tools/change-deck.tool";
 export { RetrieveMediaFileTool } from "./tools/retrieve-media-file.tool";
 export { GetMediaFilesNamesTool } from "./tools/get-media-files-names.tool";
 export { StoreMediaFileTool } from "./tools/store-media-file.tool";
+export { StoreMediaFilesTool } from "./tools/store-media-files.tool";
 export { DeleteMediaFileTool } from "./tools/delete-media-file.tool";
 // Tag tools (split from former tagActions aggregate)
 export { AddTagsTool } from "./tools/add-tags.tool";
@@ -107,6 +108,7 @@ import { ChangeDeckTool } from "./tools/change-deck.tool";
 import { RetrieveMediaFileTool } from "./tools/retrieve-media-file.tool";
 import { GetMediaFilesNamesTool } from "./tools/get-media-files-names.tool";
 import { StoreMediaFileTool } from "./tools/store-media-file.tool";
+import { StoreMediaFilesTool } from "./tools/store-media-files.tool";
 import { DeleteMediaFileTool } from "./tools/delete-media-file.tool";
 import { AddTagsTool } from "./tools/add-tags.tool";
 import { RemoveTagsTool } from "./tools/remove-tags.tool";
@@ -158,6 +160,7 @@ export const ESSENTIAL_MCP_TOOLS = [
   RetrieveMediaFileTool,
   GetMediaFilesNamesTool,
   StoreMediaFileTool,
+  StoreMediaFilesTool,
   DeleteMediaFileTool,
   // Tag tools
   AddTagsTool,

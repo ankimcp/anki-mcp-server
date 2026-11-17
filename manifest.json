@@ -224,6 +224,10 @@
       "description": "Upload a media file to Anki from base64 data, an absolute file path, or a URL. Overwrites a file with the same name by default"
     },
     {
+      "name": "storeMediaFiles",
+      "description": "Upload up to 100 media files to Anki in a single batch from base64 data, absolute file paths, or URLs, with partial success per file"
+    },
+    {
       "name": "deleteMediaFile",
       "description": "Remove a media file from Anki's collection.media folder; cards that reference it stop showing or playing it"
     },

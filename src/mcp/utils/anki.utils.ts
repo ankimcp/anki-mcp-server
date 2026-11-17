@@ -205,6 +205,31 @@ export function createSuccessResponse(data: any): CallToolResult {
 }
 
 /**
+ * Return the domain-specific hint for known error classes, if any.
+ */
+export function getErrorHint(error: unknown): string | undefined {
+  if (error instanceof ReadOnlyModeError) {
+    return READ_ONLY_HINT;
+  }
+  if (error instanceof MediaFilenameError) {
+    return MEDIA_FILENAME_HINT;
+  }
+  if (error instanceof MediaFileNotFoundError) {
+    return MEDIA_FILE_NOT_FOUND_HINT;
+  }
+  if (error instanceof MediaFileTypeError) {
+    return MEDIA_FILE_TYPE_HINT;
+  }
+  if (error instanceof MediaImportDirNotFoundError) {
+    return MEDIA_IMPORT_DIR_NOT_FOUND_HINT;
+  }
+  if (error instanceof MediaImportDirError) {
+    return MEDIA_IMPORT_DIR_HINT;
+  }
+  return undefined;
+}
+
+/**
  * Create a standardized error response for MCP tools
  */
 export function createErrorResponse(
@@ -228,18 +253,9 @@ export function createErrorResponse(
     Object.assign(errorData, context);
   }
 
-  if (error instanceof ReadOnlyModeError) {
-    errorData.hint = READ_ONLY_HINT;
-  } else if (error instanceof MediaFilenameError) {
-    errorData.hint = MEDIA_FILENAME_HINT;
-  } else if (error instanceof MediaFileNotFoundError) {
-    errorData.hint = MEDIA_FILE_NOT_FOUND_HINT;
-  } else if (error instanceof MediaFileTypeError) {
-    errorData.hint = MEDIA_FILE_TYPE_HINT;
-  } else if (error instanceof MediaImportDirNotFoundError) {
-    errorData.hint = MEDIA_IMPORT_DIR_NOT_FOUND_HINT;
-  } else if (error instanceof MediaImportDirError) {
-    errorData.hint = MEDIA_IMPORT_DIR_HINT;
+  const hint = getErrorHint(error);
+  if (hint !== undefined) {
+    errorData.hint = hint;
   }
 
   return {

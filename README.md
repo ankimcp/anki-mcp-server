@@ -47,7 +47,7 @@ Three representative prompts showing the tool flows this server enables:
 
 ## Available Tools
 
-The server exposes **53 MCP tools** — 42 essential tools for everyday Anki operations and 11 GUI tools that drive the Anki desktop interface for note editing/creation workflows.
+The server exposes **54 MCP tools** — 43 essential tools for everyday Anki operations and 11 GUI tools that drive the Anki desktop interface for note editing/creation workflows.
 
 ### Essential Tools
 
@@ -94,6 +94,7 @@ The server exposes **53 MCP tools** — 42 essential tools for everyday Anki ope
 - `getMediaFilesNames` - List media files in `collection.media`, optionally filtered by pattern
 - `retrieveMediaFile` - Download a media file as base64 content
 - `storeMediaFile` - Upload media from base64 data, an absolute file path, or a URL
+- `storeMediaFiles` - Batch-upload up to 100 media files from base64 data, absolute file paths, or URLs (partial success supported)
 - `deleteMediaFile` - Remove a media file from `collection.media` (destructive)
 
 **💡 Best Practice for Images:**
@@ -565,13 +566,13 @@ The `deleteNotes` tool requires explicit confirmation (`confirmDeletion: true`) 
 
 ### Media File Path and URL Validation
 
-The media tools (`storeMediaFile`, `retrieveMediaFile`, `deleteMediaFile`) and `updateNoteFields` audio/picture fields include security validation to prevent misuse via prompt injection:
+The media tools (`storeMediaFile`, `storeMediaFiles`, `retrieveMediaFile`, `deleteMediaFile`) and `updateNoteFields` audio/picture fields include security validation to prevent misuse via prompt injection:
 
 - **File path imports** are restricted to media file types only (images, audio, video). Non-media files (e.g., SSH keys, credentials, shell configs) are rejected based on MIME type. Symlinks are resolved first, so the type and directory checks apply to the link's target, not its name. The path is resolved on the machine running the MCP server, so the file has to exist there — this matters when Anki runs in Docker or on another host. Configure `MEDIA_ALLOWED_TYPES` to allow additional file types, or `MEDIA_IMPORT_DIR` to restrict imports to a specific directory.
 - **URL imports** are validated against SSRF attacks. Requests to private networks (10.x, 172.16.x, 192.168.x), loopback (127.x), link-local (169.254.x), and non-HTTP(S) schemes are blocked. Configure `MEDIA_ALLOWED_HOSTS` to allow specific private network hosts.
 - **Filenames** must be plain names (e.g., `audio.mp3`). Names containing path separators, `.`/`..` as the whole name, or null bytes are rejected rather than rewritten, so distinct names never collapse onto the same file.
 
-These protections apply to `storeMediaFile`, `retrieveMediaFile`, `deleteMediaFile`, and `updateNoteFields` audio/picture fields.
+These protections apply to `storeMediaFile`, `storeMediaFiles`, `retrieveMediaFile`, `deleteMediaFile`, and `updateNoteFields` audio/picture fields.
 
 > Path traversal vulnerability reported by [Hideaki Takahashi](https://github.com/Koukyosyumei).
 
