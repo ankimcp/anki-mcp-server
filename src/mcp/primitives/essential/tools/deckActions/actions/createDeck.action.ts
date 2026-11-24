@@ -4,7 +4,7 @@ import { AnkiConnectClient } from "@/mcp/clients/anki-connect.client";
  * Parameters for createDeck action
  */
 export interface CreateDeckParams {
-  /** The name of the deck to create. Use "::" for parent::child structure (max 2 levels) */
+  /** The name of the deck to create. "::" separates nesting levels (e.g. "Parent::Child::Grandchild") */
   deckName: string;
 }
 
@@ -18,18 +18,20 @@ export interface CreateDeckResult {
   message: string;
   created: boolean;
   exists?: boolean;
+  /** For nested names, everything before the last "::" (e.g. "A::B" for "A::B::C") */
   parentDeck?: string;
+  /** For nested names, the last "::" component */
   childDeck?: string;
-  /** For parent::child names, whether the parent deck already existed before this call */
+  /** For nested names, whether the immediate parent deck already existed before this call */
   parentExisted?: boolean;
 }
 
 /**
  * Create a new empty Anki deck
  *
- * Supports parent::child structure (e.g., "Japanese::Tokyo" creates parent deck
- * "Japanese" and child deck "Tokyo"). Maximum 2 levels of nesting allowed.
- * Will not overwrite existing decks.
+ * Supports nested decks at any depth (e.g., "Japanese::JLPT::N5"). Anki creates
+ * any missing ancestor decks along with the new deck. Will not overwrite
+ * existing decks.
  *
  * @see https://git.sr.ht/~foosoft/anki-connect#createdeck
  */
@@ -39,11 +41,7 @@ export async function createDeck(
 ): Promise<CreateDeckResult> {
   const { deckName } = params;
 
-  // Validate deck name doesn't have more than 2 levels
-  const parts = deckName.split("::");
-  if (parts.length > 2) {
-    throw new Error("Deck name can have maximum 2 levels (parent::child)");
-  }
+  const nested = deckName.split("::").length > 1;
 
   // Check for empty parts. Anki would store such a part as "blank".
   const normalizedParts = normalizeDeckName(deckName).split("::");
@@ -75,8 +73,8 @@ export async function createDeck(
       created: false,
       exists: true,
     };
-    if (parts.length === 2) {
-      const [storedParent, storedChild] = storedName.split("::");
+    if (nested) {
+      const [storedParent, storedChild] = splitParent(storedName);
       result.parentDeck = storedParent;
       result.childDeck = storedChild;
       result.parentExisted = true;
@@ -116,16 +114,18 @@ export async function createDeck(
   let resolvedName: string;
   if (storedName !== undefined) {
     resolvedName = storedName;
-    if (parts.length === 2) {
-      [parentName, childName] = storedName.split("::");
+    if (nested) {
+      [parentName, childName] = splitParent(storedName);
       parentExisted = Object.hasOwn(existingDecks, parentName);
     }
   } else {
-    const existingParent =
-      parts.length === 2 ? findExisting(parts[0]) : undefined;
-    if (parts.length === 2) {
-      parentName = existingParent ? existingParent[0] : normalizedParts[0];
-      childName = normalizedParts[1];
+    const [normalizedParent, normalizedChild] = splitParent(
+      normalizedParts.join("::"),
+    );
+    const existingParent = nested ? findExisting(normalizedParent) : undefined;
+    if (nested) {
+      parentName = existingParent ? existingParent[0] : normalizedParent;
+      childName = normalizedChild;
       parentExisted = existingParent !== undefined;
     }
     resolvedName =
@@ -154,6 +154,14 @@ export async function createDeck(
   }
 
   return result;
+}
+
+/**
+ * Splits a nested deck name at its last "::" into [parent path, child name].
+ */
+function splitParent(name: string): [string, string] {
+  const index = name.lastIndexOf("::");
+  return [name.slice(0, index), name.slice(index + 2)];
 }
 
 /**

@@ -201,15 +201,94 @@ describe("CreateDeckTool", () => {
     expect(ankiClient.invoke).toHaveBeenCalledTimes(2);
   });
 
-  it("should reject deck with more than 2 levels", async () => {
-    const deckName = "Languages::Spanish::Vocabulary";
+  it("should create a 3-level deck under an existing parent", async () => {
+    const deckName =
+      "USMLE::Female Reproductive System & Breast::Breast disorders";
+    const deckId = 1651445861999;
+
+    ankiClient.invoke
+      .mockResolvedValueOnce({
+        USMLE: 1,
+        "USMLE::Female Reproductive System & Breast": 2,
+      })
+      .mockResolvedValueOnce(deckId)
+      .mockResolvedValueOnce({
+        USMLE: 1,
+        "USMLE::Female Reproductive System & Breast": 2,
+        [deckName]: deckId,
+      });
 
     const rawResult = await tool.execute({ deckName });
     const result = parseToolResult(rawResult);
 
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("maximum 2 levels");
-    expect(ankiClient.invoke).not.toHaveBeenCalled();
+    expect(result.success).toBe(true);
+    expect(result.created).toBe(true);
+    expect(result.deckId).toBe(deckId);
+    expect(result.deckName).toBe(deckName);
+    expect(result.parentDeck).toBe(
+      "USMLE::Female Reproductive System & Breast",
+    );
+    expect(result.childDeck).toBe("Breast disorders");
+    expect(result.parentExisted).toBe(true);
+    expect(ankiClient.invoke).toHaveBeenNthCalledWith(2, "createDeck", {
+      deck: deckName,
+    });
+  });
+
+  it("should create a 4-level deck whose ancestors are new", async () => {
+    const deckName = "A::B::C::D";
+    const deckId = 1651445862000;
+
+    ankiClient.invoke
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce(deckId)
+      .mockResolvedValueOnce({
+        A: 1,
+        "A::B": 2,
+        "A::B::C": 3,
+        [deckName]: deckId,
+      });
+
+    const result = parseToolResult(await tool.execute({ deckName }));
+
+    expect(result.created).toBe(true);
+    expect(result.parentDeck).toBe("A::B::C");
+    expect(result.childDeck).toBe("D");
+    expect(result.parentExisted).toBe(false);
+    expect(result.message).toContain('Created parent deck "A::B::C"');
+  });
+
+  it("should report an existing 3-level deck under its stored spelling", async () => {
+    ankiClient.invoke.mockResolvedValueOnce({ "Lang::Spanish::Vocab": 42 });
+
+    const result = parseToolResult(
+      await tool.execute({ deckName: "lang::spanish::vocab" }),
+    );
+
+    expect(result.created).toBe(false);
+    expect(result.exists).toBe(true);
+    expect(result.deckId).toBe(42);
+    expect(result.parentDeck).toBe("Lang::Spanish");
+    expect(result.childDeck).toBe("Vocab");
+    expect(ankiClient.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it("should resolve a 3-level parent case-insensitively when the read-back fails", async () => {
+    const deckId = 1651445862001;
+    ankiClient.invoke
+      .mockResolvedValueOnce({ Lang: 1, "Lang::Spanish": 2 })
+      .mockResolvedValueOnce(deckId)
+      .mockRejectedValueOnce(new Error("lookup failed"));
+
+    const result = parseToolResult(
+      await tool.execute({ deckName: "lang::SPANISH:: Vocab " }),
+    );
+
+    expect(result.created).toBe(true);
+    expect(result.deckName).toBe("Lang::Spanish::Vocab");
+    expect(result.parentDeck).toBe("Lang::Spanish");
+    expect(result.childDeck).toBe("Vocab");
+    expect(result.parentExisted).toBe(true);
   });
 
   it("should reject deck name with empty parts", async () => {

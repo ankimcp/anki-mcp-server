@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+- **`createDeck` accepts nested decks at any depth.** Names with more than one `::` (e.g. `USMLE::Female Reproductive System & Breast::Breast disorders`) were rejected with "maximum 2 levels", although Anki supports arbitrary nesting and creates missing ancestor decks itself. The limit is removed. For a nested name, `parentDeck` is now everything before the last `::` and `childDeck` the last component, and `parentExisted` reports whether that immediate parent existed beforehand.
+
 ## [0.27.1] - 2026-10
 
 - **`storeMediaFile` resolves symlinks before validating a file path.** The MIME-type allowlist and the `MEDIA_IMPORT_DIR` check looked only at the path as given, so a symlink named `holiday.png` pointing at `~/.ssh/id_rsa` passed both checks — including when the link sat inside the import directory — and AnkiConnect then followed the link and stored the target's bytes. The path is now resolved to its real path first; the type and directory checks run on the link's target, and that real path is what is sent to AnkiConnect. The import directory is resolved the same way on every call, so a symlinked `MEDIA_IMPORT_DIR` keeps working. With `MEDIA_IMPORT_DIR` set, a path outside it is rejected before the file is looked up, so the error does not reveal whether files outside the directory exist. A path that does not exist or cannot be accessed is now rejected with an error saying so, as is a `MEDIA_IMPORT_DIR` that does not exist; both errors, the outside-the-directory error and the file-type error each carry a hint about the actual cause instead of the generic "Anki is not running" one. Because the path is now resolved by the MCP server, `storeMediaFile`'s `path` has to exist on the machine running the MCP server — this matters when Anki runs in Docker or on another host. Reported by Jalil Dini.

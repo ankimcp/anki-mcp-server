@@ -205,7 +205,7 @@
     },
     {
       "name": "createDeck",
-      "description": "Create a new empty Anki deck. Supports parent::child structure (max 2 levels, e.g., \"Japanese::JLPT N5\")"
+      "description": "Create a new empty Anki deck. Supports nested decks at any depth (e.g., \"Japanese::JLPT::N5\")"
     },
     {
       "name": "changeDeck",

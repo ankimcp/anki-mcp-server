@@ -74,6 +74,14 @@ describe("E2E: MCP Tools (STDIO)", () => {
       expect((result.deckId as number) > 0).toBe(true);
     });
 
+    it("should create a nested deck (3 levels) via createDeck", () => {
+      const deckName = `STDIO::Deep${uniqueId()}::Child`;
+      const result = callTool("createDeck", { deckName: deckName });
+      expect(result.created).toBe(true);
+      expect(result.childDeck).toBe("Child");
+      expect((result.deckId as number) > 0).toBe(true);
+    });
+
     it("should return existing deck ID when creating duplicate via createDeck", () => {
       const deckName = `STDIO::Exist${uniqueId()}`;
       const result1 = callTool("createDeck", { deckName: deckName });

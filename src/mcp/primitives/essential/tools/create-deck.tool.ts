@@ -15,12 +15,12 @@ export class CreateDeckTool {
   @Tool({
     name: "createDeck",
     description:
-      'Create a new empty Anki deck. Use "::" for parent::child structure (max 2 levels, e.g., "Japanese::JLPT N5"). Will not overwrite existing decks.',
+      'Create a new empty Anki deck. "::" separates nesting levels at any depth (e.g., "Japanese::JLPT::N5"); Anki creates any missing ancestor decks along with it. An existing deck is left unchanged and reported with created: false.',
     parameters: z.object({
       deckName: z
         .string()
         .describe(
-          'The name of the deck to create. Use "::" for parent::child structure (max 2 levels)',
+          'The name of the deck to create. "::" separates nesting levels, e.g. "Parent::Child::Grandchild"',
         ),
     }),
     outputSchema: z.object({
